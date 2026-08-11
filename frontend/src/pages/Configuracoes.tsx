@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 
 type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario';
@@ -41,6 +42,13 @@ const WEEKDAYS = [
 ];
 
 export default function Configuracoes() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdmin = user.role === 'ADMIN';
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" />;
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>('empresa');
   const [loading, setLoading] = useState(true);
   const [savingCompany, setSavingCompany] = useState(false);
