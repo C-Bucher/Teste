@@ -3,9 +3,9 @@ import bcrypt
 
 ADMIN_HASH = bcrypt.hashpw(b"Admin@123", bcrypt.gensalt()).decode()
 USERS_DB = {
-    "admin@techconnect.com.br": {"id":"usr-001","email":"admin@techconnect.com.br","full_name":"Administrador","role":"ADMIN","password_hash":ADMIN_HASH,"is_active":True,"mfa_enabled":False},
-    "gerente@techconnect.com.br": {"id":"usr-002","email":"gerente@techconnect.com.br","full_name":"Ana Souza","role":"GERENTE","password_hash":bcrypt.hashpw(b"Gerente@123",bcrypt.gensalt()).decode(),"is_active":True,"mfa_enabled":False},
-    "funcionario@techconnect.com.br": {"id":"usr-003","email":"funcionario@techconnect.com.br","full_name":"Carlos Mendes","role":"FUNCIONARIO","password_hash":bcrypt.hashpw(b"Func@123",bcrypt.gensalt()).decode(),"is_active":True,"mfa_enabled":False},
+    "admin@techconnect.com.br": {"id":"usr-001","email":"admin@techconnect.com.br","full_name":"Administrador","role":"ADMIN","plan_scope":"completo","password_hash":ADMIN_HASH,"is_active":True,"mfa_enabled":False},
+    "gerente@techconnect.com.br": {"id":"usr-002","email":"gerente@techconnect.com.br","full_name":"Ana Souza","role":"GERENTE","plan_scope":"completo","password_hash":bcrypt.hashpw(b"Gerente@123",bcrypt.gensalt()).decode(),"is_active":True,"mfa_enabled":False},
+    "funcionario@techconnect.com.br": {"id":"usr-003","email":"funcionario@techconnect.com.br","full_name":"Carlos Mendes","role":"FUNCIONARIO","plan_scope":"completo","password_hash":bcrypt.hashpw(b"Func@123",bcrypt.gensalt()).decode(),"is_active":True,"mfa_enabled":False},
 }
 
 hoje = date.today()
