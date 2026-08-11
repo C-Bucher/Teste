@@ -1,0 +1,42 @@
+# Variáveis de ambiente — NUNCA commitar
+.env
+.env.local
+.env.production
+
+# Dependências
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+
+# Build artifacts
+frontend/dist/
+backend/dist/
+
+# Uploads de usuários
+uploads/
+
+# Logs
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SO
+.DS_Store
+Thumbs.db
+
+# Docker volumes locais
+mysql_data/
+redis_data/
+
+# Scripts de teste temporários
+scratch/

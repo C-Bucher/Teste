@@ -1,0 +1,5 @@
+﻿import os
+
+SECRET_KEY = "***REMOVED-SECRET_KEY***"
+ALGORITHM  = "HS256"
+TOKEN_EXP  = 480
