@@ -26,10 +26,20 @@ export default function Layout({ children }: LayoutProps) {
     return role || 'Colaborador';
   };
 
+  const scope = user.plan_scope || 'completo';
+  const showBusiness = scope === 'empresarial' || scope === 'completo';
+  const showPersonal = scope === 'pessoal' || scope === 'completo';
+
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { name: 'Projetos', path: '/kanban', icon: 'view_kanban' },
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
+    ...(showBusiness ? [{ name: 'Dashboard', path: '/dashboard', icon: 'dashboard' }] : []),
+    ...(showBusiness ? [{ name: 'Projetos', path: '/kanban', icon: 'view_kanban' }] : []),
+    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
+    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Financeiro', path: '/financeiro', icon: 'payments' }] : []),
+    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping' }] : []),
+    ...(showBusiness && user.role === 'ADMIN' ? [{ name: 'Configurações', path: '/configuracoes', icon: 'settings' }] : []),
+    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Exportação', path: '/exportacao', icon: 'file_download' }] : []),
+    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome' }] : []),
+    ...(showPersonal ? [{ name: 'Hub Pessoal', path: '/pessoal', icon: 'person' }] : []),
     { name: 'Assinatura', path: '/assinatura', icon: 'credit_card' },
     { name: 'Planos & Preços', path: '/planos', icon: 'workspace_premium' },
   ];
