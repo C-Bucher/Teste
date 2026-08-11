@@ -7,6 +7,7 @@ import Subscription from './pages/Subscription';
 import Dashboard from './pages/Dashboard';
 import Kanban from './pages/Kanban';
 import GestaoEquipe from './pages/GestaoEquipe';
+import Configuracoes from './pages/Configuracoes';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -24,6 +25,7 @@ function App() {
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/kanban" element={<PrivateRoute><Kanban /></PrivateRoute>} />
         <Route path="/equipe" element={<PrivateRoute><GestaoEquipe /></PrivateRoute>} />
+        <Route path="/configuracoes" element={<PrivateRoute><Configuracoes /></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
