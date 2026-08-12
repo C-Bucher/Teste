@@ -11,13 +11,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [cashflowRes, dreRes] = await Promise.all([
+        const [cashflowRes, dreRes, entriesRes] = await Promise.all([
           api.get('/financial/cashflow'),
-          api.get('/financial/dre')
+          api.get('/financial/dre'),
+          api.get('/financial/entries?page=1&size=5')
         ]);
         setFinancialData({
           cashflow: cashflowRes.data,
-          dre: dreRes.data
+          dre: dreRes.data,
+          entries: entriesRes.data.items
         });
       } catch (err) {
         console.error("Erro ao carregar dados", err);
@@ -250,54 +252,30 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
-                  <tr className="hover:bg-surface-bright transition-colors group">
-                    <td className="p-md">
-                      <div className="flex items-center gap-sm">
-                        <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[18px]">dns</span>
+                  {financialData?.entries?.map((entry: any) => (
+                    <tr key={entry.id} className="hover:bg-surface-bright transition-colors group">
+                      <td className="p-md">
+                        <div className="flex items-center gap-sm">
+                          <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[18px]">
+                              {entry.type === 'RECEITA' ? 'trending_up' : 'trending_down'}
+                            </span>
+                          </div>
+                          <span className="font-body-sm font-medium">{entry.description}</span>
                         </div>
-                        <span className="font-body-sm font-medium">Amazon Web Services</span>
-                      </div>
-                    </td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">Cloud Hosting</span></td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">22 Out 2023</span></td>
-                    <td className="p-md">
-                      <span className="px-sm py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success uppercase">Concluído</span>
-                    </td>
-                    <td className="p-md text-right font-bold text-on-surface">- R$ 1.250,00</td>
-                  </tr>
-                  <tr className="hover:bg-surface-bright transition-colors group">
-                    <td className="p-md">
-                      <div className="flex items-center gap-sm">
-                        <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[18px]">shopping_cart</span>
-                        </div>
-                        <span className="font-body-sm font-medium">Apple Store - MacBook Pro</span>
-                      </div>
-                    </td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">Hardware</span></td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">21 Out 2023</span></td>
-                    <td className="p-md">
-                      <span className="px-sm py-0.5 rounded-full text-[10px] font-bold bg-warning/10 text-warning uppercase">Pendente</span>
-                    </td>
-                    <td className="p-md text-right font-bold text-on-surface">- R$ 18.400,00</td>
-                  </tr>
-                  <tr className="hover:bg-surface-bright transition-colors group">
-                    <td className="p-md">
-                      <div className="flex items-center gap-sm">
-                        <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[18px]">payments</span>
-                        </div>
-                        <span className="font-body-sm font-medium">Stripe Payout - #9921</span>
-                      </div>
-                    </td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">Vendas SaaS</span></td>
-                    <td className="p-md"><span className="text-body-sm text-on-surface-variant">20 Out 2023</span></td>
-                    <td className="p-md">
-                      <span className="px-sm py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success uppercase">Concluído</span>
-                    </td>
-                    <td className="p-md text-right font-bold text-success">+ R$ 42.100,00</td>
-                  </tr>
+                      </td>
+                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.category}</span></td>
+                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.due_date}</span></td>
+                      <td className="p-md">
+                        <span className={`px-sm py-0.5 rounded-full text-[10px] font-bold uppercase ${entry.status === 'PAGO' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                          {entry.status === 'PAGO' ? 'Concluído' : 'Pendente'}
+                        </span>
+                      </td>
+                      <td className={`p-md text-right font-bold ${entry.type === 'RECEITA' ? 'text-success' : 'text-on-surface'}`}>
+                        {entry.type === 'RECEITA' ? '+' : '- '}R$ {Number(entry.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
