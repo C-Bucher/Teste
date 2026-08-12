@@ -116,3 +116,27 @@ EXPORT_LOGS = [
     {"id":"exp-001","type":"DRE","format":"PDF","status":"PRONTO","created_at":(datetime.now()-timedelta(days=2)).isoformat(),"size_bytes":245000},
     {"id":"exp-002","type":"COLABORADORES","format":"EXCEL","status":"PRONTO","created_at":(datetime.now()-timedelta(days=5)).isoformat(),"size_bytes":89000},
 ]
+
+PERSONAL_ACCOUNTS = [
+    {"id":"pacc-001","name":"Conta Corrente Nubank","type":"CONTA","balance":4250.30,"limit":None},
+    {"id":"pacc-002","name":"Cartão Nubank","type":"CARTAO","balance":-890.40,"limit":5000.00,"closing_day":28,"due_day":5},
+]
+PERSONAL_BUDGETS = [
+    {"id":"pbud-001","category":"Alimentacao","limit_amount":1200.00,"spent_amount":650.00},
+    {"id":"pbud-002","category":"Transporte","limit_amount":500.00,"spent_amount":410.00},
+    {"id":"pbud-003","category":"Lazer","limit_amount":400.00,"spent_amount":390.00},
+]
+PERSONAL_GOALS = [
+    {"id":"pgoal-001","name":"Reserva de Emergencia","target_amount":20000.00,"current_amount":8500.00,"target_date":"2027-01-01"},
+    {"id":"pgoal-002","name":"Viagem Europa","target_amount":12000.00,"current_amount":3200.00,"target_date":"2026-12-01"},
+]
+PERSONAL_DEBTS = [
+    {"id":"pdebt-001","name":"Financiamento Notebook","total_amount":4800.00,"remaining_amount":2400.00,"installments_total":12,"installments_paid":6,"interest_rate":2.5},
+]
+PERSONAL_SUBSCRIPTIONS = [
+    {"id":"psub-001","name":"Netflix","amount":39.90,"billing_day":10,"category":"Streaming","is_active":True},
+    {"id":"psub-002","name":"Academia","amount":99.90,"billing_day":5,"category":"Saude","is_active":True},
+]
+PERSONAL_SPLITS = [
+    {"id":"psplit-001","description":"Aluguel Republica","total_amount":1800.00,"participants":[{"name":"Voce","share":600.00,"paid":True},{"name":"Joao","share":600.00,"paid":False},{"name":"Maria","share":600.00,"paid":True}]},
+]
