@@ -108,5 +108,12 @@ async def stop_timer2(cid:str,u=Depends(get_current_user)):
     return await stop_timer(cid, u)
 
 @router.post("/cards/{cid}/comments")
-async def add_comment(cid:str,d:dict,u=Depends(get_current_user)): 
-    return {"id":f"cmt-{uuid.uuid4().hex[:6]}","card_id":cid,"author":u["full_name"],"content":d.get("content"),"created_at":datetime.now().isoformat()}
+async def add_comment(cid:str,d:dict,u=Depends(get_current_user)):
+    comment={"id":f"cmt-{uuid.uuid4().hex[:6]}","card_id":cid,"author":u["full_name"],"content":d.get("content"),"created_at":datetime.now().isoformat()}
+    for brd in KANBAN_BOARDS.values():
+        for col in brd.get("columns",[]):
+            for c in col["cards"]:
+                if c["id"]==cid:
+                    c.setdefault("comments",[]).append(comment)
+                    return comment
+    raise HTTPException(404)
