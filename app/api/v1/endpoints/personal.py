@@ -40,6 +40,10 @@ async def get_pers(u=Depends(get_current_user)): return {"items":PERSONAL_ENTRIE
 @router.post("/entries")
 async def create_pers(d:dict,u=Depends(get_current_user)):
     e={"id":f"pes-{uuid.uuid4().hex[:6]}","date":date.today().isoformat(),**d}; PERSONAL_ENTRIES.append(e); return e
+@router.delete("/entries/{eid}")
+async def del_pers(eid:str,u=Depends(get_current_user)):
+    global PERSONAL_ENTRIES
+    PERSONAL_ENTRIES[:]=[x for x in PERSONAL_ENTRIES if x["id"]!=eid]; return {"success":True}
 
 @router.get("/accounts")
 async def get_accounts(u=Depends(get_current_user)): return PERSONAL_ACCOUNTS
