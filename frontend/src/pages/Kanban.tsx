@@ -28,6 +28,13 @@ export default function Kanban() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', cnpj: '', contact_name: '', segment: '' });
 
+  // Timer State
+  const [activeTimerCardId, setActiveTimerCardId] = useState<string | null>(null);
+
+  // Card Detail Panel State
+  const [detailCard, setDetailCard] = useState<any>(null);
+  const [commentText, setCommentText] = useState('');
+
   useEffect(() => {
     const fetchInitial = async () => {
       try {
@@ -187,6 +194,32 @@ export default function Kanban() {
     }
   };
 
+  const handleToggleTimer = async (cardId: string) => {
+    try {
+      if (activeTimerCardId === cardId) {
+        await api.post(`/kanban/cards/${cardId}/timer/stop`);
+        setActiveTimerCardId(null);
+      } else {
+        await api.post(`/kanban/cards/${cardId}/timer/start`);
+        setActiveTimerCardId(cardId);
+      }
+      fetchBoard(selectedProjectId!);
+    } catch (err) {
+      console.error('Erro ao controlar timer', err);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !detailCard) return;
+    try {
+      const res = await api.post(`/kanban/cards/${detailCard.id}/comments`, { content: commentText });
+      setDetailCard({ ...detailCard, comments: [...(detailCard.comments || []), res.data] });
+      setCommentText('');
+    } catch (err) {
+      console.error('Erro ao comentar', err);
+    }
+  };
+
   if (loading && !boardData) {
     return (
       <Layout>
@@ -286,6 +319,7 @@ export default function Kanban() {
                         draggable
                         onDragStart={(e) => handleDragStart(e, card.id)}
                         onDragEnd={handleDragEnd}
+                        onClick={() => setDetailCard(card)}
                         className={`group ${isDone ? 'bg-surface/60 opacity-80' : 'bg-surface'} rounded-xl border ${isActive ? 'border-l-4 border-l-primary border-border-subtle' : 'border-border-subtle'} p-md shadow-sm hover:shadow-lg transition-all duration-300 cursor-grab active:cursor-grabbing hover:border-primary/30`}
                       >
                         <div className="flex justify-between items-start mb-sm">
@@ -320,6 +354,15 @@ export default function Kanban() {
                           </div>
                           
                           <div className="flex items-center gap-sm">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleToggleTimer(card.id); }}
+                              className={`flex items-center gap-xs px-sm py-1 rounded-full text-[10px] font-bold ${activeTimerCardId === card.id ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'}`}
+                            >
+                              <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                {activeTimerCardId === card.id ? 'stop' : 'play_arrow'}
+                              </span>
+                              {activeTimerCardId === card.id ? 'Parar' : 'Iniciar'}
+                            </button>
                             <span className="text-[11px] text-outline flex items-center gap-xs">
                               <span className="material-symbols-outlined text-sm">attach_money</span> {card.cost_per_task}
                             </span>
@@ -540,6 +583,105 @@ export default function Kanban() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Painel de Detalhe do Card */}
+      <AnimatePresence>
+        {detailCard && (
+          <div className="fixed inset-0 z-[100] flex justify-end">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setDetailCard(null)}
+            />
+
+            {/* Drawer Sidebar */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md bg-surface-container-high border-l border-border-subtle shadow-2xl flex flex-col h-full z-10"
+            >
+              {/* Header */}
+              <div className="p-md border-b border-border-subtle flex items-center justify-between bg-surface-container-highest/40">
+                <div>
+                  <h3 className="font-headline-sm text-headline-sm text-on-surface">{detailCard.title}</h3>
+                  <p className="text-[11px] text-on-surface-variant uppercase tracking-wider mt-1">{detailCard.priority}</p>
+                </div>
+                <button
+                  onClick={() => setDetailCard(null)}
+                  className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-md space-y-lg">
+                <div>
+                  <h4 className="text-label-md text-on-surface-variant mb-1">Descrição</h4>
+                  <p className="font-body-sm text-body-sm text-on-surface whitespace-pre-wrap">{detailCard.description || 'Sem descrição.'}</p>
+                </div>
+
+                <div className="flex gap-lg">
+                  <div>
+                    <h4 className="text-label-md text-on-surface-variant mb-1">Responsável</h4>
+                    <p className="font-body-sm text-body-sm text-on-surface">{detailCard.assignee || 'Não atribuído'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-label-md text-on-surface-variant mb-1">Prioridade</h4>
+                    <p className="font-body-sm text-body-sm text-on-surface">{detailCard.priority}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-label-md text-on-surface-variant mb-sm">Comentários</h4>
+                  <div className="space-y-sm">
+                    {(detailCard.comments || []).length === 0 && (
+                      <p className="text-body-sm text-outline">Nenhum comentário ainda.</p>
+                    )}
+                    {(detailCard.comments || []).map((c: any) => (
+                      <div key={c.id} className="bg-surface-container rounded-lg p-sm border border-border-subtle">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-bold text-on-surface">{c.author}</span>
+                          <span className="text-[10px] text-outline">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</span>
+                        </div>
+                        <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap">{c.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Comment Input */}
+              <div className="p-md border-t border-border-subtle bg-surface-container-highest/40">
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleAddComment(); }}
+                  className="flex items-center gap-sm"
+                >
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Adicionar comentário..."
+                    className="flex-1 bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!commentText.trim()}
+                    className="p-2.5 rounded-lg bg-primary text-on-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-xl">send</span>
+                  </button>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
