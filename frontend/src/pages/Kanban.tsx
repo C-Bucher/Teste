@@ -311,7 +311,7 @@ export default function Kanban() {
                     const isActive = card.status === 'EM_ANDAMENTO';
                     const tagColor = card.priority === 'URGENTE' ? 'bg-error-container/20 text-error' :
                                      card.priority === 'ALTA' ? 'bg-warning-container/20 text-warning' :
-                                     card.priority === 'BAIXA' ? 'bg-surface-container-highest text-outline' :
+                                     card.priority === 'BAIXA' ? 'bg-outline-variant/30 text-outline' :
                                      'bg-primary-container/20 text-primary';
 
                     return (
@@ -321,7 +321,7 @@ export default function Kanban() {
                         onDragStart={(e) => handleDragStart(e, card.id)}
                         onDragEnd={handleDragEnd}
                         onClick={() => setDetailCard(card)}
-                        className={`group ${isDone ? 'bg-surface-container/70 opacity-90' : 'bg-surface-container-high'} rounded-xl border ${isActive ? 'border-l-4 border-l-primary border-border-subtle' : 'border border-border-subtle/80'} p-md shadow-md hover:shadow-lg transition-all duration-300 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:-translate-y-0.5`}
+                        className={`group ${isDone ? 'bg-surface-container-high/90' : 'bg-surface-container-highest'} rounded-xl border ${isActive ? 'border-l-4 border-l-primary border-outline-variant/70' : 'border border-outline-variant/70'} p-md shadow-md hover:shadow-lg transition-all duration-300 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:-translate-y-0.5`}
                       >
                         <div className="flex justify-between items-start mb-sm">
                           <div className="flex gap-sm flex-wrap">
@@ -349,7 +349,7 @@ export default function Kanban() {
                         
                         <div className="flex items-end justify-between mt-auto pt-sm border-t border-border-subtle/60 gap-sm">
                           <div className="flex items-center gap-xs min-w-0 flex-1">
-                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary shrink-0" title={card.assignee}>
+                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface-container-highest flex items-center justify-center text-[10px] font-bold text-primary shrink-0" title={card.assignee}>
                               {card.assignee ? card.assignee.substring(0, 2).toUpperCase() : 'NN'}
                             </div>
                             <span className="text-[11px] text-on-surface-variant truncate">{card.assignee || 'Sem responsável'}</span>
@@ -365,7 +365,7 @@ export default function Kanban() {
                               </span>
                               {activeTimerCardId === card.id ? 'Parar' : 'Iniciar'}
                             </button>
-                            <span className="text-[13px] font-bold text-on-surface flex items-center gap-xs">
+                            <span className="text-[12px] font-bold text-on-surface flex items-center gap-xs">
                               <span className="material-symbols-outlined text-sm text-primary">attach_money</span> {Number(card.cost_per_task || 0).toFixed(2)}
                             </span>
                           </div>
