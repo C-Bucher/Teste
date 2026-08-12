@@ -266,15 +266,16 @@ export default function Kanban() {
           {boardData?.columns?.map((column: any, i: number) => {
             // Determine colors dynamically based on order/name
             let colorClass = 'bg-outline';
-            let bgClass = 'bg-white/5 border-border-subtle';
+            let bgClass = 'bg-surface-container-low/60 border-border-subtle';
             if (column.name.toLowerCase().includes('andamento') || column.name.toLowerCase().includes('desenvolvimento')) {
               colorClass = 'bg-primary';
-              bgClass = 'bg-primary-container/5 border-primary/10';
+              bgClass = 'bg-primary-container/10 border-primary/15';
             } else if (column.name.toLowerCase().includes('revisao')) {
               colorClass = 'bg-warning';
+              bgClass = 'bg-surface-container-low/60 border-warning/15';
             } else if (column.name.toLowerCase().includes('concluido')) {
               colorClass = 'bg-success';
-              bgClass = 'bg-success/5 border-success/10';
+              bgClass = 'bg-success/10 border-success/15';
             }
 
             return (
@@ -288,13 +289,13 @@ export default function Kanban() {
                 onDrop={(e) => handleDrop(e, column.id)}
               >
                 {/* Column Header */}
-                <div className="flex items-center justify-between px-md mb-md">
+                <div className="flex items-center justify-between px-md mb-md py-xs">
                   <div className="flex items-center gap-sm">
-                    <span className={`w-2 h-2 rounded-full ${colorClass}`}></span>
-                    <span className="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface-variant truncate max-w-[200px]">
+                    <span className={`w-2.5 h-2.5 rounded-full ${colorClass}`}></span>
+                    <span className="font-headline-sm text-headline-sm uppercase tracking-wider text-on-surface truncate max-w-[200px]">
                       {column.name}
                     </span>
-                    <span className="bg-surface-container-highest px-sm py-xs rounded text-xs text-outline">
+                    <span className="bg-surface-container-highest px-sm py-xs rounded-full text-xs text-on-surface-variant font-bold">
                       {column.cards?.length || 0}
                     </span>
                   </div>
@@ -320,7 +321,7 @@ export default function Kanban() {
                         onDragStart={(e) => handleDragStart(e, card.id)}
                         onDragEnd={handleDragEnd}
                         onClick={() => setDetailCard(card)}
-                        className={`group ${isDone ? 'bg-surface/60 opacity-80' : 'bg-surface'} rounded-xl border ${isActive ? 'border-l-4 border-l-primary border-border-subtle' : 'border-border-subtle'} p-md shadow-sm hover:shadow-lg transition-all duration-300 cursor-grab active:cursor-grabbing hover:border-primary/30`}
+                        className={`group ${isDone ? 'bg-surface-container/70 opacity-90' : 'bg-surface-container-high'} rounded-xl border ${isActive ? 'border-l-4 border-l-primary border-border-subtle' : 'border border-border-subtle/80'} p-md shadow-md hover:shadow-lg transition-all duration-300 cursor-grab active:cursor-grabbing hover:border-primary/40 hover:-translate-y-0.5`}
                       >
                         <div className="flex justify-between items-start mb-sm">
                           <div className="flex gap-sm flex-wrap">
@@ -346,25 +347,26 @@ export default function Kanban() {
                           {card.description}
                         </p>
                         
-                        <div className="flex items-center justify-between mt-auto">
-                          <div className="flex -space-x-2">
-                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface flex items-center justify-center text-[10px] font-bold text-primary" title={card.assignee}>
+                        <div className="flex items-end justify-between mt-auto pt-sm border-t border-border-subtle/60 gap-sm">
+                          <div className="flex items-center gap-xs min-w-0 flex-1">
+                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary shrink-0" title={card.assignee}>
                               {card.assignee ? card.assignee.substring(0, 2).toUpperCase() : 'NN'}
                             </div>
+                            <span className="text-[11px] text-on-surface-variant truncate">{card.assignee || 'Sem responsável'}</span>
                           </div>
-                          
-                          <div className="flex items-center gap-sm">
+
+                          <div className="flex flex-col items-end gap-xs shrink-0">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleToggleTimer(card.id); }}
-                              className={`flex items-center gap-xs px-sm py-1 rounded-full text-[10px] font-bold ${activeTimerCardId === card.id ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'}`}
+                              className={`flex items-center gap-xs px-sm py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${activeTimerCardId === card.id ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'}`}
                             >
                               <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>
                                 {activeTimerCardId === card.id ? 'stop' : 'play_arrow'}
                               </span>
                               {activeTimerCardId === card.id ? 'Parar' : 'Iniciar'}
                             </button>
-                            <span className="text-[11px] text-outline flex items-center gap-xs">
-                              <span className="material-symbols-outlined text-sm">attach_money</span> {card.cost_per_task}
+                            <span className="text-[13px] font-bold text-on-surface flex items-center gap-xs">
+                              <span className="material-symbols-outlined text-sm text-primary">attach_money</span> {Number(card.cost_per_task || 0).toFixed(2)}
                             </span>
                           </div>
                         </div>
