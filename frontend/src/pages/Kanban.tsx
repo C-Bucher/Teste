@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 
 export default function Kanban() {
   const [projects, setProjects] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [boardData, setBoardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -21,13 +22,23 @@ export default function Kanban() {
     priority: 'MEDIA'
   });
 
+  // Modal State for New Project / New Client
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectForm, setProjectForm] = useState({ name: '', description: '', client_id: '', start_date: '', end_date: '' });
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [clientForm, setClientForm] = useState({ name: '', email: '', phone: '', cnpj: '', contact_name: '', segment: '' });
+
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchInitial = async () => {
       try {
-        const res = await api.get('/kanban/projects');
-        setProjects(res.data);
-        if (res.data.length > 0) {
-          setSelectedProjectId(res.data[0].id);
+        const [projRes, clientsRes] = await Promise.all([
+          api.get('/kanban/projects'),
+          api.get('/kanban/clients')
+        ]);
+        setProjects(projRes.data);
+        setClients(clientsRes.data);
+        if (projRes.data.length > 0) {
+          setSelectedProjectId(projRes.data[0].id);
         } else {
           setLoading(false);
         }
@@ -36,7 +47,7 @@ export default function Kanban() {
         setLoading(false);
       }
     };
-    fetchProjects();
+    fetchInitial();
   }, []);
 
   useEffect(() => {
@@ -148,6 +159,34 @@ export default function Kanban() {
     }
   };
 
+  const handleSaveProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/kanban/projects', projectForm);
+      setProjects([...projects, res.data]);
+      setSelectedProjectId(res.data.id);
+      setIsProjectModalOpen(false);
+      setProjectForm({ name: '', description: '', client_id: '', start_date: '', end_date: '' });
+    } catch (err) {
+      console.error('Erro ao criar projeto', err);
+      alert('Erro ao criar projeto');
+    }
+  };
+
+  const handleSaveClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/kanban/clients', clientForm);
+      setClients([...clients, res.data]);
+      setProjectForm({ ...projectForm, client_id: res.data.id });
+      setIsClientModalOpen(false);
+      setClientForm({ name: '', email: '', phone: '', cnpj: '', contact_name: '', segment: '' });
+    } catch (err) {
+      console.error('Erro ao criar cliente', err);
+      alert('Erro ao criar cliente');
+    }
+  };
+
   if (loading && !boardData) {
     return (
       <Layout>
@@ -183,7 +222,7 @@ export default function Kanban() {
             <button className="flex items-center gap-sm bg-surface-container-high border border-border-subtle px-md py-sm rounded-lg hover:bg-surface-bright transition-all font-label-md">
               <span className="material-symbols-outlined">filter_list</span> Filtrar
             </button>
-            <button className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-sm rounded-lg hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10">
+            <button onClick={() => setIsProjectModalOpen(true)} className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-sm rounded-lg hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span> Novo Projeto
             </button>
           </div>
@@ -349,6 +388,151 @@ export default function Kanban() {
 
                 <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+                    Adicionar
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Novo Projeto */}
+      <AnimatePresence>
+        {isProjectModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsProjectModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[500px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Novo Projeto</h3>
+                <button onClick={() => setIsProjectModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProject} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome do Projeto</label>
+                  <input required type="text" value={projectForm.name} onChange={(e) => setProjectForm({...projectForm, name: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Descrição</label>
+                  <textarea required rows={3} value={projectForm.description} onChange={(e) => setProjectForm({...projectForm, description: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Cliente</label>
+                  <select
+                    required
+                    value={projectForm.client_id}
+                    onChange={(e) => {
+                      if (e.target.value === '__new__') {
+                        setIsClientModalOpen(true);
+                      } else {
+                        setProjectForm({...projectForm, client_id: e.target.value});
+                      }
+                    }}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="" disabled>Selecione um cliente</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                    <option value="__new__">+ Novo Cliente</option>
+                  </select>
+                </div>
+                <div className="flex gap-md">
+                  <div className="flex-1">
+                    <label className="block text-label-md text-on-surface-variant mb-1">Data Início</label>
+                    <input required type="date" value={projectForm.start_date} onChange={(e) => setProjectForm({...projectForm, start_date: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-label-md text-on-surface-variant mb-1">Data Fim</label>
+                    <input required type="date" value={projectForm.end_date} onChange={(e) => setProjectForm({...projectForm, end_date: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsProjectModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+                    Criar Projeto
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Novo Cliente */}
+      <AnimatePresence>
+        {isClientModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsClientModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[500px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Novo Cliente</h3>
+                <button onClick={() => setIsClientModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveClient} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome</label>
+                  <input required type="text" value={clientForm.name} onChange={(e) => setClientForm({...clientForm, name: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Email</label>
+                  <input required type="email" value={clientForm.email} onChange={(e) => setClientForm({...clientForm, email: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+                <div className="flex gap-md">
+                  <div className="flex-1">
+                    <label className="block text-label-md text-on-surface-variant mb-1">Telefone</label>
+                    <input required type="text" value={clientForm.phone} onChange={(e) => setClientForm({...clientForm, phone: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-label-md text-on-surface-variant mb-1">CNPJ</label>
+                    <input required type="text" value={clientForm.cnpj} onChange={(e) => setClientForm({...clientForm, cnpj: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome do Contato</label>
+                  <input required type="text" value={clientForm.contact_name} onChange={(e) => setClientForm({...clientForm, contact_name: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Segmento</label>
+                  <input required type="text" value={clientForm.segment} onChange={(e) => setClientForm({...clientForm, segment: e.target.value})} className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsClientModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
                     Cancelar
                   </button>
                   <button type="submit" className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
