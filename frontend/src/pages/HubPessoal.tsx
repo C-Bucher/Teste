@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import Layout from '../components/Layout';
 
 // ---------------------------------------------------------------------------
@@ -103,6 +104,34 @@ interface PersonalSplit {
   participants: SplitParticipant[];
 }
 
+interface SpendByCategory {
+  category: string;
+  total: number;
+}
+
+interface NetWorthPoint {
+  month: string;
+  value: number;
+}
+
+interface PersonalAnalytics {
+  spend_by_category: SpendByCategory[];
+  net_worth_series: NetWorthPoint[];
+}
+
+interface PersonalTimebox {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface PersonalOkr {
+  id: string;
+  objective: string;
+  key_results: string[];
+}
+
 const formatCurrency = (value: number | undefined | null) =>
   (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -111,6 +140,16 @@ const formatDate = (value: string | null | undefined) => {
   const [y, m, d] = value.split('-');
   if (!y || !m || !d) return value;
   return `${d}/${m}/${y}`;
+};
+
+// Formats a `datetime-local` input value ("YYYY-MM-DDTHH:mm") for display;
+// falls back to the raw string for any other shape so mock data never blows up.
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return '-';
+  const [datePart, timePart] = value.split('T');
+  const formattedDate = formatDate(datePart);
+  if (formattedDate === '-' || formattedDate === datePart) return value;
+  return timePart ? `${formattedDate} ${timePart}` : formattedDate;
 };
 
 const EMPTY_ENTRY_FORM = {
@@ -161,6 +200,19 @@ const EMPTY_SPLIT_FORM = {
   description: '',
   total_amount: '',
   participants: [{ ...EMPTY_SPLIT_PARTICIPANT_FORM }, { ...EMPTY_SPLIT_PARTICIPANT_FORM }],
+};
+
+const EMPTY_TIMEBOX_FORM = {
+  title: '',
+  start_time: '',
+  end_time: '',
+};
+
+const MAX_OKR_KEY_RESULTS = 5;
+
+const EMPTY_OKR_FORM = {
+  objective: '',
+  key_results: [''],
 };
 
 export default function HubPessoal() {
@@ -233,6 +285,23 @@ export default function HubPessoal() {
   const [splitForm, setSplitForm] = useState(EMPTY_SPLIT_FORM);
   const [savingSplit, setSavingSplit] = useState(false);
   const [deletingSplitId, setDeletingSplitId] = useState<string | null>(null);
+
+  // Analítico
+  const [analytics, setAnalytics] = useState<PersonalAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
+  // Timeboxes & OKRs
+  const [timeboxes, setTimeboxes] = useState<PersonalTimebox[]>([]);
+  const [timeboxesLoading, setTimeboxesLoading] = useState(true);
+  const [isTimeboxModalOpen, setIsTimeboxModalOpen] = useState(false);
+  const [timeboxForm, setTimeboxForm] = useState(EMPTY_TIMEBOX_FORM);
+  const [savingTimebox, setSavingTimebox] = useState(false);
+
+  const [okrs, setOkrs] = useState<PersonalOkr[]>([]);
+  const [okrsLoading, setOkrsLoading] = useState(true);
+  const [isOkrModalOpen, setIsOkrModalOpen] = useState(false);
+  const [okrForm, setOkrForm] = useState(EMPTY_OKR_FORM);
+  const [savingOkr, setSavingOkr] = useState(false);
 
   const fetchDashboard = async () => {
     setDashboardLoading(true);
@@ -339,6 +408,42 @@ export default function HubPessoal() {
     }
   };
 
+  const fetchAnalytics = async () => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await api.get('/personal/analytics');
+      setAnalytics(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar dashboard analítico', err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  const fetchTimeboxes = async () => {
+    setTimeboxesLoading(true);
+    try {
+      const res = await api.get('/personal/timeboxes');
+      setTimeboxes(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar timeboxes', err);
+    } finally {
+      setTimeboxesLoading(false);
+    }
+  };
+
+  const fetchOkrs = async () => {
+    setOkrsLoading(true);
+    try {
+      const res = await api.get('/personal/okrs');
+      setOkrs(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar OKRs', err);
+    } finally {
+      setOkrsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchEntries();
@@ -349,6 +454,9 @@ export default function HubPessoal() {
     fetchDebts();
     fetchSubscriptions();
     fetchSplits();
+    fetchAnalytics();
+    fetchTimeboxes();
+    fetchOkrs();
   }, []);
 
   // Re-fetch the dashboard whenever the user comes back to "Visão Geral" so
@@ -356,6 +464,11 @@ export default function HubPessoal() {
   useEffect(() => {
     if (activeTab === 'visao-geral') {
       fetchDashboard();
+    }
+    // Same idea for "Analítico" — spend_by_category should reflect entries
+    // created/removed elsewhere in the hub.
+    if (activeTab === 'analitico') {
+      fetchAnalytics();
     }
   }, [activeTab]);
 
@@ -679,6 +792,73 @@ export default function HubPessoal() {
       alert('Erro ao excluir divisão de despesas');
     } finally {
       setDeletingSplitId(null);
+    }
+  };
+
+  const handleAddTimebox = () => {
+    setTimeboxForm(EMPTY_TIMEBOX_FORM);
+    setIsTimeboxModalOpen(true);
+  };
+
+  const handleSaveTimebox = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTimebox(true);
+    try {
+      const res = await api.post('/personal/timeboxes', {
+        title: timeboxForm.title,
+        start_time: timeboxForm.start_time,
+        end_time: timeboxForm.end_time,
+      });
+      setTimeboxes((prev) => [...prev, res.data]);
+      setIsTimeboxModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao criar timebox', err);
+      alert('Erro ao criar timebox');
+    } finally {
+      setSavingTimebox(false);
+    }
+  };
+
+  const handleAddOkr = () => {
+    setOkrForm(EMPTY_OKR_FORM);
+    setIsOkrModalOpen(true);
+  };
+
+  const handleOkrKeyResultChange = (index: number, value: string) => {
+    setOkrForm((prev) => ({
+      ...prev,
+      key_results: prev.key_results.map((kr, i) => (i === index ? value : kr)),
+    }));
+  };
+
+  const handleAddOkrKeyResultRow = () => {
+    setOkrForm((prev) =>
+      prev.key_results.length >= MAX_OKR_KEY_RESULTS ? prev : { ...prev, key_results: [...prev.key_results, ''] }
+    );
+  };
+
+  const handleRemoveOkrKeyResultRow = (index: number) => {
+    setOkrForm((prev) => ({
+      ...prev,
+      key_results: prev.key_results.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSaveOkr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingOkr(true);
+    try {
+      const res = await api.post('/personal/okrs', {
+        objective: okrForm.objective,
+        key_results: okrForm.key_results.map((kr) => kr.trim()).filter((kr) => kr !== ''),
+      });
+      setOkrs((prev) => [...prev, res.data]);
+      setIsOkrModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao criar OKR', err);
+      alert('Erro ao criar OKR');
+    } finally {
+      setSavingOkr(false);
     }
   };
 
@@ -1424,14 +1604,175 @@ export default function HubPessoal() {
             );
 
           // ---------------------------------------------------------------
-          // TODO Task 16: Analítico
-          case 'analitico':
-            return <PlaceholderTab label="Analítico" />;
+          case 'analitico': {
+            if (analyticsLoading) {
+              return (
+                <div className="flex justify-center py-xl">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              );
+            }
+            const spendByCategory = analytics?.spend_by_category || [];
+            const maxSpend = Math.max(...spendByCategory.map((s) => s.total), 1);
+            const spendBarColors = ['bg-secondary', 'bg-primary', 'bg-tertiary', 'bg-outline'];
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-12 gap-lg">
+                {/* Net worth chart (Recharts) — same gradient/axis styling as Dashboard.tsx */}
+                <div className="col-span-12 lg:col-span-8 glass-card p-lg rounded-xl min-h-[400px] flex flex-col">
+                  <div className="flex justify-between items-center mb-xl">
+                    <h4 className="font-headline-sm text-headline-sm">Evolução Patrimonial</h4>
+                    <div className="flex items-center gap-xs">
+                      <div className="w-3 h-3 rounded-full bg-primary"></div>
+                      <span className="text-xs text-on-surface-variant">Patrimônio Líquido</span>
+                    </div>
+                  </div>
+
+                  <div className="w-full flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={analytics?.net_worth_series || []} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorPatrimonio" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#adc6ff" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#adc6ff" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                        <XAxis dataKey="month" stroke="#8c909f" tick={{ fill: '#8c909f', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <YAxis stroke="#8c909f" tick={{ fill: '#8c909f', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'rgba(28, 31, 42, 0.9)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', color: '#dfe2f1', backdropFilter: 'blur(8px)' }}
+                          itemStyle={{ color: '#dfe2f1' }}
+                          formatter={(value: any) => [`R$ ${formatCurrency(Number(value))}`, 'Patrimônio']}
+                        />
+                        <Area type="monotone" dataKey="value" stroke="#adc6ff" strokeWidth={3} fillOpacity={1} fill="url(#colorPatrimonio)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Spend by category — same proportional-bar pattern as Dashboard.tsx's "Categorias de Despesas" */}
+                <div className="col-span-12 lg:col-span-4 glass-card p-lg rounded-xl flex flex-col justify-center">
+                  <h4 className="font-headline-sm text-headline-sm mb-xl">Categorias de Despesas</h4>
+                  <div className="space-y-lg">
+                    {spendByCategory.map((item, i) => (
+                      <div key={item.category}>
+                        <div className="flex justify-between mb-sm">
+                          <span className="text-label-md font-label-md">{item.category}</span>
+                          <span className="text-label-md font-bold">R$ {formatCurrency(item.total)}</span>
+                        </div>
+                        <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${spendBarColors[i % spendBarColors.length]}`}
+                            style={{ width: `${(item.total / maxSpend) * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                    {spendByCategory.length === 0 && (
+                      <div className="text-center text-on-surface-variant py-xl">
+                        Nenhum gasto registrado ainda.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          }
 
           // ---------------------------------------------------------------
-          // TODO Task 16: Timeboxes & OKRs
           case 'timeboxes-okrs':
-            return <PlaceholderTab label="Timeboxes & OKRs" />;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+                {/* Timeboxes */}
+                <div>
+                  <div className="flex justify-between items-center mb-lg">
+                    <h4 className="font-headline-sm text-headline-sm">Timeboxes</h4>
+                    <button
+                      onClick={handleAddTimebox}
+                      className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-2 rounded-xl hover:opacity-90 transition-all font-label-md text-label-md shadow-lg shadow-primary/10"
+                    >
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                      Novo Timebox
+                    </button>
+                  </div>
+
+                  {timeboxesLoading ? (
+                    <div className="flex justify-center py-xl">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-md">
+                      {timeboxes.map((tb) => (
+                        <div key={tb.id} className="glass-card p-lg rounded-xl">
+                          <div className="flex items-center gap-sm mb-sm">
+                            <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+                              <span className="material-symbols-outlined text-[20px]">schedule</span>
+                            </div>
+                            <h5 className="font-headline-sm text-headline-sm text-on-surface">{tb.title}</h5>
+                          </div>
+                          <div className="flex justify-between text-body-sm text-on-surface-variant">
+                            <span>Início: {formatDateTime(tb.start_time)}</span>
+                            <span>Fim: {formatDateTime(tb.end_time)}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {timeboxes.length === 0 && (
+                        <div className="glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                          Nenhum timebox criado ainda. Crie o primeiro para organizar seu tempo.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* OKRs */}
+                <div>
+                  <div className="flex justify-between items-center mb-lg">
+                    <h4 className="font-headline-sm text-headline-sm">OKRs</h4>
+                    <button
+                      onClick={handleAddOkr}
+                      className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-2 rounded-xl hover:opacity-90 transition-all font-label-md text-label-md shadow-lg shadow-primary/10"
+                    >
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                      Novo OKR
+                    </button>
+                  </div>
+
+                  {okrsLoading ? (
+                    <div className="flex justify-center py-xl">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-md">
+                      {okrs.map((okr) => (
+                        <div key={okr.id} className="glass-card p-lg rounded-xl">
+                          <h5 className="font-headline-sm text-headline-sm text-on-surface mb-sm">{okr.objective}</h5>
+                          <ul className="space-y-1 mb-md">
+                            {(okr.key_results || []).map((kr, i) => (
+                              <li key={i} className="flex items-center gap-sm text-body-sm text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[14px]">radio_button_unchecked</span>
+                                {kr}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                            <div className="h-full rounded-full bg-primary" style={{ width: '0%' }}></div>
+                          </div>
+                          <div className="text-body-sm text-on-surface-variant mt-1 text-right">
+                            Sem progresso ainda
+                          </div>
+                        </div>
+                      ))}
+                      {okrs.length === 0 && (
+                        <div className="glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                          Nenhum OKR definido ainda. Defina seu primeiro objetivo.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
 
           // ---------------------------------------------------------------
           // TODO Task 17: CFO Pessoal IA
@@ -2068,6 +2409,162 @@ export default function HubPessoal() {
                   </button>
                   <button type="submit" disabled={savingSplit} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
                     {savingSplit ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Novo Timebox */}
+      <AnimatePresence>
+        {isTimeboxModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsTimeboxModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[440px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Novo Timebox</h3>
+                <button onClick={() => setIsTimeboxModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveTimebox} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Título</label>
+                  <input
+                    required
+                    type="text"
+                    value={timeboxForm.title}
+                    onChange={(e) => setTimeboxForm({ ...timeboxForm, title: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Início</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={timeboxForm.start_time}
+                    onChange={(e) => setTimeboxForm({ ...timeboxForm, start_time: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Fim</label>
+                  <input
+                    required
+                    type="datetime-local"
+                    value={timeboxForm.end_time}
+                    onChange={(e) => setTimeboxForm({ ...timeboxForm, end_time: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsTimeboxModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingTimebox} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingTimebox ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Novo OKR */}
+      <AnimatePresence>
+        {isOkrModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsOkrModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[480px] max-h-[85vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Novo OKR</h3>
+                <button onClick={() => setIsOkrModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveOkr} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Objetivo</label>
+                  <input
+                    required
+                    type="text"
+                    value={okrForm.objective}
+                    onChange={(e) => setOkrForm({ ...okrForm, objective: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-2">Resultados-chave (até {MAX_OKR_KEY_RESULTS})</label>
+                  <div className="space-y-sm">
+                    {okrForm.key_results.map((kr, i) => (
+                      <div key={i} className="flex items-center gap-sm">
+                        <input
+                          required
+                          type="text"
+                          placeholder={`Resultado-chave ${i + 1}`}
+                          value={kr}
+                          onChange={(e) => handleOkrKeyResultChange(i, e.target.value)}
+                          className="flex-1 bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOkrKeyResultRow(i)}
+                          disabled={okrForm.key_results.length <= 1}
+                          className="p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                          title="Remover resultado-chave"
+                        >
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddOkrKeyResultRow}
+                    disabled={okrForm.key_results.length >= MAX_OKR_KEY_RESULTS}
+                    className="mt-sm flex items-center gap-xs text-primary font-label-md text-label-md hover:underline disabled:opacity-30 disabled:cursor-not-allowed disabled:no-underline"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Adicionar Resultado-chave
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsOkrModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingOkr} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingOkr ? 'Salvando...' : 'Adicionar'}
                   </button>
                 </div>
               </form>
