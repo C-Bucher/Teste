@@ -132,6 +132,12 @@ interface PersonalOkr {
   key_results: string[];
 }
 
+interface PersonalCfoInsight {
+  type: 'ALERT' | 'OPPORTUNITY' | 'CUT';
+  message: string;
+  impact_value: number;
+}
+
 const formatCurrency = (value: number | undefined | null) =>
   (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -302,6 +308,10 @@ export default function HubPessoal() {
   const [isOkrModalOpen, setIsOkrModalOpen] = useState(false);
   const [okrForm, setOkrForm] = useState(EMPTY_OKR_FORM);
   const [savingOkr, setSavingOkr] = useState(false);
+
+  // CFO Pessoal IA
+  const [cfoInsights, setCfoInsights] = useState<PersonalCfoInsight[] | null>(null);
+  const [cfoInsightsLoading, setCfoInsightsLoading] = useState(false);
 
   const fetchDashboard = async () => {
     setDashboardLoading(true);
@@ -859,6 +869,19 @@ export default function HubPessoal() {
       alert('Erro ao criar OKR');
     } finally {
       setSavingOkr(false);
+    }
+  };
+
+  const handleGenerateCfoInsights = async () => {
+    setCfoInsightsLoading(true);
+    try {
+      const res = await api.post('/personal/ai/insights', {});
+      setCfoInsights(res.data.insights || []);
+    } catch (err) {
+      console.error('Erro ao gerar análise do CFO Pessoal IA', err);
+      alert('Erro ao gerar análise');
+    } finally {
+      setCfoInsightsLoading(false);
     }
   };
 
@@ -1775,9 +1798,120 @@ export default function HubPessoal() {
             );
 
           // ---------------------------------------------------------------
-          // TODO Task 17: CFO Pessoal IA
-          case 'cfo-pessoal':
-            return <PlaceholderTab label="CFO Pessoal IA" />;
+          case 'cfo-pessoal': {
+            const CFO_INSIGHT_CONFIG: Record<
+              PersonalCfoInsight['type'],
+              { label: string; icon: string; badge: string; border: string }
+            > = {
+              ALERT: { label: 'Alerta', icon: 'warning', badge: 'bg-error/10 text-error', border: 'border-l-error' },
+              OPPORTUNITY: {
+                label: 'Oportunidade',
+                icon: 'trending_up',
+                badge: 'bg-success/10 text-success',
+                border: 'border-l-success',
+              },
+              CUT: { label: 'Corte', icon: 'content_cut', badge: 'bg-warning/10 text-warning', border: 'border-l-warning' },
+            };
+
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-lg">
+                {/* Hero — echoes the "AI Virtual CFO Widget" from Dashboard.tsx (ai-aura, psychology watermark, gradient icon badge) */}
+                <div className="glass-card p-xl rounded-xl border border-primary/20 ai-aura relative overflow-hidden">
+                  <div className="absolute -right-6 -top-6 opacity-10">
+                    <span
+                      className="material-symbols-outlined text-[160px] text-primary"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      psychology
+                    </span>
+                  </div>
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-lg">
+                    <div>
+                      <div className="flex items-center gap-sm mb-md">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center">
+                          <span
+                            className="material-symbols-outlined text-on-primary text-[20px]"
+                            style={{ fontVariationSettings: "'FILL' 1" }}
+                          >
+                            auto_awesome
+                          </span>
+                        </div>
+                        <span className="font-headline-sm text-headline-sm text-primary">CFO Pessoal IA</span>
+                      </div>
+                      <p className="text-body-sm text-on-surface-variant max-w-xl">
+                        Peça uma análise inteligente das suas finanças: alertas de orçamento estourando, oportunidades
+                        de rendimento e assinaturas/gastos que dá para cortar.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleGenerateCfoInsights}
+                      disabled={cfoInsightsLoading}
+                      className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10 disabled:opacity-50 shrink-0"
+                    >
+                      {cfoInsightsLoading ? (
+                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-on-primary"></span>
+                      ) : (
+                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+                          auto_awesome
+                        </span>
+                      )}
+                      {cfoInsightsLoading ? 'Analisando...' : 'Gerar Análise'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Loading state */}
+                {cfoInsightsLoading && (
+                  <div className="flex justify-center py-xl">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                )}
+
+                {/* Results */}
+                {!cfoInsightsLoading && cfoInsights && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                    {cfoInsights.map((insight, i) => {
+                      const config = CFO_INSIGHT_CONFIG[insight.type];
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`glass-card p-lg rounded-xl border-l-4 ${config.border}`}
+                        >
+                          <div className="flex items-center justify-between mb-md">
+                            <span
+                              className={`inline-flex items-center gap-xs px-sm py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${config.badge}`}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">{config.icon}</span>
+                              {config.label}
+                            </span>
+                            <span className="font-bold text-label-md text-on-surface">
+                              R$ {formatCurrency(insight.impact_value)}
+                            </span>
+                          </div>
+                          <p className="text-body-sm text-on-surface italic">"{insight.message}"</p>
+                        </motion.div>
+                      );
+                    })}
+                    {cfoInsights.length === 0 && (
+                      <div className="col-span-full glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                        Nenhum insight disponível no momento.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Empty state before first run */}
+                {!cfoInsightsLoading && !cfoInsights && (
+                  <div className="glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                    Clique em "Gerar Análise" para receber recomendações personalizadas do seu CFO Pessoal IA.
+                  </div>
+                )}
+              </motion.div>
+            );
+          }
 
           default:
             return null;
@@ -2573,22 +2707,5 @@ export default function HubPessoal() {
         )}
       </AnimatePresence>
     </Layout>
-  );
-}
-
-// Shared placeholder used by the 9 tabs not yet implemented. Future tasks
-// remove the `PlaceholderTab` call for their tab (see TODO comments above)
-// and replace it with real markup / state / effects for that tab only.
-function PlaceholderTab({ label }: { label: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-card p-xl rounded-xl flex flex-col items-center justify-center text-center min-h-[240px]"
-    >
-      <span className="material-symbols-outlined text-[40px] text-on-surface-variant mb-md">construction</span>
-      <h3 className="font-headline-sm text-headline-sm text-on-surface mb-xs">{label}</h3>
-      <p className="text-on-surface-variant text-body-sm">Em breve</p>
-    </motion.div>
   );
 }
