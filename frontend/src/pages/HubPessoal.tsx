@@ -63,6 +63,24 @@ interface PersonalBudget {
   spent_amount: number;
 }
 
+interface PersonalGoal {
+  id: string;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  target_date: string;
+}
+
+interface PersonalDebt {
+  id: string;
+  name: string;
+  total_amount: number;
+  remaining_amount: number;
+  installments_total: number;
+  installments_paid: number;
+  interest_rate: number;
+}
+
 const formatCurrency = (value: number | undefined | null) =>
   (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -92,6 +110,20 @@ const EMPTY_ACCOUNT_FORM = {
 const EMPTY_BUDGET_FORM = {
   category: '',
   limit_amount: '',
+};
+
+const EMPTY_GOAL_FORM = {
+  name: '',
+  target_amount: '',
+  target_date: '',
+};
+
+const EMPTY_DEBT_FORM = {
+  name: '',
+  total_amount: '',
+  remaining_amount: '',
+  installments_total: '',
+  interest_rate: '',
 };
 
 export default function HubPessoal() {
@@ -129,6 +161,25 @@ export default function HubPessoal() {
   const [budgetForm, setBudgetForm] = useState(EMPTY_BUDGET_FORM);
   const [savingBudget, setSavingBudget] = useState(false);
   const [deletingBudgetId, setDeletingBudgetId] = useState<string | null>(null);
+
+  // Metas
+  const [goals, setGoals] = useState<PersonalGoal[]>([]);
+  const [goalsLoading, setGoalsLoading] = useState(true);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [goalForm, setGoalForm] = useState(EMPTY_GOAL_FORM);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
+  const [contributingGoalId, setContributingGoalId] = useState<string | null>(null);
+  const [contributeAmount, setContributeAmount] = useState('');
+  const [savingContribution, setSavingContribution] = useState(false);
+
+  // Dívidas
+  const [debts, setDebts] = useState<PersonalDebt[]>([]);
+  const [debtsLoading, setDebtsLoading] = useState(true);
+  const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
+  const [debtForm, setDebtForm] = useState(EMPTY_DEBT_FORM);
+  const [savingDebt, setSavingDebt] = useState(false);
+  const [deletingDebtId, setDeletingDebtId] = useState<string | null>(null);
 
   const fetchDashboard = async () => {
     setDashboardLoading(true);
@@ -187,12 +238,38 @@ export default function HubPessoal() {
     }
   };
 
+  const fetchGoals = async () => {
+    setGoalsLoading(true);
+    try {
+      const res = await api.get('/personal/goals');
+      setGoals(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar metas', err);
+    } finally {
+      setGoalsLoading(false);
+    }
+  };
+
+  const fetchDebts = async () => {
+    setDebtsLoading(true);
+    try {
+      const res = await api.get('/personal/debts');
+      setDebts(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar dívidas', err);
+    } finally {
+      setDebtsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchEntries();
     fetchCategories();
     fetchAccounts();
     fetchBudgets();
+    fetchGoals();
+    fetchDebts();
   }, []);
 
   // Re-fetch the dashboard whenever the user comes back to "Visão Geral" so
@@ -322,6 +399,107 @@ export default function HubPessoal() {
       alert('Erro ao excluir orçamento');
     } finally {
       setDeletingBudgetId(null);
+    }
+  };
+
+  const handleAddGoal = () => {
+    setGoalForm(EMPTY_GOAL_FORM);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleSaveGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingGoal(true);
+    try {
+      await api.post('/personal/goals', {
+        name: goalForm.name,
+        target_amount: Number(goalForm.target_amount || 0),
+        target_date: goalForm.target_date,
+      });
+      setIsGoalModalOpen(false);
+      await fetchGoals();
+    } catch (err) {
+      console.error('Erro ao criar meta', err);
+      alert('Erro ao criar meta');
+    } finally {
+      setSavingGoal(false);
+    }
+  };
+
+  const handleDeleteGoal = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta meta?')) return;
+    setDeletingGoalId(id);
+    try {
+      await api.delete(`/personal/goals/${id}`);
+      setGoals((prev) => prev.filter((g) => g.id !== id));
+    } catch (err) {
+      console.error('Erro ao excluir meta', err);
+      alert('Erro ao excluir meta');
+    } finally {
+      setDeletingGoalId(null);
+    }
+  };
+
+  const handleOpenContribute = (id: string) => {
+    setContributeAmount('');
+    setContributingGoalId((prev) => (prev === id ? null : id));
+  };
+
+  const handleConfirmContribute = async (id: string) => {
+    const value = Number(contributeAmount);
+    if (!value || value <= 0) return;
+    setSavingContribution(true);
+    try {
+      const res = await api.post(`/personal/goals/${id}/contribute`, { amount: value });
+      const updated = res.data;
+      setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, current_amount: updated.current_amount } : g)));
+      setContributingGoalId(null);
+      setContributeAmount('');
+    } catch (err) {
+      console.error('Erro ao adicionar aporte', err);
+      alert('Erro ao adicionar aporte');
+    } finally {
+      setSavingContribution(false);
+    }
+  };
+
+  const handleAddDebt = () => {
+    setDebtForm(EMPTY_DEBT_FORM);
+    setIsDebtModalOpen(true);
+  };
+
+  const handleSaveDebt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingDebt(true);
+    try {
+      await api.post('/personal/debts', {
+        name: debtForm.name,
+        total_amount: Number(debtForm.total_amount || 0),
+        remaining_amount: Number(debtForm.remaining_amount || 0),
+        installments_total: Number(debtForm.installments_total || 0),
+        interest_rate: Number(debtForm.interest_rate || 0),
+      });
+      setIsDebtModalOpen(false);
+      await fetchDebts();
+    } catch (err) {
+      console.error('Erro ao criar dívida', err);
+      alert('Erro ao criar dívida');
+    } finally {
+      setSavingDebt(false);
+    }
+  };
+
+  const handleDeleteDebt = async (id: string) => {
+    if (!confirm('Deseja realmente quitar/excluir esta dívida?')) return;
+    setDeletingDebtId(id);
+    try {
+      await api.delete(`/personal/debts/${id}`);
+      setDebts((prev) => prev.filter((d) => d.id !== id));
+    } catch (err) {
+      console.error('Erro ao excluir dívida', err);
+      alert('Erro ao excluir dívida');
+    } finally {
+      setDeletingDebtId(null);
     }
   };
 
@@ -715,14 +893,193 @@ export default function HubPessoal() {
             );
 
           // ---------------------------------------------------------------
-          // TODO Task 14: Metas
           case 'metas':
-            return <PlaceholderTab label="Metas" />;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex justify-end items-center mb-lg">
+                  <button
+                    onClick={handleAddGoal}
+                    className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                    Nova Meta
+                  </button>
+                </div>
+
+                {goalsLoading ? (
+                  <div className="flex justify-center py-xl">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+                    {goals.map((goal) => {
+                      const pct = goal.target_amount > 0 ? Math.min((goal.current_amount / goal.target_amount) * 100, 100) : 0;
+                      const isContributing = contributingGoalId === goal.id;
+                      return (
+                        <div key={goal.id} className="glass-card p-lg rounded-xl relative group">
+                          <button
+                            onClick={() => handleDeleteGoal(goal.id)}
+                            disabled={deletingGoalId === goal.id}
+                            className="absolute top-md right-md p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                            title="Remover meta"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+
+                          <div className="flex items-center gap-sm mb-md">
+                            <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+                              <span className="material-symbols-outlined text-[20px]">flag</span>
+                            </div>
+                            <div>
+                              <h4 className="font-headline-sm text-headline-sm text-on-surface">{goal.name}</h4>
+                              <span className="text-body-sm text-on-surface-variant">
+                                Meta para {formatDate(goal.target_date)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mb-sm">
+                            <span className="text-label-md font-bold">
+                              R$ {formatCurrency(goal.current_amount)} / R$ {formatCurrency(goal.target_amount)}
+                            </span>
+                          </div>
+                          <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-body-sm text-on-surface-variant mt-1 text-right mb-md">
+                            {pct.toFixed(1)}%
+                          </div>
+
+                          {isContributing ? (
+                            <div className="flex items-center gap-sm mt-sm">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                autoFocus
+                                placeholder="Valor (R$)"
+                                value={contributeAmount}
+                                onChange={(e) => setContributeAmount(e.target.value)}
+                                className="w-full bg-surface-container border border-border-subtle rounded-lg px-3 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-sm"
+                              />
+                              <button
+                                onClick={() => handleConfirmContribute(goal.id)}
+                                disabled={savingContribution}
+                                className="p-2 rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+                                title="Confirmar aporte"
+                              >
+                                <span className="material-symbols-outlined text-sm">check</span>
+                              </button>
+                              <button
+                                onClick={() => setContributingGoalId(null)}
+                                className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-highest text-on-surface-variant transition-colors shrink-0"
+                                title="Cancelar"
+                              >
+                                <span className="material-symbols-outlined text-sm">close</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenContribute(goal.id)}
+                              className="w-full mt-sm px-4 py-2 rounded-lg font-label-md text-label-md bg-surface-container hover:bg-surface-container-highest text-on-surface transition-colors"
+                            >
+                              Adicionar Aporte
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {goals.length === 0 && (
+                      <div className="col-span-full glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                        Nenhuma meta cadastrada ainda.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
 
           // ---------------------------------------------------------------
-          // TODO Task 14: Dívidas
           case 'dividas':
-            return <PlaceholderTab label="Dívidas" />;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex justify-end items-center mb-lg">
+                  <button
+                    onClick={handleAddDebt}
+                    className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                    Nova Dívida
+                  </button>
+                </div>
+
+                {debtsLoading ? (
+                  <div className="flex justify-center py-xl">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+                    {debts.map((debt) => {
+                      const paidAmount = debt.total_amount - debt.remaining_amount;
+                      const pct = debt.total_amount > 0 ? Math.min((paidAmount / debt.total_amount) * 100, 100) : 0;
+                      return (
+                        <div key={debt.id} className="glass-card p-lg rounded-xl relative group">
+                          <button
+                            onClick={() => handleDeleteDebt(debt.id)}
+                            disabled={deletingDebtId === debt.id}
+                            className="absolute top-md right-md p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                            title="Quitar / remover dívida"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+
+                          <div className="flex items-center gap-sm mb-md">
+                            <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+                              <span className="material-symbols-outlined text-[20px]">account_balance</span>
+                            </div>
+                            <div>
+                              <h4 className="font-headline-sm text-headline-sm text-on-surface">{debt.name}</h4>
+                              <span className="text-body-sm text-on-surface-variant">
+                                Juros: {debt.interest_rate}% a.m.
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mb-sm">
+                            <span className="text-on-surface-variant font-label-md text-label-md">Saldo devedor</span>
+                            <h3 className="font-display-sm text-display-sm mt-1 text-error">
+                              R$ {formatCurrency(debt.remaining_amount)}
+                            </h3>
+                            <span className="text-body-sm text-on-surface-variant">
+                              de R$ {formatCurrency(debt.total_amount)}
+                            </span>
+                          </div>
+
+                          <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-success"
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-body-sm text-on-surface-variant mt-1">
+                            <span>{pct.toFixed(1)}% quitado</span>
+                            <span>{debt.installments_paid}/{debt.installments_total} parcelas</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {debts.length === 0 && (
+                      <div className="col-span-full glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                        Nenhuma dívida cadastrada ainda.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
 
           // ---------------------------------------------------------------
           // TODO Task 15: Assinaturas
@@ -1016,6 +1373,176 @@ export default function HubPessoal() {
                   </button>
                   <button type="submit" disabled={savingBudget} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
                     {savingBudget ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Modal: Nova Meta */}
+      <AnimatePresence>
+        {isGoalModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsGoalModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[440px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Nova Meta</h3>
+                <button onClick={() => setIsGoalModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveGoal} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome</label>
+                  <input
+                    required
+                    type="text"
+                    value={goalForm.name}
+                    onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Valor alvo (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={goalForm.target_amount}
+                    onChange={(e) => setGoalForm({ ...goalForm, target_amount: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Data alvo</label>
+                  <input
+                    required
+                    type="date"
+                    value={goalForm.target_date}
+                    onChange={(e) => setGoalForm({ ...goalForm, target_date: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsGoalModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingGoal} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingGoal ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Nova Dívida */}
+      <AnimatePresence>
+        {isDebtModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsDebtModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[440px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Nova Dívida</h3>
+                <button onClick={() => setIsDebtModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveDebt} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome</label>
+                  <input
+                    required
+                    type="text"
+                    value={debtForm.name}
+                    onChange={(e) => setDebtForm({ ...debtForm, name: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Valor total (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={debtForm.total_amount}
+                    onChange={(e) => setDebtForm({ ...debtForm, total_amount: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Valor restante (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={debtForm.remaining_amount}
+                    onChange={(e) => setDebtForm({ ...debtForm, remaining_amount: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-md">
+                  <div>
+                    <label className="block text-label-md text-on-surface-variant mb-1">Parcelas totais</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      value={debtForm.installments_total}
+                      onChange={(e) => setDebtForm({ ...debtForm, installments_total: e.target.value })}
+                      className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-label-md text-on-surface-variant mb-1">Juros (% a.m.)</label>
+                    <input
+                      required
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={debtForm.interest_rate}
+                      onChange={(e) => setDebtForm({ ...debtForm, interest_rate: e.target.value })}
+                      className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsDebtModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingDebt} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingDebt ? 'Salvando...' : 'Adicionar'}
                   </button>
                 </div>
               </form>
