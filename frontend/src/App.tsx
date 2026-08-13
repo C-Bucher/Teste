@@ -11,6 +11,7 @@ import Configuracoes from './pages/Configuracoes';
 import Fornecedores from './pages/Fornecedores';
 import Financeiro from './pages/Financeiro';
 import HubPessoal from './pages/HubPessoal';
+import Exportacao from './pages/Exportacao';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -31,6 +32,7 @@ function App() {
         <Route path="/configuracoes" element={<PrivateRoute><Configuracoes /></PrivateRoute>} />
         <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
         <Route path="/financeiro" element={<PrivateRoute><Financeiro /></PrivateRoute>} />
+        <Route path="/exportacao" element={<PrivateRoute><Exportacao /></PrivateRoute>} />
         <Route path="/pessoal" element={<PrivateRoute><HubPessoal /></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
       </Routes>
