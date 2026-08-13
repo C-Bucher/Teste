@@ -163,7 +163,7 @@ export default function Plans() {
             </div>
           </div>
           <button
-            onClick={() => handleSelectPlan('plan-enterprise')}
+            onClick={() => handleSelectPlan('plan-completo')}
             className="whitespace-nowrap px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-600/20"
           >
             Falar com Especialistas

@@ -6,7 +6,7 @@ import api from '../api';
 
 export default function Checkout() {
   const [searchParams] = useSearchParams();
-  const planId = searchParams.get('plan') || 'plan-pro';
+  const planId = searchParams.get('plan') || 'plan-empresarial';
   const cycle = searchParams.get('cycle') || 'monthly';
   const navigate = useNavigate();
 
