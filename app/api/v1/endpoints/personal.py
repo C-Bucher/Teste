@@ -2,7 +2,7 @@
 import uuid
 from datetime import date
 from app.core.security import get_current_user
-from app.db.database import PERSONAL_ENTRIES, PERSONAL_ACCOUNTS, PERSONAL_BUDGETS, PERSONAL_GOALS, PERSONAL_DEBTS, PERSONAL_SUBSCRIPTIONS, PERSONAL_SPLITS
+from app.db.database import PERSONAL_ENTRIES, PERSONAL_ACCOUNTS, PERSONAL_BUDGETS, PERSONAL_GOALS, PERSONAL_DEBTS, PERSONAL_SUBSCRIPTIONS, PERSONAL_SPLITS, PERSONAL_TIMEBOXES, PERSONAL_OKRS
 
 router = APIRouter()
 
@@ -20,14 +20,16 @@ async def del_pers_tx(eid:str,u=Depends(get_current_user)):
 async def get_pers_cats(u=Depends(get_current_user)): return [{"id":"pc-1","name":"Salario","type":"RECEITA"},{"id":"pc-2","name":"Moradia","type":"DESPESA"},{"id":"pc-3","name":"Alimentacao","type":"DESPESA"},{"id":"pc-4","name":"Saude","type":"DESPESA"}]
 
 @router.get("/timeboxes")
-async def get_timeboxes(u=Depends(get_current_user)): return []
+async def get_timeboxes(u=Depends(get_current_user)): return PERSONAL_TIMEBOXES
 @router.post("/timeboxes")
-async def create_timebox(d:dict,u=Depends(get_current_user)): return {"id":f"tb-{uuid.uuid4().hex[:6]}",**d}
+async def create_timebox(d:dict,u=Depends(get_current_user)):
+    tb={"id":f"ptb-{uuid.uuid4().hex[:6]}",**d}; PERSONAL_TIMEBOXES.append(tb); return tb
 
 @router.get("/okrs")
-async def get_okrs(u=Depends(get_current_user)): return []
+async def get_okrs(u=Depends(get_current_user)): return PERSONAL_OKRS
 @router.post("/okrs")
-async def create_okr(d:dict,u=Depends(get_current_user)): return {"id":f"okr-{uuid.uuid4().hex[:6]}",**d}
+async def create_okr(d:dict,u=Depends(get_current_user)):
+    okr={"id":f"pokr-{uuid.uuid4().hex[:6]}",**d}; PERSONAL_OKRS.append(okr); return okr
 
 @router.get("/dashboard")
 async def pers_dash(u=Depends(get_current_user)):

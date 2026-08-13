@@ -140,3 +140,5 @@ PERSONAL_SUBSCRIPTIONS = [
 PERSONAL_SPLITS = [
     {"id":"psplit-001","description":"Aluguel Republica","total_amount":1800.00,"participants":[{"name":"Voce","share":600.00,"paid":True},{"name":"Joao","share":600.00,"paid":False},{"name":"Maria","share":600.00,"paid":True}]},
 ]
+PERSONAL_TIMEBOXES = []
+PERSONAL_OKRS = []
