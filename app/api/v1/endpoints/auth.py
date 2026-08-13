@@ -19,7 +19,7 @@ class RegisterReq(BaseModel):
     password: str
     company_name: Optional[str] = "Minha Empresa"
     cnpj_cpf: Optional[str] = None
-    selected_plan: Optional[str] = "plan-pro"
+    selected_plan: Optional[str] = "plan-empresarial"
 
 @router.post("/register")
 async def register(b: RegisterReq):

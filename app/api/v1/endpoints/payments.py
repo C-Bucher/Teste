@@ -4,18 +4,30 @@ from typing import Optional
 from datetime import datetime, timedelta
 import uuid
 from app.core.security import get_current_user
+from app.api.v1.endpoints.plans import PLANS_DB
 
 router = APIRouter()
+
+# Derived directly from PLANS_DB so plan ids/prices never drift out of sync
+# with the source of truth in plans.py.
+PLAN_PRICES = {
+    p["id"]: {"monthly": p["price_monthly"], "yearly": p["price_yearly"] * 12, "name": p["name"]}
+    for p in PLANS_DB
+}
+
+# Default/fallback plan used to seed mock subscription data (Empresarial,
+# matching the default selected_plan used at registration).
+DEFAULT_PLAN = next(p for p in PLANS_DB if p["id"] == "plan-empresarial")
 
 # In-memory subscription storage
 SUBSCRIPTIONS_DB = {
     "usr-001": {
         "id": "sub-001",
         "company_name": "TechConnect Soluções Ltda",
-        "plan_id": "plan-pro",
-        "plan_name": "Pro",
+        "plan_id": DEFAULT_PLAN["id"],
+        "plan_name": DEFAULT_PLAN["name"],
         "billing_cycle": "monthly",
-        "amount": 249.00,
+        "amount": DEFAULT_PLAN["price_monthly"],
         "status": "ACTIVE",
         "payment_method": "credit_card",
         "card_last4": "4242",
@@ -29,11 +41,11 @@ INVOICES_DB = [
     {
         "id": "inv-2026-001",
         "subscription_id": "sub-001",
-        "amount": 249.00,
+        "amount": DEFAULT_PLAN["price_monthly"],
         "status": "PAID",
         "date": (datetime.now() - timedelta(days=5)).isoformat(),
         "pdf_url": "/api/v1/exports/invoice/inv-2026-001",
-        "description": "Plano Pro - Mensalidade (Fevereiro 2026)"
+        "description": f"Plano {DEFAULT_PLAN['name']} - Mensalidade (Fevereiro 2026)"
     }
 ]
 
@@ -50,16 +62,10 @@ class CheckoutReq(BaseModel):
 
 @router.post("/checkout")
 async def checkout(body: CheckoutReq, u=Depends(get_current_user)):
-    plan_prices = {
-        "plan-starter": {"monthly": 99.00, "yearly": 79.00 * 12, "name": "Starter"},
-        "plan-pro": {"monthly": 249.00, "yearly": 199.00 * 12, "name": "Pro"},
-        "plan-enterprise": {"monthly": 599.00, "yearly": 499.00 * 12, "name": "Enterprise"}
-    }
-
-    if body.plan_id not in plan_prices:
+    if body.plan_id not in PLAN_PRICES:
         raise HTTPException(status_code=400, detail="Plano inválido")
 
-    price_info = plan_prices[body.plan_id]
+    price_info = PLAN_PRICES[body.plan_id]
     amount = price_info["monthly"] if body.billing_cycle == "monthly" else price_info["yearly"]
 
     sub_id = f"sub-{uuid.uuid4().hex[:6]}"
@@ -110,10 +116,10 @@ async def get_subscription(u=Depends(get_current_user)):
         sub = {
             "id": "sub-default",
             "company_name": "Sua Empresa",
-            "plan_id": "plan-pro",
-            "plan_name": "Pro",
+            "plan_id": DEFAULT_PLAN["id"],
+            "plan_name": DEFAULT_PLAN["name"],
             "billing_cycle": "monthly",
-            "amount": 249.00,
+            "amount": DEFAULT_PLAN["price_monthly"],
             "status": "ACTIVE",
             "payment_method": "credit_card",
             "card_last4": "4242",
