@@ -81,6 +81,28 @@ interface PersonalDebt {
   interest_rate: number;
 }
 
+interface PersonalSubscription {
+  id: string;
+  name: string;
+  amount: number;
+  billing_day: number;
+  category: string;
+  is_active: boolean;
+}
+
+interface SplitParticipant {
+  name: string;
+  share: number;
+  paid: boolean;
+}
+
+interface PersonalSplit {
+  id: string;
+  description: string;
+  total_amount: number;
+  participants: SplitParticipant[];
+}
+
 const formatCurrency = (value: number | undefined | null) =>
   (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -124,6 +146,21 @@ const EMPTY_DEBT_FORM = {
   remaining_amount: '',
   installments_total: '',
   interest_rate: '',
+};
+
+const EMPTY_SUBSCRIPTION_FORM = {
+  name: '',
+  amount: '',
+  billing_day: '',
+  category: '',
+};
+
+const EMPTY_SPLIT_PARTICIPANT_FORM = { name: '', share: '' };
+
+const EMPTY_SPLIT_FORM = {
+  description: '',
+  total_amount: '',
+  participants: [{ ...EMPTY_SPLIT_PARTICIPANT_FORM }, { ...EMPTY_SPLIT_PARTICIPANT_FORM }],
 };
 
 export default function HubPessoal() {
@@ -180,6 +217,22 @@ export default function HubPessoal() {
   const [debtForm, setDebtForm] = useState(EMPTY_DEBT_FORM);
   const [savingDebt, setSavingDebt] = useState(false);
   const [deletingDebtId, setDeletingDebtId] = useState<string | null>(null);
+
+  // Assinaturas
+  const [subscriptions, setSubscriptions] = useState<PersonalSubscription[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [subscriptionForm, setSubscriptionForm] = useState(EMPTY_SUBSCRIPTION_FORM);
+  const [savingSubscription, setSavingSubscription] = useState(false);
+  const [deletingSubscriptionId, setDeletingSubscriptionId] = useState<string | null>(null);
+
+  // Divisão de Despesas
+  const [splits, setSplits] = useState<PersonalSplit[]>([]);
+  const [splitsLoading, setSplitsLoading] = useState(true);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [splitForm, setSplitForm] = useState(EMPTY_SPLIT_FORM);
+  const [savingSplit, setSavingSplit] = useState(false);
+  const [deletingSplitId, setDeletingSplitId] = useState<string | null>(null);
 
   const fetchDashboard = async () => {
     setDashboardLoading(true);
@@ -262,6 +315,30 @@ export default function HubPessoal() {
     }
   };
 
+  const fetchSubscriptions = async () => {
+    setSubscriptionsLoading(true);
+    try {
+      const res = await api.get('/personal/subscriptions');
+      setSubscriptions(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar assinaturas', err);
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  };
+
+  const fetchSplits = async () => {
+    setSplitsLoading(true);
+    try {
+      const res = await api.get('/personal/splits');
+      setSplits(res.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar divisões de despesas', err);
+    } finally {
+      setSplitsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchEntries();
@@ -270,6 +347,8 @@ export default function HubPessoal() {
     fetchBudgets();
     fetchGoals();
     fetchDebts();
+    fetchSubscriptions();
+    fetchSplits();
   }, []);
 
   // Re-fetch the dashboard whenever the user comes back to "Visão Geral" so
@@ -503,7 +582,113 @@ export default function HubPessoal() {
     }
   };
 
+  const handleAddSubscription = () => {
+    setSubscriptionForm(EMPTY_SUBSCRIPTION_FORM);
+    setIsSubscriptionModalOpen(true);
+  };
+
+  const handleSaveSubscription = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSubscription(true);
+    try {
+      await api.post('/personal/subscriptions', {
+        name: subscriptionForm.name,
+        amount: Number(subscriptionForm.amount || 0),
+        billing_day: Number(subscriptionForm.billing_day || 0),
+        category: subscriptionForm.category,
+      });
+      setIsSubscriptionModalOpen(false);
+      await fetchSubscriptions();
+    } catch (err) {
+      console.error('Erro ao criar assinatura', err);
+      alert('Erro ao criar assinatura');
+    } finally {
+      setSavingSubscription(false);
+    }
+  };
+
+  const handleDeleteSubscription = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta assinatura?')) return;
+    setDeletingSubscriptionId(id);
+    try {
+      await api.delete(`/personal/subscriptions/${id}`);
+      setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('Erro ao excluir assinatura', err);
+      alert('Erro ao excluir assinatura');
+    } finally {
+      setDeletingSubscriptionId(null);
+    }
+  };
+
+  const handleAddSplit = () => {
+    setSplitForm(EMPTY_SPLIT_FORM);
+    setIsSplitModalOpen(true);
+  };
+
+  const handleSplitParticipantChange = (index: number, field: 'name' | 'share', value: string) => {
+    setSplitForm((prev) => ({
+      ...prev,
+      participants: prev.participants.map((p, i) => (i === index ? { ...p, [field]: value } : p)),
+    }));
+  };
+
+  const handleAddSplitParticipantRow = () => {
+    setSplitForm((prev) => ({
+      ...prev,
+      participants: [...prev.participants, { ...EMPTY_SPLIT_PARTICIPANT_FORM }],
+    }));
+  };
+
+  const handleRemoveSplitParticipantRow = (index: number) => {
+    setSplitForm((prev) => ({
+      ...prev,
+      participants: prev.participants.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSaveSplit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSplit(true);
+    try {
+      await api.post('/personal/splits', {
+        description: splitForm.description,
+        total_amount: Number(splitForm.total_amount || 0),
+        participants: splitForm.participants
+          .filter((p) => p.name.trim() !== '')
+          .map((p) => ({ name: p.name, share: Number(p.share || 0), paid: false })),
+      });
+      setIsSplitModalOpen(false);
+      await fetchSplits();
+    } catch (err) {
+      console.error('Erro ao criar divisão de despesas', err);
+      alert('Erro ao criar divisão de despesas');
+    } finally {
+      setSavingSplit(false);
+    }
+  };
+
+  const handleDeleteSplit = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta divisão?')) return;
+    setDeletingSplitId(id);
+    try {
+      await api.delete(`/personal/splits/${id}`);
+      setSplits((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      console.error('Erro ao excluir divisão de despesas', err);
+      alert('Erro ao excluir divisão de despesas');
+    } finally {
+      setDeletingSplitId(null);
+    }
+  };
+
   const categoryOptions = categories.filter((c) => c.type === entryForm.type);
+
+  // Total mensal somado apenas das assinaturas ativas — assinaturas inativas
+  // não representam cobrança recorrente corrente, então não entram na soma.
+  const totalMonthlySubscriptions = subscriptions
+    .filter((s) => s.is_active)
+    .reduce((sum, s) => sum + (s.amount || 0), 0);
 
   // The backend returns `recent_entries` in insertion order (oldest first),
   // not pre-sorted by recency, so sort by date descending client-side before
@@ -1082,14 +1267,161 @@ export default function HubPessoal() {
             );
 
           // ---------------------------------------------------------------
-          // TODO Task 15: Assinaturas
           case 'assinaturas':
-            return <PlaceholderTab label="Assinaturas" />;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-md mb-lg">
+                  <div className="glass-card px-lg py-md rounded-xl">
+                    <span className="text-on-surface-variant font-label-md text-label-md">Total mensal (ativas)</span>
+                    <h3 className="font-display-sm text-display-sm text-on-surface mt-1">
+                      R$ {formatCurrency(totalMonthlySubscriptions)}/mês
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleAddSubscription}
+                    className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                    Nova Assinatura
+                  </button>
+                </div>
+
+                {subscriptionsLoading ? (
+                  <div className="flex justify-center py-xl">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+                    {subscriptions.map((sub) => (
+                      <div key={sub.id} className="glass-card p-lg rounded-xl relative group">
+                        <button
+                          onClick={() => handleDeleteSubscription(sub.id)}
+                          disabled={deletingSubscriptionId === sub.id}
+                          className="absolute top-md right-md p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                          title="Remover assinatura"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+
+                        <div className="flex items-center gap-sm mb-md">
+                          <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px]">subscriptions</span>
+                          </div>
+                          <div>
+                            <h4 className="font-headline-sm text-headline-sm text-on-surface">{sub.name}</h4>
+                            <span className="text-body-sm text-on-surface-variant">{sub.category || '-'}</span>
+                          </div>
+                        </div>
+
+                        <div className="mb-sm">
+                          <span className="text-on-surface-variant font-label-md text-label-md">Valor</span>
+                          <h3 className="font-display-sm text-display-sm mt-1 text-on-surface">
+                            R$ {formatCurrency(sub.amount)}
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-md pt-md border-t border-border-subtle">
+                          <span className="text-body-sm text-on-surface-variant">
+                            Cobra todo dia {sub.billing_day}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-xs px-2 py-1 rounded-full ${
+                              sub.is_active ? 'bg-success/10 text-success' : 'bg-on-surface-variant/10 text-on-surface-variant'
+                            } text-[11px] font-bold uppercase tracking-wider`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${sub.is_active ? 'bg-success' : 'bg-on-surface-variant'}`}></span>
+                            {sub.is_active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {subscriptions.length === 0 && (
+                      <div className="col-span-full glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                        Nenhuma assinatura cadastrada ainda.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
 
           // ---------------------------------------------------------------
-          // TODO Task 15: Divisão de Despesas
           case 'divisao':
-            return <PlaceholderTab label="Divisão de Despesas" />;
+            return (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex justify-end items-center mb-lg">
+                  <button
+                    onClick={handleAddSplit}
+                    className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
+                    Nova Divisão
+                  </button>
+                </div>
+
+                {splitsLoading ? (
+                  <div className="flex justify-center py-xl">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                    {splits.map((split) => (
+                      <div key={split.id} className="glass-card p-lg rounded-xl relative group">
+                        <button
+                          onClick={() => handleDeleteSplit(split.id)}
+                          disabled={deletingSplitId === split.id}
+                          className="absolute top-md right-md p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                          title="Remover divisão"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+
+                        <div className="flex items-center gap-sm mb-md">
+                          <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px]">groups</span>
+                          </div>
+                          <div>
+                            <h4 className="font-headline-sm text-headline-sm text-on-surface">{split.description}</h4>
+                            <span className="text-body-sm text-on-surface-variant">
+                              Total: R$ {formatCurrency(split.total_amount)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="divide-y divide-border-subtle/50 mt-md">
+                          {split.participants.map((p, i) => (
+                            <div key={`${split.id}-${i}`} className="flex items-center justify-between py-sm">
+                              <span className="font-body-sm text-on-surface">{p.name}</span>
+                              <div className="flex items-center gap-md">
+                                <span className="text-label-md font-bold text-on-surface">
+                                  R$ {formatCurrency(p.share)}
+                                </span>
+                                <span
+                                  className={`inline-flex items-center gap-xs px-2 py-1 rounded-full ${
+                                    p.paid ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+                                  } text-[11px] font-bold uppercase tracking-wider`}
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${p.paid ? 'bg-success' : 'bg-warning'}`}></span>
+                                  {p.paid ? 'Pago' : 'Pendente'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                          {split.participants.length === 0 && (
+                            <div className="py-sm text-body-sm text-on-surface-variant">Nenhum participante.</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {splits.length === 0 && (
+                      <div className="col-span-full glass-card p-xl rounded-xl text-center text-on-surface-variant">
+                        Nenhuma divisão de despesas cadastrada ainda.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
 
           // ---------------------------------------------------------------
           // TODO Task 16: Analítico
@@ -1543,6 +1875,199 @@ export default function HubPessoal() {
                   </button>
                   <button type="submit" disabled={savingDebt} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
                     {savingDebt ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Nova Assinatura */}
+      <AnimatePresence>
+        {isSubscriptionModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSubscriptionModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[440px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Nova Assinatura</h3>
+                <button onClick={() => setIsSubscriptionModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSubscription} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Nome</label>
+                  <input
+                    required
+                    type="text"
+                    value={subscriptionForm.name}
+                    onChange={(e) => setSubscriptionForm({ ...subscriptionForm, name: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Valor (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={subscriptionForm.amount}
+                    onChange={(e) => setSubscriptionForm({ ...subscriptionForm, amount: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-md">
+                  <div>
+                    <label className="block text-label-md text-on-surface-variant mb-1">Dia de cobrança</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={subscriptionForm.billing_day}
+                      onChange={(e) => setSubscriptionForm({ ...subscriptionForm, billing_day: e.target.value })}
+                      className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-label-md text-on-surface-variant mb-1">Categoria</label>
+                    <input
+                      required
+                      type="text"
+                      value={subscriptionForm.category}
+                      onChange={(e) => setSubscriptionForm({ ...subscriptionForm, category: e.target.value })}
+                      className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsSubscriptionModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingSubscription} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingSubscription ? 'Salvando...' : 'Adicionar'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Nova Divisão */}
+      <AnimatePresence>
+        {isSplitModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsSplitModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[480px] max-h-[85vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">Nova Divisão</h3>
+                <button onClick={() => setIsSplitModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveSplit} className="space-y-md">
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Descrição</label>
+                  <input
+                    required
+                    type="text"
+                    value={splitForm.description}
+                    onChange={(e) => setSplitForm({ ...splitForm, description: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-1">Valor total (R$)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={splitForm.total_amount}
+                    onChange={(e) => setSplitForm({ ...splitForm, total_amount: e.target.value })}
+                    className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-label-md text-on-surface-variant mb-2">Participantes</label>
+                  <div className="space-y-sm">
+                    {splitForm.participants.map((p, i) => (
+                      <div key={i} className="flex items-center gap-sm">
+                        <input
+                          required
+                          type="text"
+                          placeholder="Nome"
+                          value={p.name}
+                          onChange={(e) => handleSplitParticipantChange(i, 'name', e.target.value)}
+                          className="flex-1 bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Valor (R$)"
+                          value={p.share}
+                          onChange={(e) => handleSplitParticipantChange(i, 'share', e.target.value)}
+                          className="w-32 bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSplitParticipantRow(i)}
+                          disabled={splitForm.participants.length <= 1}
+                          className="p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+                          title="Remover participante"
+                        >
+                          <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddSplitParticipantRow}
+                    className="mt-sm flex items-center gap-xs text-primary font-label-md text-label-md hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Adicionar Participante
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-border-subtle">
+                  <button type="button" onClick={() => setIsSplitModalOpen(false)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={savingSplit} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50">
+                    {savingSplit ? 'Salvando...' : 'Adicionar'}
                   </button>
                 </div>
               </form>
