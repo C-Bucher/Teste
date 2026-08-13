@@ -152,32 +152,47 @@ export default function Financeiro() {
     setPage(1);
   }, [filterType, filterStatus, search]);
 
+  const fetchDre = async () => {
+    setDreLoading(true);
+    try {
+      const res = await api.get('/financial/dre');
+      setDre(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar DRE', err);
+    } finally {
+      setDreLoading(false);
+    }
+  };
+
+  const fetchCashflow = async () => {
+    setCashflowLoading(true);
+    try {
+      const res = await api.get('/financial/cashflow');
+      setCashflow(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar fluxo de caixa', err);
+    } finally {
+      setCashflowLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDre = async () => {
-      setDreLoading(true);
-      try {
-        const res = await api.get('/financial/dre');
-        setDre(res.data);
-      } catch (err) {
-        console.error('Erro ao carregar DRE', err);
-      } finally {
-        setDreLoading(false);
-      }
-    };
-    const fetchCashflow = async () => {
-      setCashflowLoading(true);
-      try {
-        const res = await api.get('/financial/cashflow');
-        setCashflow(res.data);
-      } catch (err) {
-        console.error('Erro ao carregar fluxo de caixa', err);
-      } finally {
-        setCashflowLoading(false);
-      }
-    };
     fetchDre();
     fetchCashflow();
   }, []);
+
+  // Re-fetch DRE / Fluxo de Caixa whenever those tabs become active, so
+  // mutations made in "Lançamentos" (novo lançamento, marcar como pago)
+  // are reflected without requiring a full page reload.
+  useEffect(() => {
+    if (activeTab === 'dre') {
+      fetchDre();
+    }
+    if (activeTab === 'fluxo-caixa') {
+      fetchCashflow();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleAddNew = () => {
     setEntryForm(EMPTY_ENTRY_FORM);
