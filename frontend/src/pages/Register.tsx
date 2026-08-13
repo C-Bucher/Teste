@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
@@ -11,11 +11,24 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [cnpjCpf, setCnpjCpf] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('plan-pro');
-  
+  const [selectedPlan, setSelectedPlan] = useState('plan-empresarial');
+  const [plans, setPlans] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res = await api.get('/plans/');
+        setPlans(res.data);
+      } catch (err) {
+        console.error('Erro ao carregar planos', err);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,53 +187,30 @@ export default function Register() {
             <div className="space-y-4">
               <p className="text-xs text-slate-300 font-medium mb-2">Selecione o plano desejado para sua conta:</p>
 
-              <div
-                onClick={() => setSelectedPlan('plan-starter')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  selectedPlan === 'plan-starter'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-white/10 bg-[#1c2130]/50 hover:border-white/20'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-bold text-white text-base">Plan Starter</h4>
-                  <span className="text-blue-400 font-bold text-sm">R$ 99/mês</span>
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  onClick={() => setSelectedPlan(plan.id)}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all relative overflow-hidden ${
+                    selectedPlan === plan.id
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-white/10 bg-[#1c2130]/50 hover:border-white/20'
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-bl-lg">
+                      Mais Recomendado
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-bold text-white text-base">{plan.name}</h4>
+                    <span className="text-blue-400 font-bold text-sm">
+                      R$ {plan.price_monthly.toFixed(2).replace('.', ',')}/mês
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs">{plan.tagline}</p>
                 </div>
-                <p className="text-slate-400 text-xs">Até 3 colaboradores + CFO IA 50 consultas/mês</p>
-              </div>
-
-              <div
-                onClick={() => setSelectedPlan('plan-pro')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all relative overflow-hidden ${
-                  selectedPlan === 'plan-pro'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-white/10 bg-[#1c2130]/50 hover:border-white/20'
-                }`}
-              >
-                <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-bl-lg">
-                  Mais Recomendado
-                </div>
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-bold text-white text-base">Plan Pro</h4>
-                  <span className="text-purple-400 font-bold text-sm">R$ 249/mês</span>
-                </div>
-                <p className="text-slate-400 text-xs">Até 15 colaboradores + CFO IA Ilimitado + DRE Completo</p>
-              </div>
-
-              <div
-                onClick={() => setSelectedPlan('plan-enterprise')}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                  selectedPlan === 'plan-enterprise'
-                    ? 'border-emerald-500 bg-emerald-500/10'
-                    : 'border-white/10 bg-[#1c2130]/50 hover:border-white/20'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <h4 className="font-bold text-white text-base">Plan Enterprise</h4>
-                  <span className="text-emerald-400 font-bold text-sm">R$ 599/mês</span>
-                </div>
-                <p className="text-slate-400 text-xs">Ilimitado + Múltiplas holdings + Gerente dedicado</p>
-              </div>
+              ))}
 
               <div className="flex gap-3 pt-4">
                 <button
