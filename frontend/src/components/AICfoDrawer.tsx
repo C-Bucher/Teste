@@ -84,7 +84,7 @@ export default function AICfoDrawer({ isOpen, onClose }: AICfoDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-md bg-[#131722] border-l border-white/10 shadow-2xl flex flex-col h-full z-10"
+            className="relative w-full max-w-[28rem] bg-[#131722] border-l border-white/10 shadow-2xl flex flex-col h-full z-10"
           >
             {/* Header */}
             <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#171b26]">

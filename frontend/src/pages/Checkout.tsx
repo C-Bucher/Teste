@@ -85,7 +85,7 @@ export default function Checkout() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[#151926] border border-emerald-500/30 rounded-3xl p-8 text-center max-w-lg mx-auto shadow-2xl"
+            className="bg-[#151926] border border-emerald-500/30 rounded-3xl p-8 text-center max-w-[32rem] mx-auto shadow-2xl"
           >
             <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
               <CheckCircle2 size={36} />

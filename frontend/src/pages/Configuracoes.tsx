@@ -470,7 +470,7 @@ export default function Configuracoes() {
                 </div>
               </div>
 
-              <div className="mb-lg max-w-xs">
+              <div className="mb-lg max-w-[20rem]">
                 <label className="block text-label-md text-on-surface-variant mb-1">Carga Horária Diária (horas)</label>
                 <input
                   type="number"

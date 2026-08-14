@@ -297,7 +297,7 @@ export default function Financeiro() {
               <option value="PAGO">Pago</option>
               <option value="PENDENTE">Pendente</option>
             </select>
-            <div className="flex items-center bg-surface-container-low rounded-full px-md py-2 border border-border-subtle min-w-[220px] flex-1 max-w-sm">
+            <div className="flex items-center bg-surface-container-low rounded-full px-md py-2 border border-border-subtle min-w-[220px] flex-1 max-w-[24rem]">
               <span className="material-symbols-outlined text-outline text-[18px]">search</span>
               <input
                 value={search}

@@ -609,7 +609,7 @@ export default function Kanban() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-surface-container-high border-l border-border-subtle shadow-2xl flex flex-col h-full z-10"
+              className="relative w-full max-w-[28rem] bg-surface-container-high border-l border-border-subtle shadow-2xl flex flex-col h-full z-10"
             >
               {/* Header */}
               <div className="p-md border-b border-border-subtle flex items-center justify-between bg-surface-container-highest/40">

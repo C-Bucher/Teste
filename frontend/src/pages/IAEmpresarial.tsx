@@ -211,7 +211,7 @@ export default function IAEmpresarial() {
                         </div>
                         <span className="font-headline-sm text-headline-sm text-primary">CFO Virtual</span>
                       </div>
-                      <p className="text-body-sm text-on-surface-variant max-w-xl">
+                      <p className="text-body-sm text-on-surface-variant max-w-[36rem]">
                         Peça uma análise inteligente das finanças da empresa: oportunidades de crescimento e alertas
                         de risco de fluxo de caixa, com impacto e urgência estimados.
                       </p>
@@ -308,7 +308,7 @@ export default function IAEmpresarial() {
                         </div>
                         <span className="font-headline-sm text-headline-sm text-primary">Conciliação Bancária</span>
                       </div>
-                      <p className="text-body-sm text-on-surface-variant max-w-xl">
+                      <p className="text-body-sm text-on-surface-variant max-w-[36rem]">
                         Envie um extrato (CSV/OFX) e deixe a IA sugerir a categoria de cada transação com um nível de
                         confiança — aprove ou rejeite cada sugestão.
                       </p>
@@ -462,7 +462,7 @@ export default function IAEmpresarial() {
                       </div>
                       <span className="font-headline-sm text-headline-sm text-primary">Gerador de Orçamentos</span>
                     </div>
-                    <p className="text-body-sm text-on-surface-variant max-w-xl mb-lg">
+                    <p className="text-body-sm text-on-surface-variant max-w-[36rem] mb-lg">
                       Descreva o escopo do projeto e a IA estima o custo interno, o preço sugerido ao cliente e a
                       margem resultante.
                     </p>
@@ -481,7 +481,7 @@ export default function IAEmpresarial() {
                           className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
                         />
                       </div>
-                      <div className="max-w-xs">
+                      <div className="max-w-[20rem]">
                         <label className="block text-label-md text-on-surface-variant mb-1">Markup (%)</label>
                         <input
                           required

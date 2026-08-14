@@ -1838,7 +1838,7 @@ export default function HubPessoal() {
                         </div>
                         <span className="font-headline-sm text-headline-sm text-primary">CFO Pessoal IA</span>
                       </div>
-                      <p className="text-body-sm text-on-surface-variant max-w-xl">
+                      <p className="text-body-sm text-on-surface-variant max-w-[36rem]">
                         Peça uma análise inteligente das suas finanças: alertas de orçamento estourando, oportunidades
                         de rendimento e assinaturas/gastos que dá para cortar.
                       </p>
