@@ -16,7 +16,7 @@
 
 ---
 
-### Task A: Corrigir colisão `max-w-*` em todos os 9 pontos
+### Task 1: Corrigir colisão `max-w-*` em todos os 9 pontos
 
 **Files:**
 - Modify: `frontend/src/pages/IAEmpresarial.tsx` (3 ocorrências de `max-w-xl`, 1 de `max-w-xs`)
@@ -46,7 +46,7 @@ Com o frontend rodando: abrir `/ia` (aba CFO Virtual, Conciliação Bancária, G
 
 ---
 
-### Task B: Reestruturar Hub Pessoal em itens de menu lateral + alternador de workspace
+### Task 2: Reestruturar Hub Pessoal em itens de menu lateral + alternador de workspace
 
 **Files:**
 - Modify: `frontend/src/pages/HubPessoal.tsx`
