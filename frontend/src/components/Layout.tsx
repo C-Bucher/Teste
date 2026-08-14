@@ -14,6 +14,8 @@ const NOTIF_TYPE_STYLES: Record<string, string> = {
   INFO: 'bg-primary/10 text-primary',
 };
 
+const BUSINESS_PATHS = ['/dashboard', '/kanban', '/equipe', '/financeiro', '/fornecedores', '/configuracoes', '/exportacao', '/ia'];
+
 export default function Layout({ children }: LayoutProps) {
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,9 +26,11 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const [workspaceMode, setWorkspaceMode] = useState<'empresarial' | 'pessoal'>(
-    () => (localStorage.getItem('workspace_mode') as 'empresarial' | 'pessoal') || (location.pathname.startsWith('/pessoal') ? 'pessoal' : 'empresarial')
-  );
+  const [workspaceMode, setWorkspaceMode] = useState<'empresarial' | 'pessoal'>(() => {
+    if (location.pathname.startsWith('/pessoal')) return 'pessoal';
+    if (BUSINESS_PATHS.includes(location.pathname)) return 'empresarial';
+    return (localStorage.getItem('workspace_mode') as 'empresarial' | 'pessoal') || 'empresarial';
+  });
 
   const handleToggleWorkspace = () => {
     const next = workspaceMode === 'empresarial' ? 'pessoal' : 'empresarial';
