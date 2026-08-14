@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -226,7 +227,9 @@ export default function HubPessoal() {
   // authenticated user regardless of role. Access is gated at the nav level
   // in Layout.tsx by `plan_scope`, not by role.
 
-  const [activeTab, setActiveTab] = useState<TabId>('visao-geral');
+  const { tab } = useParams<{ tab: string }>();
+  const navigate = useNavigate();
+  const activeTab: TabId = (TABS.some((t) => t.id === tab) ? tab : 'visao-geral') as TabId;
 
   // Visão Geral
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -480,7 +483,7 @@ export default function HubPessoal() {
     if (activeTab === 'analitico') {
       fetchAnalytics();
     }
-  }, [activeTab]);
+  }, [tab]);
 
   const handleAddNew = () => {
     setEntryForm(EMPTY_ENTRY_FORM);
@@ -907,30 +910,12 @@ export default function HubPessoal() {
         <nav className="flex text-body-sm text-outline mb-xs gap-xs items-center">
           <span>Pessoal</span>
           <span className="material-symbols-outlined text-[12px]">chevron_right</span>
-          <span className="text-primary">Hub Pessoal</span>
+          <span className="text-primary">{TABS.find((t) => t.id === activeTab)?.label ?? 'Hub Pessoal'}</span>
         </nav>
-        <h2 className="font-display-lg text-display-lg text-on-surface">Hub Pessoal</h2>
+        <h2 className="font-display-lg text-display-lg text-on-surface">{TABS.find((t) => t.id === activeTab)?.label ?? 'Hub Pessoal'}</h2>
         <p className="text-on-surface-variant text-body-base mt-xs">
           Organize suas finanças pessoais: extrato, orçamento, metas, dívidas e muito mais.
         </p>
-      </div>
-
-      {/* Tab bar — pill style, horizontal scroll for overflow (11 tabs) */}
-      <div className="flex overflow-x-auto bg-surface-container-low p-1 rounded-lg border border-border-subtle mb-xl gap-1">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-sm px-lg py-2 rounded-md transition-all font-label-md text-label-md whitespace-nowrap shrink-0 ${
-              activeTab === tab.id
-                ? 'bg-primary-container text-on-primary-container'
-                : 'text-on-surface-variant hover:text-on-surface'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       {/* -----------------------------------------------------------------
@@ -982,7 +967,7 @@ export default function HubPessoal() {
                 <div className="glass-card rounded-xl overflow-hidden">
                   <div className="p-lg flex justify-between items-center border-b border-border-subtle">
                     <h4 className="font-headline-sm text-headline-sm">Lançamentos Recentes</h4>
-                    <button onClick={() => setActiveTab('extrato')} className="text-primary font-label-md hover:underline">
+                    <button onClick={() => navigate('/pessoal/extrato')} className="text-primary font-label-md hover:underline">
                       Ver extrato completo
                     </button>
                   </div>

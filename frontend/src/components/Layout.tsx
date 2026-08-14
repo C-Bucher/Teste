@@ -24,6 +24,17 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  const [workspaceMode, setWorkspaceMode] = useState<'empresarial' | 'pessoal'>(
+    () => (localStorage.getItem('workspace_mode') as 'empresarial' | 'pessoal') || (location.pathname.startsWith('/pessoal') ? 'pessoal' : 'empresarial')
+  );
+
+  const handleToggleWorkspace = () => {
+    const next = workspaceMode === 'empresarial' ? 'pessoal' : 'empresarial';
+    setWorkspaceMode(next);
+    localStorage.setItem('workspace_mode', next);
+    navigate(next === 'pessoal' ? '/pessoal/visao-geral' : '/dashboard');
+  };
+
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
@@ -84,16 +95,37 @@ export default function Layout({ children }: LayoutProps) {
   const showBusiness = scope === 'empresarial' || scope === 'completo';
   const showPersonal = scope === 'pessoal' || scope === 'completo';
 
+  const bothScopesAvailable = showBusiness && showPersonal;
+  const effectiveMode: 'empresarial' | 'pessoal' = bothScopesAvailable ? workspaceMode : (showPersonal ? 'pessoal' : 'empresarial');
+
+  const businessNavItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+    { name: 'Projetos', path: '/kanban', icon: 'view_kanban' },
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Financeiro', path: '/financeiro', icon: 'payments' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping' }] : []),
+    ...(user.role === 'ADMIN' ? [{ name: 'Configurações', path: '/configuracoes', icon: 'settings' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Exportação', path: '/exportacao', icon: 'file_download' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome' }] : []),
+  ];
+
+  const personalNavItems = [
+    { name: 'Visão Geral', path: '/pessoal/visao-geral', icon: 'dashboard' },
+    { name: 'Extrato', path: '/pessoal/extrato', icon: 'receipt_long' },
+    { name: 'Contas & Cartões', path: '/pessoal/contas-cartoes', icon: 'credit_card' },
+    { name: 'Orçamento', path: '/pessoal/orcamento', icon: 'pie_chart' },
+    { name: 'Metas', path: '/pessoal/metas', icon: 'flag' },
+    { name: 'Dívidas', path: '/pessoal/dividas', icon: 'account_balance' },
+    { name: 'Assinaturas', path: '/pessoal/assinaturas', icon: 'subscriptions' },
+    { name: 'Divisão de Despesas', path: '/pessoal/divisao', icon: 'groups' },
+    { name: 'Analítico', path: '/pessoal/analitico', icon: 'analytics' },
+    { name: 'Timeboxes & OKRs', path: '/pessoal/timeboxes-okrs', icon: 'schedule' },
+    { name: 'CFO Pessoal IA', path: '/pessoal/cfo-pessoal', icon: 'auto_awesome' },
+  ];
+
   const navItems = [
-    ...(showBusiness ? [{ name: 'Dashboard', path: '/dashboard', icon: 'dashboard' }] : []),
-    ...(showBusiness ? [{ name: 'Projetos', path: '/kanban', icon: 'view_kanban' }] : []),
-    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
-    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Financeiro', path: '/financeiro', icon: 'payments' }] : []),
-    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping' }] : []),
-    ...(showBusiness && user.role === 'ADMIN' ? [{ name: 'Configurações', path: '/configuracoes', icon: 'settings' }] : []),
-    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'Exportação', path: '/exportacao', icon: 'file_download' }] : []),
-    ...(showBusiness && user.role !== 'FUNCIONARIO' ? [{ name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome' }] : []),
-    ...(showPersonal ? [{ name: 'Hub Pessoal', path: '/pessoal', icon: 'person' }] : []),
+    ...(showBusiness && effectiveMode === 'empresarial' ? businessNavItems : []),
+    ...(showPersonal && effectiveMode === 'pessoal' ? personalNavItems : []),
     { name: 'Assinatura', path: '/assinatura', icon: 'credit_card' },
     { name: 'Planos & Preços', path: '/planos', icon: 'workspace_premium' },
   ];
@@ -113,6 +145,17 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-sm">
+          {bothScopesAvailable && (
+            <button
+              onClick={handleToggleWorkspace}
+              className="p-2 rounded-full bg-surface-container-high border border-border-subtle text-on-surface-variant hover:text-on-surface transition-all"
+              title={workspaceMode === 'empresarial' ? 'Mudar para o Hub Pessoal' : 'Mudar para o Empresarial'}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {workspaceMode === 'empresarial' ? 'person' : 'business_center'}
+              </span>
+            </button>
+          )}
           <button
             onClick={openNotifPanel}
             className="relative p-2 rounded-full hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-on-surface"
@@ -208,6 +251,18 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-md">
+          {bothScopesAvailable && (
+            <button
+              onClick={handleToggleWorkspace}
+              className="flex items-center gap-2 bg-surface-container-high border border-border-subtle px-3.5 py-1.5 rounded-full text-xs font-bold text-on-surface-variant hover:text-on-surface hover:border-primary/30 transition-all"
+              title={workspaceMode === 'empresarial' ? 'Mudar para o Hub Pessoal' : 'Mudar para o Empresarial'}
+            >
+              <span className="material-symbols-outlined text-sm">
+                {workspaceMode === 'empresarial' ? 'person' : 'business_center'}
+              </span>
+              {workspaceMode === 'empresarial' ? 'Ir para Pessoal' : 'Ir para Empresarial'}
+            </button>
+          )}
           <button
             onClick={openNotifPanel}
             className="relative p-2 rounded-full hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-on-surface"

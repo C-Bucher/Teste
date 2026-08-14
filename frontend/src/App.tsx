@@ -35,7 +35,8 @@ function App() {
         <Route path="/financeiro" element={<PrivateRoute><Financeiro /></PrivateRoute>} />
         <Route path="/exportacao" element={<PrivateRoute><Exportacao /></PrivateRoute>} />
         <Route path="/ia" element={<PrivateRoute><IAEmpresarial /></PrivateRoute>} />
-        <Route path="/pessoal" element={<PrivateRoute><HubPessoal /></PrivateRoute>} />
+        <Route path="/pessoal" element={<Navigate to="/pessoal/visao-geral" />} />
+        <Route path="/pessoal/:tab" element={<PrivateRoute><HubPessoal /></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
