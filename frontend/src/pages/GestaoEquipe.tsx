@@ -18,7 +18,8 @@ export default function GestaoEquipe() {
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmp, setEditingEmp] = useState<any>(null);
-  
+  const [historyModal, setHistoryModal] = useState<{ open: boolean; items: any[]; employeeName: string }>({ open: false, items: [], employeeName: '' });
+
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -43,15 +44,25 @@ export default function GestaoEquipe() {
     fetchEmployees();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Deseja realmente remover este funcionário?')) {
+  const handleTerminate = async (id: string) => {
+    if (confirm('Deseja realmente desligar este colaborador? O histórico será preservado.')) {
       try {
-        await api.delete(`/employees/${id}`);
-        setEmployees(employees.filter((e: any) => e.id !== id));
+        const res = await api.post(`/employees/${id}/terminate`);
+        setEmployees(employees.map((e: any) => (e.id === id ? res.data : e)));
       } catch (err) {
-        console.error("Erro ao excluir", err);
-        alert('Erro ao excluir funcionário');
+        console.error('Erro ao desligar', err);
+        alert('Erro ao desligar colaborador');
       }
+    }
+  };
+
+  const handleViewHistory = async (emp: any) => {
+    try {
+      const res = await api.get(`/employees/${emp.id}/salary-history`);
+      setHistoryModal({ open: true, items: res.data.items, employeeName: emp.full_name });
+    } catch (err) {
+      console.error('Erro ao carregar histórico', err);
+      alert('Erro ao carregar histórico salarial');
     }
   };
 
@@ -182,6 +193,7 @@ export default function GestaoEquipe() {
                 <tr className="bg-surface-container-highest/30 border-b border-border-subtle">
                   <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Funcionário</th>
                   <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Cargo</th>
+                  <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Custo/Hora</th>
                   <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Status</th>
                   <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">E-mail</th>
                   {!isGerente && <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant text-right">Ações</th>}
@@ -213,6 +225,7 @@ export default function GestaoEquipe() {
                     <td className="px-lg py-md">
                       <p className="text-label-md text-on-surface">{emp.role}</p>
                     </td>
+                    <td className="px-lg py-md text-on-surface-variant font-label-md text-label-md">R$ {Number(emp.hourly_rate ?? 0).toFixed(2)}/h</td>
                     <td className="px-lg py-md">
                       <span className={`inline-flex items-center gap-xs px-2 py-1 rounded-full ${emp.is_active ? 'bg-success/10 text-success' : 'bg-error/10 text-error'} text-[11px] font-bold uppercase tracking-wider`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${emp.is_active ? 'bg-success' : 'bg-error'}`}></span> {emp.is_active ? 'Ativo' : 'Inativo'}
@@ -222,11 +235,14 @@ export default function GestaoEquipe() {
                     {!isGerente && (
                       <td className="px-lg py-md text-right">
                         <div className="opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all flex justify-end gap-sm">
+                          <button onClick={() => handleViewHistory(emp)} className="p-2 rounded-lg bg-surface-container hover:bg-primary-container/20 text-on-surface-variant hover:text-primary transition-all" title="Histórico Salarial">
+                            <span className="material-symbols-outlined text-sm">history</span>
+                          </button>
                           <button onClick={() => handleEdit(emp)} className="p-2 rounded-lg bg-surface-container hover:bg-primary-container/20 text-on-surface-variant hover:text-primary transition-all">
                             <span className="material-symbols-outlined text-sm">edit</span>
                           </button>
-                          <button onClick={() => handleDelete(emp.id)} className="p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all">
-                            <span className="material-symbols-outlined text-sm">delete</span>
+                          <button onClick={() => handleTerminate(emp.id)} className="p-2 rounded-lg bg-surface-container hover:bg-error-container/20 text-on-surface-variant hover:text-error transition-all" title="Desligar">
+                            <span className="material-symbols-outlined text-sm">person_off</span>
                           </button>
                         </div>
                       </td>
@@ -235,7 +251,7 @@ export default function GestaoEquipe() {
                 ))}
                 {employees.length === 0 && (
                   <tr>
-                    <td colSpan={isGerente ? 4 : 5} className="py-12 text-center text-on-surface-variant">
+                    <td colSpan={isGerente ? 5 : 6} className="py-12 text-center text-on-surface-variant">
                       Nenhum colaborador encontrado.
                     </td>
                   </tr>
@@ -262,9 +278,10 @@ export default function GestaoEquipe() {
                       <button className="text-on-surface-variant hover:text-on-surface p-1 rounded-full hover:bg-surface-bright transition-colors">
                         <span className="material-symbols-outlined">more_vert</span>
                       </button>
-                      <div className="absolute right-0 top-full mt-1 w-32 bg-surface-container-high rounded-xl shadow-lg border border-border-subtle opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10 overflow-hidden">
+                      <div className="absolute right-0 top-full mt-1 w-40 bg-surface-container-high rounded-xl shadow-lg border border-border-subtle opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10 overflow-hidden">
+                        <button onClick={(e) => { e.stopPropagation(); handleViewHistory(emp); }} className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-bright flex items-center gap-2"><span className="material-symbols-outlined text-sm">history</span> Histórico</button>
                         <button onClick={(e) => { e.stopPropagation(); handleEdit(emp); }} className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-bright flex items-center gap-2"><span className="material-symbols-outlined text-sm">edit</span> Editar</button>
-                        <button onClick={(e) => { e.stopPropagation(); handleDelete(emp.id); }} className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error-container/20 flex items-center gap-2"><span className="material-symbols-outlined text-sm">delete</span> Excluir</button>
+                        <button onClick={(e) => { e.stopPropagation(); handleTerminate(emp.id); }} className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error-container/20 flex items-center gap-2"><span className="material-symbols-outlined text-sm">person_off</span> Desligar</button>
                       </div>
                     </div>
                   )}
@@ -285,6 +302,10 @@ export default function GestaoEquipe() {
                   <div className="flex items-center gap-sm text-body-sm text-on-surface-variant">
                     <span className="material-symbols-outlined text-[18px]">work</span>
                     <span>{emp.contract_type || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-sm text-body-sm text-on-surface-variant">
+                    <span className="material-symbols-outlined text-[18px]">payments</span>
+                    <span>R$ {Number(emp.hourly_rate ?? 0).toFixed(2)}/h · CTC R$ {Number(emp.ctc_monthly ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
                 
@@ -374,6 +395,66 @@ export default function GestaoEquipe() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Histórico Salarial Modal */}
+      <AnimatePresence>
+        {historyModal.open && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setHistoryModal({ open: false, items: [], employeeName: '' })}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-surface-container-high border border-border-subtle p-8 rounded-2xl shadow-2xl w-[90vw] max-w-[600px]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-display-sm text-display-sm text-on-surface">
+                  Histórico Salarial — {historyModal.employeeName}
+                </h3>
+                <button onClick={() => setHistoryModal({ open: false, items: [], employeeName: '' })} className="text-on-surface-variant hover:text-on-surface">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-border-subtle">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-surface-container-highest/30 border-b border-border-subtle">
+                      <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant">Data</th>
+                      <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant">Salário Base</th>
+                      <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant">CTC Mensal</th>
+                      <th className="px-md py-sm font-label-md text-label-md text-on-surface-variant">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-subtle/50">
+                    {historyModal.items.map((item: any) => (
+                      <tr key={item.id}>
+                        <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">{item.changed_at}</td>
+                        <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">R$ {Number(item.base_salary ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">R$ {Number(item.ctc_monthly ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">{item.reason}</td>
+                      </tr>
+                    ))}
+                    {historyModal.items.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-on-surface-variant">
+                          Nenhum registro de histórico encontrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </motion.div>
           </div>
         )}

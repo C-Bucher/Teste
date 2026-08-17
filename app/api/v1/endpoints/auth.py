@@ -6,6 +6,7 @@ import bcrypt
 
 from app.core.security import create_token, decode_token, get_current_user, bearer
 from app.db.database import USERS_DB
+from app.api.v1.endpoints.plans import PLANS_DB
 
 router = APIRouter()
 
@@ -18,16 +19,19 @@ class RegisterReq(BaseModel):
     password: str
     company_name: Optional[str] = "Minha Empresa"
     cnpj_cpf: Optional[str] = None
-    selected_plan: Optional[str] = "plan-pro"
+    selected_plan: Optional[str] = "plan-empresarial"
 
 @router.post("/register")
 async def register(b: RegisterReq):
     if b.email in USERS_DB:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
-    
+
     user_id = f"usr-{len(USERS_DB) + 1:03d}"
     pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
-    
+
+    plan = next((p for p in PLANS_DB if p["id"] == b.selected_plan), None)
+    plan_scope = plan["scope"] if plan else "completo"
+
     new_user = {
         "id": user_id,
         "email": b.email,
@@ -35,12 +39,13 @@ async def register(b: RegisterReq):
         "role": "ADMIN",
         "company_name": b.company_name,
         "selected_plan": b.selected_plan,
+        "plan_scope": plan_scope,
         "password_hash": pwd_hash,
         "is_active": True,
         "mfa_enabled": False
     }
     USERS_DB[b.email] = new_user
-    
+
     tok = create_token(new_user)
     return {
         "access_token": tok,

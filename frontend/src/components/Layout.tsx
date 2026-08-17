@@ -1,17 +1,86 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import AICfoDrawer from './AICfoDrawer';
+import api from '../api';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
+const NOTIF_TYPE_STYLES: Record<string, string> = {
+  WARNING: 'bg-warning/10 text-warning',
+  SUCCESS: 'bg-success/10 text-success',
+  INFO: 'bg-primary/10 text-primary',
+};
+
+const BUSINESS_PATHS = ['/dashboard', '/kanban', '/equipe', '/financeiro', '/fornecedores', '/configuracoes', '/exportacao', '/ia'];
+
 export default function Layout({ children }: LayoutProps) {
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const [workspaceMode, setWorkspaceMode] = useState<'empresarial' | 'pessoal'>(() => {
+    if (location.pathname.startsWith('/pessoal')) return 'pessoal';
+    if (BUSINESS_PATHS.includes(location.pathname)) return 'empresarial';
+    return (localStorage.getItem('workspace_mode') as 'empresarial' | 'pessoal') || 'empresarial';
+  });
+
+  const handleToggleWorkspace = () => {
+    const next = workspaceMode === 'empresarial' ? 'pessoal' : 'empresarial';
+    setWorkspaceMode(next);
+    localStorage.setItem('workspace_mode', next);
+    navigate(next === 'pessoal' ? '/pessoal/visao-geral' : '/dashboard');
+  };
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await api.get('/notifications/unread-count');
+        setUnreadCount(res.data.count);
+      } catch (err) {
+        console.error('Erro ao carregar contagem de notificações', err);
+      }
+    };
+    fetchUnreadCount();
+  }, []);
+
+  const openNotifPanel = async () => {
+    setIsNotifPanelOpen(true);
+    try {
+      const res = await api.get('/notifications/');
+      setNotifications(res.data.items);
+      setUnreadCount(res.data.unread_count);
+    } catch (err) {
+      console.error('Erro ao carregar notificações', err);
+    }
+  };
+
+  const handleMarkRead = async (id: string) => {
+    try {
+      await api.post(`/notifications/${id}/read`);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Erro ao marcar notificação como lida', err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post('/notifications/read-all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Erro ao marcar todas as notificações como lidas', err);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -26,10 +95,41 @@ export default function Layout({ children }: LayoutProps) {
     return role || 'Colaborador';
   };
 
-  const navItems = [
+  const scope = user.plan_scope || 'completo';
+  const showBusiness = scope === 'empresarial' || scope === 'completo';
+  const showPersonal = scope === 'pessoal' || scope === 'completo';
+
+  const bothScopesAvailable = showBusiness && showPersonal;
+  const effectiveMode: 'empresarial' | 'pessoal' = bothScopesAvailable ? workspaceMode : (showPersonal ? 'pessoal' : 'empresarial');
+
+  const businessNavItems = [
     { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
     { name: 'Projetos', path: '/kanban', icon: 'view_kanban' },
     ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Financeiro', path: '/financeiro', icon: 'payments' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping' }] : []),
+    ...(user.role === 'ADMIN' ? [{ name: 'Configurações', path: '/configuracoes', icon: 'settings' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Exportação', path: '/exportacao', icon: 'file_download' }] : []),
+    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome' }] : []),
+  ];
+
+  const personalNavItems = [
+    { name: 'Visão Geral', path: '/pessoal/visao-geral', icon: 'dashboard' },
+    { name: 'Extrato', path: '/pessoal/extrato', icon: 'receipt_long' },
+    { name: 'Contas & Cartões', path: '/pessoal/contas-cartoes', icon: 'credit_card' },
+    { name: 'Orçamento', path: '/pessoal/orcamento', icon: 'pie_chart' },
+    { name: 'Metas', path: '/pessoal/metas', icon: 'flag' },
+    { name: 'Dívidas', path: '/pessoal/dividas', icon: 'account_balance' },
+    { name: 'Assinaturas', path: '/pessoal/assinaturas', icon: 'subscriptions' },
+    { name: 'Divisão de Despesas', path: '/pessoal/divisao', icon: 'groups' },
+    { name: 'Analítico', path: '/pessoal/analitico', icon: 'analytics' },
+    { name: 'Timeboxes & OKRs', path: '/pessoal/timeboxes-okrs', icon: 'schedule' },
+    { name: 'CFO Pessoal IA', path: '/pessoal/cfo-pessoal', icon: 'auto_awesome' },
+  ];
+
+  const navItems = [
+    ...(showBusiness && effectiveMode === 'empresarial' ? businessNavItems : []),
+    ...(showPersonal && effectiveMode === 'pessoal' ? personalNavItems : []),
     { name: 'Assinatura', path: '/assinatura', icon: 'credit_card' },
     { name: 'Planos & Preços', path: '/planos', icon: 'workspace_premium' },
   ];
@@ -48,14 +148,38 @@ export default function Layout({ children }: LayoutProps) {
           <h1 className="font-headline-sm font-bold text-primary">TechConnect</h1>
         </div>
 
-        <button
-          onClick={() => setIsAiDrawerOpen(true)}
-          className="p-2 bg-gradient-to-tr from-primary to-secondary rounded-full text-on-primary shadow-md"
-        >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            chat_bubble
-          </span>
-        </button>
+        <div className="flex items-center gap-sm">
+          {bothScopesAvailable && (
+            <button
+              onClick={handleToggleWorkspace}
+              className="p-2 rounded-full bg-surface-container-high border border-border-subtle text-on-surface-variant hover:text-on-surface transition-all"
+              title={workspaceMode === 'empresarial' ? 'Mudar para o Hub Pessoal' : 'Mudar para o Empresarial'}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {workspaceMode === 'empresarial' ? 'person' : 'business_center'}
+              </span>
+            </button>
+          )}
+          <button
+            onClick={openNotifPanel}
+            className="relative p-2 rounded-full hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined text-[20px]">notifications</span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-4 h-4 bg-error text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setIsAiDrawerOpen(true)}
+            className="p-2 bg-gradient-to-tr from-primary to-secondary rounded-full text-on-primary shadow-md"
+          >
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              chat_bubble
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* SideNavBar (Desktop & Mobile Drawer) */}
@@ -131,6 +255,29 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         <div className="flex items-center gap-md">
+          {bothScopesAvailable && (
+            <button
+              onClick={handleToggleWorkspace}
+              className="flex items-center gap-2 bg-surface-container-high border border-border-subtle px-3.5 py-1.5 rounded-full text-xs font-bold text-on-surface-variant hover:text-on-surface hover:border-primary/30 transition-all"
+              title={workspaceMode === 'empresarial' ? 'Mudar para o Hub Pessoal' : 'Mudar para o Empresarial'}
+            >
+              <span className="material-symbols-outlined text-sm">
+                {workspaceMode === 'empresarial' ? 'person' : 'business_center'}
+              </span>
+              {workspaceMode === 'empresarial' ? 'Ir para Pessoal' : 'Ir para Empresarial'}
+            </button>
+          )}
+          <button
+            onClick={openNotifPanel}
+            className="relative p-2 rounded-full hover:bg-surface-bright transition-colors text-on-surface-variant hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined">notifications</span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-4 h-4 bg-error text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => setIsAiDrawerOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-on-primary px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md hover:opacity-90 transition-all"
@@ -173,6 +320,83 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* AI CFO Drawer Component */}
       <AICfoDrawer isOpen={isAiDrawerOpen} onClose={() => setIsAiDrawerOpen(false)} />
+
+      {/* Notifications Dropdown Panel */}
+      <AnimatePresence>
+        {isNotifPanelOpen && (
+          <>
+            {/* Click-outside catcher (transparent — this is a popover, not a modal) */}
+            <div className="fixed inset-0 z-[89]" onClick={() => setIsNotifPanelOpen(false)} />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="fixed top-16 right-md lg:right-lg w-[calc(100vw-2rem)] sm:w-96 max-h-[70vh] overflow-y-auto bg-glass-bg backdrop-blur-xl border border-border-subtle rounded-xl shadow-2xl z-[90]"
+            >
+              <div className="flex items-center justify-between p-md border-b border-border-subtle sticky top-0 bg-glass-bg backdrop-blur-xl">
+                <h3 className="font-label-md font-bold text-on-surface">Notificações</h3>
+                <div className="flex items-center gap-md">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-[11px] font-bold text-primary hover:underline whitespace-nowrap"
+                    >
+                      Marcar todas como lidas
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsNotifPanelOpen(false)}
+                    className="p-1 text-on-surface-variant hover:text-on-surface"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="divide-y divide-border-subtle">
+                {notifications.length === 0 ? (
+                  <p className="p-lg text-center font-label-md text-on-surface-variant">
+                    Nenhuma notificação
+                  </p>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => !n.is_read && handleMarkRead(n.id)}
+                      className={`p-md flex items-start gap-sm transition-colors ${
+                        !n.is_read ? 'bg-surface-variant/20 cursor-pointer hover:bg-surface-variant/30' : ''
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${
+                          !n.is_read ? 'bg-primary' : 'bg-transparent'
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-sm mb-1">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              NOTIF_TYPE_STYLES[n.type] || NOTIF_TYPE_STYLES.INFO
+                            }`}
+                          >
+                            {n.type}
+                          </span>
+                          <p className="font-label-md text-on-surface text-[13px] font-bold truncate">
+                            {n.title}
+                          </p>
+                        </div>
+                        <p className="text-[12px] text-on-surface-variant">{n.message}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

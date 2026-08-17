@@ -630,7 +630,7 @@ Clicar em "Iniciar" no timer de um card, confirmar que o botão muda para "Parar
 
 ---
 
-### Task 10b: Redesenho visual dos cards do Kanban (legibilidade e hierarquia)
+### Task 23: Redesenho visual dos cards do Kanban (legibilidade e hierarquia) — executar logo após a Task 10
 
 **Motivo:** feedback direto do usuário — os cards do board estão com baixo contraste em relação ao fundo da coluna e ao fundo da página, dificultando a leitura; o layout em si é bom, mas precisa desses ajustes de superfície antes de acumular mais funcionalidade (timer, painel de detalhe) em cima.
 
