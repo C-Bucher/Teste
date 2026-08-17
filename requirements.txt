@@ -7,3 +7,5 @@ python-multipart
 aiofiles
 httpx
 python-dotenv
+sqlalchemy[asyncio]>=2.0
+aiosqlite

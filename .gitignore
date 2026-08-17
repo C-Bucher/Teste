@@ -3,6 +3,9 @@
 .env.local
 .env.production
 
+# Banco de dados local (SQLite)
+techconnect.db
+
 # Dependências
 node_modules/
 __pycache__/
