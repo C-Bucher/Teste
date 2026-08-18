@@ -1,23 +1,57 @@
 ﻿from fastapi import APIRouter, HTTPException, Depends
 import uuid
 from datetime import date
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
 from app.core.security import get_current_user
+from app.db.session import get_db
 from app.db.database import PERSONAL_ENTRIES, PERSONAL_ACCOUNTS, PERSONAL_BUDGETS, PERSONAL_GOALS, PERSONAL_DEBTS, PERSONAL_SUBSCRIPTIONS, PERSONAL_SPLITS, PERSONAL_TIMEBOXES, PERSONAL_OKRS
+from app.db.models import PersonalEntryModel, PersonalCategoryModel
+from app.db.utils import model_to_dict, models_to_dicts
 
 router = APIRouter()
 
+_ENTRY_COLUMNS = {c.name for c in PersonalEntryModel.__table__.columns}
+_OWNER_ID = "usr-001"  # no real per-user isolation yet; deliberate simplification (see task constraints)
+
+
+async def _create_entry(d: dict, db: AsyncSession):
+    kwargs = {k: v for k, v in d.items() if k in _ENTRY_COLUMNS}
+    kwargs["id"] = f"pes-{uuid.uuid4().hex[:6]}"
+    kwargs.setdefault("date", date.today().isoformat())
+    kwargs["owner_id"] = _OWNER_ID
+    entry = PersonalEntryModel(**kwargs)
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+    return model_to_dict(entry)
+
+
+async def _delete_entry(eid: str, db: AsyncSession):
+    entry = await db.get(PersonalEntryModel, eid)
+    if entry:
+        await db.delete(entry)
+        await db.commit()
+    return {"success": True}
+
+
 @router.get("/transactions")
-async def get_pers_tx(u=Depends(get_current_user)): return PERSONAL_ENTRIES
+async def get_pers_tx(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    return models_to_dicts(result.scalars().all())
 @router.post("/transactions")
-async def create_pers_tx(d:dict,u=Depends(get_current_user)):
-    e={"id":f"pes-{uuid.uuid4().hex[:6]}","date":date.today().isoformat(),**d}; PERSONAL_ENTRIES.append(e); return e
+async def create_pers_tx(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_entry(d, db)
 @router.delete("/transactions/{eid}")
-async def del_pers_tx(eid:str,u=Depends(get_current_user)):
-    global PERSONAL_ENTRIES
-    PERSONAL_ENTRIES[:]=[x for x in PERSONAL_ENTRIES if x["id"]!=eid]; return {"success":True}
+async def del_pers_tx(eid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _delete_entry(eid, db)
 
 @router.get("/categories")
-async def get_pers_cats(u=Depends(get_current_user)): return [{"id":"pc-1","name":"Salario","type":"RECEITA"},{"id":"pc-2","name":"Moradia","type":"DESPESA"},{"id":"pc-3","name":"Alimentacao","type":"DESPESA"},{"id":"pc-4","name":"Saude","type":"DESPESA"}]
+async def get_pers_cats(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(PersonalCategoryModel).where(PersonalCategoryModel.owner_id == _OWNER_ID))
+    return models_to_dicts(result.scalars().all())
 
 @router.get("/timeboxes")
 async def get_timeboxes(u=Depends(get_current_user)): return PERSONAL_TIMEBOXES
@@ -32,20 +66,24 @@ async def create_okr(d:dict,u=Depends(get_current_user)):
     okr={"id":f"pokr-{uuid.uuid4().hex[:6]}",**d}; PERSONAL_OKRS.append(okr); return okr
 
 @router.get("/dashboard")
-async def pers_dash(u=Depends(get_current_user)):
-    rec=sum(e["amount"] for e in PERSONAL_ENTRIES if e["type"]=="RECEITA")
-    desp=sum(e["amount"] for e in PERSONAL_ENTRIES if e["type"]=="DESPESA")
-    return {"saldo":round(rec-desp,2),"balance":round(rec-desp,2),"receitas_mes":rec,"total_income":rec,"despesas_mes":desp,"total_expense":desp,"recent_entries":PERSONAL_ENTRIES}
+async def pers_dash(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    entries = models_to_dicts(result.scalars().all())
+    rec=sum(e["amount"] for e in entries if e["type"]=="RECEITA")
+    desp=sum(e["amount"] for e in entries if e["type"]=="DESPESA")
+    return {"saldo":round(rec-desp,2),"balance":round(rec-desp,2),"receitas_mes":rec,"total_income":rec,"despesas_mes":desp,"total_expense":desp,"recent_entries":entries}
 
 @router.get("/entries")
-async def get_pers(u=Depends(get_current_user)): return {"items":PERSONAL_ENTRIES,"total":len(PERSONAL_ENTRIES)}
+async def get_pers(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    items = models_to_dicts(result.scalars().all())
+    return {"items":items,"total":len(items)}
 @router.post("/entries")
-async def create_pers(d:dict,u=Depends(get_current_user)):
-    e={"id":f"pes-{uuid.uuid4().hex[:6]}","date":date.today().isoformat(),**d}; PERSONAL_ENTRIES.append(e); return e
+async def create_pers(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _create_entry(d, db)
 @router.delete("/entries/{eid}")
-async def del_pers(eid:str,u=Depends(get_current_user)):
-    global PERSONAL_ENTRIES
-    PERSONAL_ENTRIES[:]=[x for x in PERSONAL_ENTRIES if x["id"]!=eid]; return {"success":True}
+async def del_pers(eid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return await _delete_entry(eid, db)
 
 @router.get("/accounts")
 async def get_accounts(u=Depends(get_current_user)): return PERSONAL_ACCOUNTS

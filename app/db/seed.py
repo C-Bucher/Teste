@@ -39,6 +39,7 @@ from app.db.models import (
     CostCenterModel,
     CategoryModel,
     PersonalEntryModel,
+    PersonalCategoryModel,
     ExportLogModel,
     PersonalAccountModel,
     PersonalBudgetModel,
@@ -55,11 +56,39 @@ def dias(n: int) -> str:
     return (hoje + timedelta(days=n)).isoformat()
 
 
+async def _seed_personal_categories_if_empty(session) -> None:
+    """Idempotently seeds personal_categories on its own, independent of
+    the users-table guard below.
+
+    PersonalCategoryModel was added after the initial `seed_if_empty()`
+    guard already shipped, so any database that was seeded before this
+    change (users table non-empty) would otherwise never receive these
+    rows — the top-level early return would skip them forever. Checking
+    this table's own emptiness lets it self-heal on the next startup
+    regardless of when the rest of the demo data was seeded.
+    """
+    result = await session.execute(select(PersonalCategoryModel).limit(1))
+    if result.scalar_one_or_none() is not None:
+        return  # already seeded, do nothing
+    session.add_all(
+        [
+            PersonalCategoryModel(id="pc-1", name="Salario", type="RECEITA"),
+            PersonalCategoryModel(id="pc-2", name="Moradia", type="DESPESA"),
+            PersonalCategoryModel(id="pc-3", name="Alimentacao", type="DESPESA"),
+            PersonalCategoryModel(id="pc-4", name="Saude", type="DESPESA"),
+        ]
+    )
+
+
 async def seed_if_empty() -> None:
     async with async_session_maker() as session:
         result = await session.execute(select(UserModel).limit(1))
         if result.scalar_one_or_none() is not None:
-            return  # already seeded, do nothing
+            # Base demo data already seeded. Still backfill any tables that
+            # gained a seed requirement after that initial seed shipped.
+            await _seed_personal_categories_if_empty(session)
+            await session.commit()
+            return
 
         # --- COMPANY (single row) ---------------------------------------
         session.add(
@@ -263,6 +292,13 @@ async def seed_if_empty() -> None:
                 PersonalEntryModel(id="pes-004", type="DESPESA", amount=320.00, description="Plano de Saude", date=dias(-1), category="Saude"),
             ]
         )
+
+        # --- PERSONAL_CATEGORIES -----------------------------------------------
+        # Not a `database.py` mock list — this was a hardcoded literal inside
+        # personal.py's GET /personal/categories endpoint (pre-Task 12
+        # migration). See _seed_personal_categories_if_empty() above for why
+        # this has its own independent idempotency check.
+        await _seed_personal_categories_if_empty(session)
 
         # --- EXPORT_LOGS -------------------------------------------------------
         session.add_all(
