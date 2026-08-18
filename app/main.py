@@ -29,14 +29,15 @@ import os
 from fastapi.responses import FileResponse
 from fastapi import Request
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import JSONResponse
 
 if os.path.exists("frontend/dist"):
     app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
-    
+
     @app.exception_handler(404)
     async def not_found(request: Request, exc: StarletteHTTPException):
         if request.url.path.startswith("/api/") or request.url.path.startswith("/health"):
-            return {"detail": "Not Found"}
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
         return FileResponse("frontend/dist/index.html")
     
     @app.get("/{full_path:path}")
@@ -53,7 +54,7 @@ elif os.path.exists("../frontend/dist"):
     @app.exception_handler(404)
     async def not_found(request: Request, exc: StarletteHTTPException):
         if request.url.path.startswith("/api/") or request.url.path.startswith("/health"):
-            return {"detail": "Not Found"}
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
         return FileResponse("../frontend/dist/index.html")
     
     @app.get("/{full_path:path}")
