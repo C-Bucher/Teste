@@ -303,6 +303,69 @@ Cada task abaixo termina com: reiniciar o backend, testar cada endpoint do route
 
 Migra `USERS_DB` (dict por email) para consultas em `UserModel`. Cuidado: `USERS_DB` é indexado por email hoje (`USERS_DB[email]`), enquanto o banco será consultado por `select(UserModel).where(UserModel.email == email)`. O endpoint `/register` cria um novo usuário — vira `db.add(UserModel(...))`. `/refresh` busca por email OU por id (`next((v for v in USERS_DB.values() if v["id"]==p.get("sub")), None)`) — precisa de uma query com `or_()` ou duas tentativas sequenciais. Teste: login com os 3 usuários seedados, cadastro de um usuário novo, refresh de token.
 
+### Task 4b: `app/core/security.py` — `get_current_user` para o banco real
+
+**Descoberto durante a Task 4**: `get_current_user` (usado por `Depends(get_current_user)` em praticamente todo endpoint protegido do backend) continua lendo `USERS_DB` (o dict em memória de `app/db/database.py`), não `UserModel`. Os 3 usuários seedados escapam do bug por coincidência (mesmos dados presentes nos dois lugares hoje), mas qualquer usuário criado via `/register` depois da migração da Task 4 cai em 401 em todo endpoint que dependa de autenticação — porque não existe em `USERS_DB`. Sem corrigir isso agora, o mesmo bug se repetiria de forma mascarada em cada uma das 9 tasks de migração de router restantes.
+
+**Files:**
+- Modify: `app/core/security.py`
+
+**Interfaces:**
+- Consumes: `get_db` de `app/db/session.py`, `UserModel` de `app/db/models.py`.
+- Produces: `get_current_user` continua com a mesma assinatura de uso (`Depends(get_current_user)`) para quem já a consome — FastAPI resolve a dependência aninhada `Depends(get_db)` automaticamente, então nenhum dos 13 arquivos de router precisa mudar a forma como chamam `get_current_user`.
+
+- [ ] **Step 1: Migrar `get_current_user` para consulta assíncrona real**
+
+`app/core/security.py` hoje (linhas 20-25):
+
+```python
+def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer)):
+    if not creds: raise HTTPException(401,"Token ausente")
+    p=decode_token(creds.credentials)
+    u=USERS_DB.get(p.get("email")) or next((v for v in USERS_DB.values() if v["id"]==p.get("sub")),None)
+    if not u: raise HTTPException(401,"Usuario nao encontrado")
+    return u
+```
+
+Substituir por:
+
+```python
+async def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer), db: AsyncSession = Depends(get_db)):
+    if not creds: raise HTTPException(401,"Token ausente")
+    p=decode_token(creds.credentials)
+    result = await db.execute(select(UserModel).where(or_(UserModel.email == p.get("email"), UserModel.id == p.get("sub"))))
+    u = result.scalars().first()
+    if not u: raise HTTPException(401,"Usuario nao encontrado")
+    return model_to_dict(u)
+```
+
+Adicionar aos imports do topo do arquivo:
+
+```python
+from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
+from app.db.models import UserModel
+from app.db.utils import model_to_dict
+```
+
+E remover o import `from app.db.database import USERS_DB` (linha 8) — não é mais usado neste arquivo.
+
+`return model_to_dict(u)` é importante: todo router que hoje faz `u["id"]`, `u["role"]` etc. sobre o retorno de `get_current_user` espera um dict simples, não uma instância ORM — devolver o dict mantém compatibilidade com os 13 routers sem precisar tocar em nenhum deles nesta task.
+
+- [ ] **Step 2: Verificar**
+
+Reiniciar o backend. Repetir exatamente o teste que expôs o bug: logar como um usuário seedado (deve continuar funcionando), cadastrar um usuário novo via `/cadastro`, e imediatamente testar um endpoint protegido qualquer com o token desse usuário novo (ex.: `GET /api/v1/auth/me`, ou qualquer chamada que o frontend faça logo após o cadastro) — confirmar que retorna 200, não mais 401. Reiniciar o backend de novo e repetir o teste com o mesmo usuário, confirmando que persiste.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add app/core/security.py
+git commit -m "fix: migrate get_current_user to query the real database instead of in-memory USERS_DB"
+```
+
+---
+
 ### Task 5: `app/api/v1/endpoints/employees.py` + histórico salarial
 
 Migra `EMPLOYEES` para `EmployeeModel`, e o endpoint `/employees/{id}/salary-history` (hoje retorna 2 registros hardcoded calculados na hora) para consultar `SalaryHistoryModel` de verdade — ao criar/editar um colaborador com mudança de `base_salary`, inserir uma nova linha em `SalaryHistoryModel` (não seedada previamente para os 5 colaboradores mock, exceto se você preferir seedar 1-2 linhas de histórico por colaborador para não quebrar a demo — decida e documente no seu relatório). Teste: tela "Equipe" completa (listar, criar, editar, ver histórico, desligar).
