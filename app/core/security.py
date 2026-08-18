@@ -5,7 +5,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 import bcrypt
 from app.core.config import SECRET_KEY, ALGORITHM, TOKEN_EXP
-from app.db.database import USERS_DB
+from sqlalchemy import select, or_
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import get_db
+from app.db.models import UserModel
+from app.db.utils import model_to_dict
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -17,9 +21,10 @@ def decode_token(token):
     try: return jwt.decode(token,SECRET_KEY,algorithms=[ALGORITHM])
     except: raise HTTPException(status_code=401,detail="Token invalido")
 
-def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer)):
+async def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer), db: AsyncSession = Depends(get_db)):
     if not creds: raise HTTPException(401,"Token ausente")
     p=decode_token(creds.credentials)
-    u=USERS_DB.get(p.get("email")) or next((v for v in USERS_DB.values() if v["id"]==p.get("sub")),None)
+    result = await db.execute(select(UserModel).where(or_(UserModel.email == p.get("email"), UserModel.id == p.get("sub"))))
+    u = result.scalars().first()
     if not u: raise HTTPException(401,"Usuario nao encontrado")
-    return u
+    return model_to_dict(u)
