@@ -130,6 +130,16 @@ async def seed_if_empty() -> None:
             ]
         )
 
+        # Employees must be persisted before salary_history (FK employee_id).
+        # SQLAlchemy's unit-of-work only auto-orders INSERTs by FK dependency
+        # when an ORM relationship() is declared between the mapped classes;
+        # this schema only uses raw ForeignKey columns, so ordering isn't
+        # automatic. SQLite (previously used here) doesn't enforce FK
+        # constraints by default, so an out-of-order flush was silently
+        # accepted there; MySQL enforces them, so explicit flush()
+        # checkpoints are required at each parent/child boundary below.
+        await session.flush()
+
         # --- SALARY_HISTORY --------------------------------------------------
         # The old in-memory mock fabricated 2 history rows per employee on
         # every request (a "Reajuste anual" and a "Promocao" entry, each with
@@ -163,6 +173,8 @@ async def seed_if_empty() -> None:
             ]
         )
 
+        await session.flush()  # suppliers must exist before financial_entries FK
+
         # --- FINANCIAL_ENTRIES ---------------------------------------------
         session.add_all(
             [
@@ -189,6 +201,8 @@ async def seed_if_empty() -> None:
                 ClientModel(id="cli-003", name="LogiTech Transportes", email="ops@logitech.com.br", phone="(11) 2233-4455", cnpj="11.222.333/0001-44", contact_name="Pedro Costa", address="Rod. Anhanguera, km 15 - Campinas, SP", segment="Logística", status="ATIVO"),
             ]
         )
+
+        await session.flush()  # clients must exist before projects FK
 
         # --- KANBAN_PROJECTS -------------------------------------------------
         session.add_all(
@@ -242,6 +256,8 @@ async def seed_if_empty() -> None:
             ]},
         }
 
+        await session.flush()  # projects must exist before kanban_columns FK
+
         for project_id, board in kanban_boards.items():
             for col in board["columns"]:
                 session.add(
@@ -252,6 +268,7 @@ async def seed_if_empty() -> None:
                         order=col["order"],
                     )
                 )
+                await session.flush()  # column must exist before its cards' FK
                 for card in col["cards"]:
                     session.add(
                         KanbanCardModel(

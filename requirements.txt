@@ -9,3 +9,5 @@ httpx
 python-dotenv
 sqlalchemy[asyncio]>=2.0
 aiosqlite
+aiomysql
+cryptography

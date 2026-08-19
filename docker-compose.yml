@@ -5,11 +5,13 @@ services:
     image: mysql:8.0
     container_name: techconnect_db
     restart: always
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword123
-      MYSQL_DATABASE: techconnect
-      MYSQL_USER: techuser
-      MYSQL_PASSWORD: techpassword123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -37,15 +39,15 @@ services:
     container_name: techconnect_backend
     restart: always
     working_dir: /app
+    env_file:
+      - .env
     environment:
       - MYSQL_HOST=db
-      - MYSQL_DATABASE=techconnect
-      - MYSQL_USER=techuser
-      - MYSQL_PASSWORD=techpassword123
-      - SECRET_KEY=***REMOVED-SECRET_KEY***
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=HS256
       - REDIS_URL=redis://redis:6379/0
-      - GEMINI_API_KEY=***REMOVED-GEMINI_API_KEY***
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./:/app
       - uploads_data:/app/uploads
