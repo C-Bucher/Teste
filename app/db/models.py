@@ -139,7 +139,7 @@ class FinancialEntryModel(Base):
     payment_date = Column(String(20), nullable=True)
     status = Column(String(20), default="PENDENTE")
     category = Column(String(100), nullable=True)
-    supplier_id = Column(String(50), ForeignKey("suppliers.id"), nullable=True)
+    supplier_id = Column(String(50), ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True)
     cost_center = Column(String(100), nullable=True)
 
 
@@ -161,7 +161,7 @@ class ProjectModel(Base):
     __tablename__ = "projects"
 
     id = Column(String(50), primary_key=True)
-    client_id = Column(String(50), ForeignKey("clients.id"), nullable=True)
+    client_id = Column(String(50), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
     status = Column(String(50), default="PLANEJAMENTO")

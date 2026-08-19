@@ -30,7 +30,8 @@ class RegisterReq(BaseModel):
 
 @router.post("/register")
 async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
-    existing = (await db.execute(select(UserModel).where(UserModel.email == b.email))).scalar_one_or_none()
+    email = b.email.strip().lower()
+    existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
@@ -43,7 +44,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
 
     new_user = UserModel(
         id=user_id,
-        email=b.email,
+        email=email,
         full_name=b.full_name,
         role="ADMIN",
         plan_scope=plan_scope,
@@ -71,7 +72,8 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login")
 async def login(b: LoginReq, db: AsyncSession = Depends(get_db)):
-    u = (await db.execute(select(UserModel).where(UserModel.email == b.email))).scalar_one_or_none()
+    email = b.email.strip().lower()
+    u = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if not u or not bcrypt.checkpw(b.password.encode(), u.password_hash.encode()):
         raise HTTPException(401, "Credenciais invalidas")
     user_dict = model_to_dict(u)
@@ -94,7 +96,7 @@ async def refresh(b: RefreshReq = RefreshReq(), creds: HTTPAuthorizationCredenti
     if not token: raise HTTPException(401, "Token ausente")
     p = decode_token(token)
     u = (await db.execute(
-        select(UserModel).where(or_(UserModel.email == p.get("email"), UserModel.id == p.get("sub")))
+        select(UserModel).where(or_(UserModel.email == p.get("email", "").lower(), UserModel.id == p.get("sub")))
     )).scalars().first()
     if not u: raise HTTPException(401, "Usuario nao encontrado")
     tok = create_token(model_to_dict(u))

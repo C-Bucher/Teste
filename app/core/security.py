@@ -24,7 +24,7 @@ def decode_token(token):
 async def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer), db: AsyncSession = Depends(get_db)):
     if not creds: raise HTTPException(401,"Token ausente")
     p=decode_token(creds.credentials)
-    result = await db.execute(select(UserModel).where(or_(UserModel.email == p.get("email"), UserModel.id == p.get("sub"))))
+    result = await db.execute(select(UserModel).where(or_(UserModel.email == p.get("email", "").lower(), UserModel.id == p.get("sub"))))
     u = result.scalars().first()
     if not u: raise HTTPException(401,"Usuario nao encontrado")
     return model_to_dict(u)
