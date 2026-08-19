@@ -36,11 +36,11 @@ Em `requirements.txt`, adicionar `aiomysql` (nova linha, junto de `aiosqlite`).
 
 - [ ] **Step 2: Criar `.env` e `.env.example`**
 
-Criar `.env` na raiz do projeto (não commitado) com os valores reais que hoje estão hardcoded no `docker-compose.yml`:
+Criar `.env` na raiz do projeto (não commitado) com os valores reais que hoje estão hardcoded no `docker-compose.yml` — **os valores reais NÃO são reproduzidos aqui de propósito** (este arquivo de plano é commitado no git; colocar segredos reais aqui seria o mesmo problema que esta task existe para corrigir). Copiar os valores reais diretamente do `docker-compose.yml` anterior a esta task (ver histórico do git, commit anterior a `57e312f`) para dentro do `.env` local, sem passar por este documento:
 
 ```
-SECRET_KEY=***REMOVED-SECRET_KEY***
-GEMINI_API_KEY=***REMOVED-GEMINI_API_KEY***
+SECRET_KEY=<valor real anteriormente hardcoded em docker-compose.yml — copiar do histórico do git localmente, nunca colar aqui>
+GEMINI_API_KEY=<valor real anteriormente hardcoded em docker-compose.yml — copiar do histórico do git localmente, nunca colar aqui>
 MYSQL_ROOT_PASSWORD=rootpassword123
 MYSQL_DATABASE=techconnect
 MYSQL_USER=techuser
@@ -62,7 +62,7 @@ DATABASE_URL=mysql+aiomysql://techuser:troque-esta-senha@db:3306/techconnect
 
 Confirmar que `.gitignore` já ignora `.env` (deve estar lá desde a Task 1 do plano de banco de dados) — se não estiver, adicionar.
 
-**Nota de segurança**: a chave Gemini real (`***REMOVED-GEMINI_API_KEY***`) e o `SECRET_KEY` real, listados acima, já estavam commitados em texto puro no histórico do git deste repositório antes desta task. Mover para `.env` impede que continuem sendo commitados dali pra frente, mas **não remove o que já está no histórico**. Isso é uma limitação conhecida — sinalizar no relatório final, não tentar reescrever o histórico do git nesta task (fora de escopo, requer decisão explícita do usuário).
+**Nota de segurança**: a chave Gemini real e o `SECRET_KEY` real que estavam hardcoded no `docker-compose.yml` antes desta task já estavam commitados em texto puro no histórico do git deste repositório. Mover para `.env` impede que continuem sendo commitados dali pra frente, mas **não remove o que já está no histórico**. Isso é uma limitação conhecida — sinalizar no relatório final, não tentar reescrever o histórico do git nesta task (fora de escopo, requer decisão explícita do usuário). **Os valores reais nunca devem ser colados neste documento** (ele é commitado no git) — copiá-los diretamente do histórico do `docker-compose.yml` para o `.env` local, sem passar por aqui.
 
 - [ ] **Step 3: `docker-compose.yml` — usar `.env`, remover segredo hardcoded, adicionar `DATABASE_URL`, remover o volume antigo**
 
