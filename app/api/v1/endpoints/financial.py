@@ -11,9 +11,11 @@ from app.core.security import get_current_user
 from app.db.session import get_db
 from app.db.models import FinancialEntryModel
 from app.db.utils import model_to_dict, models_to_dicts
-from app.db.database import hoje, dias
 
 router = APIRouter()
+
+hoje = date.today()
+def dias(n): return (hoje + timedelta(days=n)).isoformat()
 
 _FIN_COLUMNS = {c.name for c in FinancialEntryModel.__table__.columns}
 
