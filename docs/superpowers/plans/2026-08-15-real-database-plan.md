@@ -406,6 +406,48 @@ Migra as 6 tabelas restantes adicionadas nesta mesma sessão: `PERSONAL_ACCOUNTS
 
 ## Fase 2 — Fechamento
 
+### Task 13b: `clients.py`, `search.py` e o import de `hoje`/`dias` em `financial.py`
+
+**Descoberto durante o Task 14**: a Task 14 (grep de confirmação antes de apagar `database.py`) encontrou 3 imports remanescentes que não foram cobertos por nenhuma das Tasks 4–13, porque `clients.py` e `search.py` nunca foram atribuídos a nenhuma task do plano original de 10 routers:
+
+```
+app/api/v1/endpoints/clients.py:4:from app.db.database import KANBAN_CLIENTS
+app/api/v1/endpoints/financial.py:14:from app.db.database import hoje, dias
+app/api/v1/endpoints/search.py:3:from app.db.database import EMPLOYEES, KANBAN_CLIENTS, KANBAN_PROJECTS, FINANCIAL_ENTRIES, SUPPLIERS
+```
+
+Investigação: `clients.py` (montado em `/clients/*`) duplica exatamente o CRUD de clientes que já existe em `kanban.py` (`/kanban/clients`, migrado e aprovado no Task 9) — o frontend só chama `/kanban/clients`, nunca `/clients/` diretamente (confirmado via grep em `frontend/src`). `search.py` (`/search/`) é uma busca global independente, também não chamada pelo frontend hoje (a caixa de busca no header do `Layout.tsx` é um `<input>` estático, sem `onChange`/estado). Ambos continuam sendo superfície de API real e travariam o backend na inicialização assim que `database.py` for removido — não são código morto no sentido de "seguro pra apagar sem pensar", precisam ser migrados como qualquer outro router.
+
+**Files:**
+- Modify: `app/api/v1/endpoints/clients.py`
+- Modify: `app/api/v1/endpoints/search.py`
+- Modify: `app/api/v1/endpoints/financial.py`
+
+- [ ] **Step 1: Migrar `clients.py` para `ClientModel`**
+
+Mesmo padrão de conversão das Tasks 4–13: trocar `KANBAN_CLIENTS` por `db.execute(select(ClientModel))` / `db.get(ClientModel, cid)` / `db.add` / `setattr`+commit / `db.delete`, resposta via `model_to_dict`/`models_to_dicts`. `ClientModel` já existe (usado por `kanban.py` desde o Task 9) e já tem os clientes seedados — este router passa a ler/escrever exatamente a mesma tabela que `kanban.py` já usa, então os clientes criados por um endpoint aparecem no outro (correto — é a mesma tabela).
+
+- [ ] **Step 2: Migrar `search.py` para consultar os modelos reais**
+
+Trocar os 5 imports de lista mock por consultas reais a `EmployeeModel`, `ClientModel`, `ProjectModel`, `FinancialEntryModel`, `SupplierModel` (todos já existem). Buscar cada um via `select(Model)` e manter a mesma lógica de filtro/match em Python sobre os resultados — não precisa virar `LIKE`/SQL, só trocar a fonte dos dados, igual ao padrão de `/dre` e `/cashflow` de tasks anteriores.
+
+- [ ] **Step 3: Remover o import de `hoje`/`dias` em `financial.py`**
+
+`hoje = date.today()` e `dias(n) = (hoje + timedelta(days=n)).isoformat()` são funções puras sem dependência de dado mock — copiar essas 2 linhas para dentro do próprio `financial.py` (ou de um pequeno módulo de utilidades, se preferir) em vez de importar de `database.py`.
+
+- [ ] **Step 4: Verificar**
+
+Reiniciar o backend. Testar `/clients/` e `/kanban/clients` via curl ou navegador e confirmar que os dois enxergam os mesmos clientes (mesma tabela). Testar `/search/?q=carlos` (ou outro termo que bata com dado seedado) e confirmar que retorna resultados reais. Confirmar que `/financial/dre` e `/financial/cashflow` continuam funcionando normalmente.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/api/v1/endpoints/clients.py app/api/v1/endpoints/search.py app/api/v1/endpoints/financial.py
+git commit -m "feat(db): migrate clients and search routers to real database, drop stale date-helper import in financial.py"
+```
+
+---
+
 ### Task 14: Remover o módulo mock e QA final
 
 **Files:**
