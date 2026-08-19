@@ -113,7 +113,7 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
     if not usr: raise HTTPException(404)
     for k, v in d.items():
         if k in _USER_COLUMNS and k != "password_hash":
-            setattr(usr, k, v)
+            setattr(usr, k, v.strip().lower() if k == "email" and isinstance(v, str) else v)
     await db.commit()
     await db.refresh(usr)
     return {k: v for k, v in model_to_dict(usr).items() if k != "password_hash"}
