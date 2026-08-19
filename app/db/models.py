@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Boolean, DateTime, Integer, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text, JSON
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -13,7 +13,7 @@ class CompanyModel(Base):
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     address = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     fiscal_year_start = Column(Integer, default=1)
 
     users = relationship("UserModel", back_populates="company")
@@ -32,7 +32,7 @@ class UserModel(Base):
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     mfa_enabled = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
 
     company = relationship("CompanyModel", back_populates="users")
 
@@ -61,8 +61,8 @@ class SubscriptionModel(Base):
     status = Column(String(50), default="ACTIVE")
     payment_method = Column(String(50), default="credit_card")
     card_last4 = Column(String(4), nullable=True)
-    current_period_end = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    current_period_end = Column(String(50), nullable=False)
+    created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
 
     company = relationship("CompanyModel", back_populates="subscriptions")
     plan = relationship("PlanModel", back_populates="subscriptions")
@@ -77,7 +77,7 @@ class InvoiceModel(Base):
     status = Column(String(50), default="PAID")
     description = Column(String(255), nullable=True)
     pdf_url = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
 
     subscription = relationship("SubscriptionModel", back_populates="invoices")
 
@@ -92,7 +92,7 @@ class EmployeeModel(Base):
     contract_type = Column(String(50), default="CLT")
     base_salary = Column(Float, default=0.0)
     is_active = Column(Boolean, default=True)
-    hire_date = Column(DateTime, default=datetime.utcnow)
+    hire_date = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     cpf = Column(String(20), nullable=True)
     position = Column(String(100), nullable=True)
     ctc_snapshot = Column(Float, nullable=True)

@@ -29,6 +29,7 @@ from app.db.models import (
     CompanyModel,
     UserModel,
     EmployeeModel,
+    SalaryHistoryModel,
     SupplierModel,
     FinancialEntryModel,
     ClientModel,
@@ -116,16 +117,38 @@ async def seed_if_empty() -> None:
         )
 
         # --- EMPLOYEES -------------------------------------------------------
-        # Mock has both "start_date" (string, kept as-is on the String column)
-        # and an identical "hire_date" (the model's hire_date column is
-        # DateTime, so it's parsed here rather than left to default=utcnow).
+        # Mock has both "start_date" and an identical "hire_date" - both are
+        # plain String(20)/String(50) columns storing the same date-only
+        # (YYYY-MM-DD) string, matching the old mock's serialization.
         session.add_all(
             [
-                EmployeeModel(id="emp-001", full_name="Carlos Mendes", cpf="123.456.789-00", role="Desenvolvedor Senior", position="Desenvolvedor Senior", contract_type="CLT", base_salary=8500.00, ctc_snapshot=14875.00, ctc_monthly=14875.00, hourly_rate=85.00, hourly_cost=85.00, is_active=True, start_date="2024-03-01", hire_date=datetime.fromisoformat("2024-03-01"), email="carlos@tc.com"),
-                EmployeeModel(id="emp-002", full_name="Beatriz Lima", cpf="234.567.890-11", role="Designer UX/UI", position="Designer UX/UI", contract_type="CLT", base_salary=6200.00, ctc_snapshot=10850.00, ctc_monthly=10850.00, hourly_rate=62.00, hourly_cost=62.00, is_active=True, start_date="2024-05-15", hire_date=datetime.fromisoformat("2024-05-15"), email="beatriz@tc.com"),
-                EmployeeModel(id="emp-003", full_name="Rodrigo Santos", cpf="345.678.901-22", role="Analista Financeiro", position="Analista Financeiro", contract_type="CLT", base_salary=5800.00, ctc_snapshot=10150.00, ctc_monthly=10150.00, hourly_rate=58.00, hourly_cost=58.00, is_active=True, start_date="2024-07-01", hire_date=datetime.fromisoformat("2024-07-01"), email="rodrigo@tc.com"),
-                EmployeeModel(id="emp-004", full_name="Fernanda Costa", cpf="456.789.012-33", role="Dev Backend", position="Dev Backend", contract_type="PJ", base_salary=12000.00, ctc_snapshot=13200.00, ctc_monthly=13200.00, hourly_rate=110.00, hourly_cost=110.00, is_active=True, start_date="2023-11-10", hire_date=datetime.fromisoformat("2023-11-10"), email="fernanda@tc.com"),
-                EmployeeModel(id="emp-005", full_name="Lucas Oliveira", cpf="567.890.123-44", role="Estagiario Dev", position="Estagiario Dev", contract_type="ESTAGIO", base_salary=1500.00, ctc_snapshot=1800.00, ctc_monthly=1800.00, hourly_rate=12.50, hourly_cost=12.50, is_active=True, start_date="2025-02-01", hire_date=datetime.fromisoformat("2025-02-01"), email="lucas@tc.com"),
+                EmployeeModel(id="emp-001", full_name="Carlos Mendes", cpf="123.456.789-00", role="Desenvolvedor Senior", position="Desenvolvedor Senior", contract_type="CLT", base_salary=8500.00, ctc_snapshot=14875.00, ctc_monthly=14875.00, hourly_rate=85.00, hourly_cost=85.00, is_active=True, start_date="2024-03-01", hire_date="2024-03-01", email="carlos@tc.com"),
+                EmployeeModel(id="emp-002", full_name="Beatriz Lima", cpf="234.567.890-11", role="Designer UX/UI", position="Designer UX/UI", contract_type="CLT", base_salary=6200.00, ctc_snapshot=10850.00, ctc_monthly=10850.00, hourly_rate=62.00, hourly_cost=62.00, is_active=True, start_date="2024-05-15", hire_date="2024-05-15", email="beatriz@tc.com"),
+                EmployeeModel(id="emp-003", full_name="Rodrigo Santos", cpf="345.678.901-22", role="Analista Financeiro", position="Analista Financeiro", contract_type="CLT", base_salary=5800.00, ctc_snapshot=10150.00, ctc_monthly=10150.00, hourly_rate=58.00, hourly_cost=58.00, is_active=True, start_date="2024-07-01", hire_date="2024-07-01", email="rodrigo@tc.com"),
+                EmployeeModel(id="emp-004", full_name="Fernanda Costa", cpf="456.789.012-33", role="Dev Backend", position="Dev Backend", contract_type="PJ", base_salary=12000.00, ctc_snapshot=13200.00, ctc_monthly=13200.00, hourly_rate=110.00, hourly_cost=110.00, is_active=True, start_date="2023-11-10", hire_date="2023-11-10", email="fernanda@tc.com"),
+                EmployeeModel(id="emp-005", full_name="Lucas Oliveira", cpf="567.890.123-44", role="Estagiario Dev", position="Estagiario Dev", contract_type="ESTAGIO", base_salary=1500.00, ctc_snapshot=1800.00, ctc_monthly=1800.00, hourly_rate=12.50, hourly_cost=12.50, is_active=True, start_date="2025-02-01", hire_date="2025-02-01", email="lucas@tc.com"),
+            ]
+        )
+
+        # --- SALARY_HISTORY --------------------------------------------------
+        # The old in-memory mock fabricated 2 history rows per employee on
+        # every request (a "Reajuste anual" and a "Promocao" entry, each with
+        # slightly lower prior salary values). The real SalaryHistoryModel
+        # table only gets new rows written on creation/edit, so freshly
+        # seeded employees need these backfilled here to keep the demo's
+        # "Historico Salarial" modal non-empty out of the box.
+        session.add_all(
+            [
+                SalaryHistoryModel(id="sh-emp-001-1", employee_id="emp-001", base_salary=7800.00, ctc_monthly=13650.00, ctc_snapshot=13650.00, changed_at=dias(-140), reason="Reajuste anual"),
+                SalaryHistoryModel(id="sh-emp-001-2", employee_id="emp-001", base_salary=7200.00, ctc_monthly=12600.00, ctc_snapshot=12600.00, changed_at=dias(-280), reason="Promocao"),
+                SalaryHistoryModel(id="sh-emp-002-1", employee_id="emp-002", base_salary=5700.00, ctc_monthly=9975.00, ctc_snapshot=9975.00, changed_at=dias(-140), reason="Reajuste anual"),
+                SalaryHistoryModel(id="sh-emp-002-2", employee_id="emp-002", base_salary=5200.00, ctc_monthly=9100.00, ctc_snapshot=9100.00, changed_at=dias(-280), reason="Promocao"),
+                SalaryHistoryModel(id="sh-emp-003-1", employee_id="emp-003", base_salary=5400.00, ctc_monthly=9450.00, ctc_snapshot=9450.00, changed_at=dias(-140), reason="Reajuste anual"),
+                SalaryHistoryModel(id="sh-emp-003-2", employee_id="emp-003", base_salary=5000.00, ctc_monthly=8750.00, ctc_snapshot=8750.00, changed_at=dias(-280), reason="Promocao"),
+                SalaryHistoryModel(id="sh-emp-004-1", employee_id="emp-004", base_salary=11200.00, ctc_monthly=12320.00, ctc_snapshot=12320.00, changed_at=dias(-140), reason="Reajuste anual"),
+                SalaryHistoryModel(id="sh-emp-004-2", employee_id="emp-004", base_salary=10500.00, ctc_monthly=11550.00, ctc_snapshot=11550.00, changed_at=dias(-280), reason="Promocao"),
+                SalaryHistoryModel(id="sh-emp-005-1", employee_id="emp-005", base_salary=1400.00, ctc_monthly=1680.00, ctc_snapshot=1680.00, changed_at=dias(-140), reason="Reajuste anual"),
+                SalaryHistoryModel(id="sh-emp-005-2", employee_id="emp-005", base_salary=1200.00, ctc_monthly=1440.00, ctc_snapshot=1440.00, changed_at=dias(-280), reason="Promocao"),
             ]
         )
 

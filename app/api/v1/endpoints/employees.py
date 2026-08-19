@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
-from datetime import date, datetime
+from datetime import date
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,20 +14,6 @@ from app.db.utils import model_to_dict, models_to_dicts
 router = APIRouter()
 
 _EMP_COLUMNS = {c.name for c in EmployeeModel.__table__.columns}
-
-
-def _parse_date(value):
-    """Best-effort conversion of an ISO date/datetime string into a
-    datetime, matching the format app/db/seed.py uses for hire_date.
-    Returns None if value is falsy or unparsable."""
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value
-    try:
-        return datetime.fromisoformat(str(value))
-    except ValueError:
-        return None
 
 
 def _compute_ctc(base_salary: float, contract_type: Optional[str]):
@@ -70,7 +56,6 @@ async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = De
     hr = round(ctc / 176, 2)
     emp_dict = {"id": f"emp-{uuid.uuid4().hex[:6]}", "ctc_snapshot": round(ctc, 2), "ctc_monthly": round(ctc, 2), "hourly_rate": hr, "hourly_cost": hr, "is_active": True, "position": d.get("role", ""), "hire_date": d.get("start_date", date.today().isoformat()), **d}
     model_kwargs = {k: v for k, v in emp_dict.items() if k in _EMP_COLUMNS}
-    model_kwargs["hire_date"] = _parse_date(model_kwargs.get("hire_date"))
     emp = EmployeeModel(**model_kwargs)
     db.add(emp)
     await db.flush()

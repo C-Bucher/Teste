@@ -15,6 +15,8 @@ from app.api.v1.endpoints.plans import PLANS_DB
 
 router = APIRouter()
 
+_USER_COLUMNS = {c.name for c in UserModel.__table__.columns}
+
 class LoginReq(BaseModel):
     email:str; password:str; mfa_code:Optional[str]=None
 
@@ -108,7 +110,7 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
     usr = await db.get(UserModel, uid)
     if not usr: raise HTTPException(404)
     for k, v in d.items():
-        if k != "password_hash":
+        if k in _USER_COLUMNS and k != "password_hash":
             setattr(usr, k, v)
     await db.commit()
     await db.refresh(usr)
