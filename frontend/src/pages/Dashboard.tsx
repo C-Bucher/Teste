@@ -39,18 +39,35 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [monthlyRes, dreRes, entriesRes, cashflowRes] = await Promise.all([
+        const [monthlyRes, dreRes, entriesRes, cashflowRes] = await Promise.allSettled([
           api.get('/financial/monthly-summary'),
           api.get('/financial/dre'),
           api.get('/financial/entries?page=1&size=5'),
           api.get('/financial/cashflow'),
         ]);
-        setChartData(monthlyRes.data.items || []);
-        setDre(dreRes.data);
-        setEntries(entriesRes.data.items || []);
-        setCashflow(cashflowRes.data);
+
+        if (monthlyRes.status === 'fulfilled') {
+          setChartData(monthlyRes.value.data.items || []);
+        }
+        if (dreRes.status === 'fulfilled') {
+          setDre(dreRes.value.data);
+        }
+        if (entriesRes.status === 'fulfilled') {
+          setEntries(entriesRes.value.data.items || []);
+        }
+        if (cashflowRes.status === 'fulfilled') {
+          setCashflow(cashflowRes.value.data);
+        }
+
+        // Log de diagnóstico em desenvolvimento
+        const failed = [monthlyRes, dreRes, entriesRes, cashflowRes]
+          .filter(r => r.status === 'rejected')
+          .map((r: any) => r.reason?.message || r.reason);
+        if (failed.length > 0) {
+          console.warn('[Dashboard] Endpoints com falha:', failed);
+        }
       } catch (err) {
-        console.error('Erro ao carregar dados do dashboard', err);
+        console.error('Erro inesperado ao carregar dashboard', err);
       } finally {
         setLoading(false);
       }
