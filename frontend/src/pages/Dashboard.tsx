@@ -4,25 +4,53 @@ import api from '../api';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 
+interface MonthlySummaryItem {
+  name: string;
+  receitas: number;
+  despesas: number;
+}
+
+interface DreData {
+  total_receitas: number;
+  total_despesas: number;
+  resultado_liquido: number;
+  margem_percentual: number;
+  despesas: { categoria: string; total: number }[];
+}
+
+interface CashflowData {
+  alert_level: 'VERDE' | 'AMARELO' | 'VERMELHO';
+  saldo_atual: number;
+}
+
+const CFO_MESSAGES: Record<string, string> = {
+  VERDE: 'Sua saúde financeira está estável. Continue monitorando as despesas por categoria para manter a margem positiva.',
+  AMARELO: 'Atenção: o saldo projetado para os próximos 30 dias está abaixo do saldo atual. Revise os lançamentos pendentes.',
+  VERMELHO: 'Risco de caixa negativo detectado! Recomendo revisar despesas pendentes e antecipar recebíveis.',
+};
+
 export default function Dashboard() {
-  const [financialData, setFinancialData] = useState<any>(null);
+  const [chartData, setChartData] = useState<MonthlySummaryItem[]>([]);
+  const [dre, setDre] = useState<DreData | null>(null);
+  const [cashflow, setCashflow] = useState<CashflowData | null>(null);
+  const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [cashflowRes, dreRes, entriesRes] = await Promise.all([
-          api.get('/financial/cashflow'),
+        const [monthlyRes, dreRes, entriesRes, cashflowRes] = await Promise.all([
+          api.get('/financial/monthly-summary'),
           api.get('/financial/dre'),
-          api.get('/financial/entries?page=1&size=5')
+          api.get('/financial/entries?page=1&size=5'),
+          api.get('/financial/cashflow'),
         ]);
-        setFinancialData({
-          cashflow: cashflowRes.data,
-          dre: dreRes.data,
-          entries: entriesRes.data.items
-        });
+        setChartData(monthlyRes.data.items || []);
+        setDre(dreRes.data);
+        setEntries(entriesRes.data.items || []);
+        setCashflow(cashflowRes.data);
       } catch (err) {
-        console.error("Erro ao carregar dados", err);
+        console.error('Erro ao carregar dados do dashboard', err);
       } finally {
         setLoading(false);
       }
@@ -40,14 +68,9 @@ export default function Dashboard() {
     );
   }
 
-  const chartData = [
-    { name: 'Jan', receitas: 4000, despesas: 2400 },
-    { name: 'Fev', receitas: 3000, despesas: 1398 },
-    { name: 'Mar', receitas: 2000, despesas: 9800 },
-    { name: 'Abr', receitas: 2780, despesas: 3908 },
-    { name: 'Mai', receitas: 1890, despesas: 4800 },
-    { name: 'Jun', receitas: 2390, despesas: 3800 },
-  ];
+  // Calcula a largura máxima das barras de despesas
+  const maxDespesa = Math.max(1, ...(dre?.despesas.map((d) => d.total) || [1]));
+  const alertLevel = cashflow?.alert_level ?? 'VERDE';
 
   return (
     <Layout>
@@ -57,7 +80,10 @@ export default function Dashboard() {
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface">Visão Geral Financeira</h2>
             <p className="text-on-surface-variant font-body-sm">
-              Bem-vindo de volta. Sua saúde financeira está <span className="text-success font-bold">Estável (+12%)</span>.
+              Bem-vindo de volta. Sua saúde financeira está{' '}
+              <span className={`font-bold ${alertLevel === 'VERDE' ? 'text-success' : alertLevel === 'AMARELO' ? 'text-warning' : 'text-error'}`}>
+                {alertLevel === 'VERDE' ? 'Estável' : alertLevel === 'AMARELO' ? 'Em Atenção' : 'Em Risco'}
+              </span>.
             </p>
           </div>
           <div className="flex gap-sm">
@@ -74,16 +100,16 @@ export default function Dashboard() {
 
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-12 gap-lg h-auto">
-          
-          {/* KPI Quick Cards */}
+
+          {/* KPI — Receita Bruta */}
           <div className="col-span-12 lg:col-span-3 glass-card p-lg rounded-xl flex flex-col justify-between group">
             <div>
               <div className="flex justify-between items-start mb-sm">
                 <span className="text-on-surface-variant font-label-md">Receita Bruta</span>
-                <span className="text-success text-xs font-bold bg-success/10 px-2 py-0.5 rounded-full">+8.4%</span>
+                <span className="text-success text-xs font-bold bg-success/10 px-2 py-0.5 rounded-full">Total</span>
               </div>
               <h3 className="font-display-lg text-display-lg text-primary transition-transform duration-300 group-hover:scale-105 origin-left">
-                R$ {financialData?.dre?.total_receitas?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                R$ {dre?.total_receitas?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
               </h3>
             </div>
             <div className="mt-md h-8 flex items-end gap-1">
@@ -93,14 +119,15 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* KPI — Despesas Operacionais */}
           <div className="col-span-12 lg:col-span-3 glass-card p-lg rounded-xl flex flex-col justify-between group">
             <div>
               <div className="flex justify-between items-start mb-sm">
                 <span className="text-on-surface-variant font-label-md">Despesas Operacionais</span>
-                <span className="text-success text-xs font-bold bg-success/10 px-2 py-0.5 rounded-full">-1.2%</span>
+                <span className="text-error text-xs font-bold bg-error/10 px-2 py-0.5 rounded-full">Total</span>
               </div>
               <h3 className="font-display-lg text-display-lg text-on-surface transition-transform duration-300 group-hover:scale-105 origin-left">
-                R$ {financialData?.dre?.total_despesas?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                R$ {dre?.total_despesas?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
               </h3>
             </div>
             <div className="mt-md h-8 flex items-center justify-between">
@@ -110,26 +137,28 @@ export default function Dashboard() {
                 <div className="w-1.5 h-3 bg-primary/40 rounded-full"></div>
                 <div className="w-1.5 h-5 bg-primary rounded-full"></div>
               </div>
-              <span className="text-xs text-on-surface-variant">Meta: &lt; R$ 10k</span>
             </div>
           </div>
 
+          {/* KPI — Lucro Líquido */}
           <div className="col-span-12 lg:col-span-3 glass-card p-lg rounded-xl flex flex-col justify-between group">
             <div>
               <div className="flex justify-between items-start mb-sm">
                 <span className="text-on-surface-variant font-label-md">Lucro Líquido</span>
-                <span className="text-error text-xs font-bold bg-error/10 px-2 py-0.5 rounded-full">+2.1%</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${(dre?.margem_percentual ?? 0) >= 0 ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                  {dre?.margem_percentual ?? 0}%
+                </span>
               </div>
               <h3 className="font-display-lg text-display-lg text-on-surface transition-transform duration-300 group-hover:scale-105 origin-left">
-                R$ {financialData?.dre?.resultado_liquido?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
+                R$ {dre?.resultado_liquido?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
               </h3>
             </div>
             <div className="mt-md h-8 flex items-center gap-2">
-              <span className="text-xs text-on-surface-variant">Margem: {financialData?.dre?.margem_percentual || '0'}%</span>
+              <span className="text-xs text-on-surface-variant">Margem: {dre?.margem_percentual || '0'}%</span>
             </div>
           </div>
 
-          {/* AI Virtual CFO Widget */}
+          {/* AI Virtual CFO Widget — texto dinâmico baseado no alert_level */}
           <div className="col-span-12 lg:col-span-3 glass-card p-lg rounded-xl border-primary/20 ai-aura relative overflow-hidden">
             <div className="absolute -right-4 -top-4 opacity-10">
               <span className="material-symbols-outlined text-[120px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
@@ -141,14 +170,16 @@ export default function Dashboard() {
                 </div>
                 <span className="font-headline-sm text-headline-sm text-primary">CFO Virtual</span>
               </div>
-              <p className="text-body-sm text-on-surface mb-lg italic">"Detectei uma anomalia nos gastos de AWS. Recomendo revisar a reserva de instâncias para economizar R$ 2.400/mês."</p>
+              <p className="text-body-sm text-on-surface mb-lg italic">
+                "{CFO_MESSAGES[alertLevel]}"
+              </p>
               <button className="w-full py-sm bg-surface-bright rounded-lg text-primary font-label-md hover:bg-primary hover:text-on-primary transition-all border border-primary/30">
-                Aplicar Otimização
+                Ver Análise Completa
               </button>
             </div>
           </div>
 
-          {/* Revenue Chart (Recharts) */}
+          {/* Revenue Chart — dados reais dos últimos 6 meses */}
           <div className="col-span-12 lg:col-span-8 glass-card p-lg rounded-xl min-h-[400px] flex flex-col">
             <div className="flex justify-between items-center mb-xl">
               <h4 className="font-headline-sm text-headline-sm">Receita Mensal</h4>
@@ -163,7 +194,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="w-full flex-1">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
@@ -180,9 +211,10 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis dataKey="name" stroke="#8c909f" tick={{fill: '#8c909f', fontSize: 12}} axisLine={false} tickLine={false} />
                   <YAxis stroke="#8c909f" tick={{fill: '#8c909f', fontSize: 12}} axisLine={false} tickLine={false} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: 'rgba(28, 31, 42, 0.9)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', color: '#dfe2f1', backdropFilter: 'blur(8px)' }}
                     itemStyle={{ color: '#dfe2f1' }}
+                    formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                   />
                   <Area type="monotone" dataKey="receitas" stroke="#adc6ff" strokeWidth={3} fillOpacity={1} fill="url(#colorReceitas)" />
                   <Area type="monotone" dataKey="despesas" stroke="#ffb786" strokeWidth={3} fillOpacity={1} fill="url(#colorDespesas)" />
@@ -191,50 +223,37 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Expenses Bar Chart */}
+          {/* Categorias de Despesas — dados reais do DRE */}
           <div className="col-span-12 lg:col-span-4 glass-card p-lg rounded-xl flex flex-col justify-center">
             <h4 className="font-headline-sm text-headline-sm mb-xl">Categorias de Despesas</h4>
-            <div className="space-y-lg">
-              <div>
-                <div className="flex justify-between mb-sm">
-                  <span className="text-label-md font-label-md">Salários e RH</span>
-                  <span className="text-label-md font-bold">R$ 22.400</span>
-                </div>
-                <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary w-3/4 rounded-full"></div>
-                </div>
+            {(dre?.despesas?.length ?? 0) === 0 ? (
+              <p className="text-on-surface-variant text-body-sm">Nenhuma despesa categorizada ainda.</p>
+            ) : (
+              <div className="space-y-lg">
+                {(dre?.despesas ?? []).slice(0, 4).map((d, i) => {
+                  const colors = ['bg-secondary', 'bg-primary', 'bg-tertiary', 'bg-outline'];
+                  return (
+                    <div key={d.categoria}>
+                      <div className="flex justify-between mb-sm">
+                        <span className="text-label-md font-label-md">{d.categoria}</span>
+                        <span className="text-label-md font-bold">
+                          R$ {d.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${colors[i % colors.length]} rounded-full`}
+                          style={{ width: `${Math.max(4, (d.total / maxDespesa) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div>
-                <div className="flex justify-between mb-sm">
-                  <span className="text-label-md font-label-md">Infraestrutura Cloud</span>
-                  <span className="text-label-md font-bold">R$ 12.100</span>
-                </div>
-                <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-1/2 rounded-full"></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-sm">
-                  <span className="text-label-md font-label-md">Marketing</span>
-                  <span className="text-label-md font-bold">R$ 8.500</span>
-                </div>
-                <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-tertiary w-1/3 rounded-full"></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-sm">
-                  <span className="text-label-md font-label-md">Operacional</span>
-                  <span className="text-label-md font-bold">R$ 3.200</span>
-                </div>
-                <div className="h-2 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-outline w-1/6 rounded-full"></div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Recent Transactions Data Grid */}
+          {/* Transações Recentes */}
           <div className="col-span-12 glass-card rounded-xl overflow-hidden">
             <div className="p-lg flex justify-between items-center border-b border-border-subtle">
               <h4 className="font-headline-sm text-headline-sm">Transações Recentes</h4>
@@ -252,7 +271,11 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
-                  {financialData?.entries?.map((entry: any) => (
+                  {entries.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-md text-center text-on-surface-variant text-body-sm">Nenhuma transação encontrada.</td>
+                    </tr>
+                  ) : entries.map((entry: any) => (
                     <tr key={entry.id} className="hover:bg-surface-bright transition-colors group">
                       <td className="p-md">
                         <div className="flex items-center gap-sm">
@@ -264,8 +287,8 @@ export default function Dashboard() {
                           <span className="font-body-sm font-medium">{entry.description}</span>
                         </div>
                       </td>
-                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.category}</span></td>
-                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.due_date}</span></td>
+                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.category || '-'}</span></td>
+                      <td className="p-md"><span className="text-body-sm text-on-surface-variant">{entry.due_date || '-'}</span></td>
                       <td className="p-md">
                         <span className={`px-sm py-0.5 rounded-full text-[10px] font-bold uppercase ${entry.status === 'PAGO' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
                           {entry.status === 'PAGO' ? 'Concluído' : 'Pendente'}
@@ -280,9 +303,9 @@ export default function Dashboard() {
               </table>
             </div>
           </div>
+
         </div>
       </motion.div>
     </Layout>
   );
 }
-

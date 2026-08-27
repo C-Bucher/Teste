@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 
 export default function Kanban() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(searchParams.get('project'));
   const [boardData, setBoardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Wrapper que sincroniza estado e URL ao mesmo tempo
+  const setSelectedProjectId = (id: string | null) => {
+    setSelectedProjectIdState(id);
+    if (id) setSearchParams({ project: id });
+    else setSearchParams({});
+  };
 
   // Drag state
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
@@ -44,7 +53,12 @@ export default function Kanban() {
         ]);
         setProjects(projRes.data);
         setClients(clientsRes.data);
-        if (projRes.data.length > 0) {
+        const urlProjectId = searchParams.get('project');
+        if (urlProjectId && projRes.data.some((p: any) => p.id === urlProjectId)) {
+          // Restaura projeto da URL
+          setSelectedProjectIdState(urlProjectId);
+        } else if (projRes.data.length > 0) {
+          // Seleciona o primeiro projeto e salva na URL
           setSelectedProjectId(projRes.data[0].id);
         } else {
           setLoading(false);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 
 type Tab = 'lancamentos' | 'dre' | 'fluxo-caixa';
@@ -98,7 +98,9 @@ export default function Financeiro() {
     return <Navigate to="/dashboard" />;
   }
 
-  const [activeTab, setActiveTab] = useState<Tab>('lancamentos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && ['lancamentos', 'dre', 'fluxo-caixa'].includes(tabFromUrl) ? tabFromUrl : 'lancamentos');
 
   // Lançamentos
   const [entries, setEntries] = useState<FinancialEntry[]>([]);
@@ -261,7 +263,10 @@ export default function Financeiro() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearchParams({ tab: tab.id });
+            }}
             className={`flex items-center gap-sm px-lg py-2 rounded-md transition-all font-label-md text-label-md ${
               activeTab === tab.id
                 ? 'bg-primary-container text-on-primary-container'

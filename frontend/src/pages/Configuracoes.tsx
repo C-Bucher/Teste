@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 
 type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario';
@@ -49,7 +49,10 @@ export default function Configuracoes() {
     return <Navigate to="/dashboard" />;
   }
 
-  const [activeTab, setActiveTab] = useState<Tab>('empresa');
+  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario'];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') as Tab | null;
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && TAB_IDS.includes(tabFromUrl) ? tabFromUrl : 'empresa');
   const [loading, setLoading] = useState(true);
   const [savingCompany, setSavingCompany] = useState(false);
   const [savingCalendar, setSavingCalendar] = useState(false);
@@ -222,7 +225,10 @@ export default function Configuracoes() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearchParams({ tab: tab.id });
+            }}
             className={`flex items-center gap-sm px-lg py-2 rounded-md transition-all font-label-md text-label-md ${
               activeTab === tab.id
                 ? 'bg-primary-container text-on-primary-container'

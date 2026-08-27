@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 import uuid
 from datetime import date
 
