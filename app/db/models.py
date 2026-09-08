@@ -16,6 +16,7 @@ class CompanyModel(Base):
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     fiscal_year_start = Column(Integer, default=1)
     onboarding_completed = Column(Boolean, default=False)
+    permissions_customized = Column(Boolean, default=False)
 
     users = relationship("UserModel", back_populates="company")
     subscriptions = relationship("SubscriptionModel", back_populates="company")

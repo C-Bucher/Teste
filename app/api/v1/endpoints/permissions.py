@@ -6,7 +6,7 @@ from sqlalchemy import select, delete
 from app.core.security import get_current_user
 from app.core.permissions import MODULES, DEFAULT_PERMISSIONS
 from app.db.session import get_db
-from app.db.models import RolePermissionModel
+from app.db.models import RolePermissionModel, CompanyModel
 
 router = APIRouter()
 
@@ -23,7 +23,8 @@ async def get_matrix(u=Depends(get_current_user), db: AsyncSession = Depends(get
         select(RolePermissionModel).where(RolePermissionModel.company_id == u["company_id"])
     )
     rows = result.scalars().all()
-    if not rows:
+    company = await db.get(CompanyModel, u["company_id"])
+    if not (company and company.permissions_customized):
         return {k: list(v) for k, v in DEFAULT_PERMISSIONS.items()}
     matrix: dict[str, list[str]] = {"GERENTE": [], "FUNCIONARIO": []}
     for r in rows:
@@ -45,6 +46,9 @@ async def put_matrix(d: dict, u=Depends(get_current_user), db: AsyncSession = De
                 role=role,
                 module_key=module_key,
             ))
+    company = await db.get(CompanyModel, u["company_id"])
+    if company:
+        company.permissions_customized = True
     await db.commit()
     return await get_matrix(u=u, db=db)
 
@@ -60,6 +64,7 @@ async def get_mine(u=Depends(get_current_user), db: AsyncSession = Depends(get_d
         )
     )
     modules = [row[0] for row in result.all()]
-    if not modules and u["role"] in DEFAULT_PERMISSIONS:
+    company = await db.get(CompanyModel, u["company_id"])
+    if not modules and u["role"] in DEFAULT_PERMISSIONS and not (company and company.permissions_customized):
         modules = DEFAULT_PERMISSIONS[u["role"]]
     return {"modules": modules}
