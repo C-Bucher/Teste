@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import auth, company, employees, suppliers, financial, kanban, notifications, personal, search, exports, ai, clients, plans, payments, permissions
+from app.api.v1.endpoints import auth, company, employees, suppliers, financial, kanban, notifications, personal, search, exports, ai, clients, plans, payments, permissions, system
 from app.core.permissions import require_module
 
 api_router = APIRouter()
@@ -18,4 +18,5 @@ api_router.include_router(plans.router, prefix="/plans", tags=["plans"])
 api_router.include_router(payments.router, prefix="/payments", tags=["payments"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
 api_router.include_router(permissions.router, prefix="/permissions", tags=["permissions"])
+api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(ai.router, prefix="/ai-consultant", tags=["ai-consultant"], dependencies=[Depends(require_module("ia"))])
