@@ -101,6 +101,7 @@ async def seed_if_empty() -> None:
                 phone="(61) 3344-5566",
                 address="SHCGN 713 Bloco A - Brasilia/DF",
                 fiscal_year_start=1,
+                onboarding_completed=True,
             )
         )
 
