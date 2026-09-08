@@ -9,7 +9,7 @@ from sqlalchemy import select, or_, func
 
 from app.core.security import create_token, decode_token, get_current_user, bearer
 from app.db.session import get_db
-from app.db.models import UserModel
+from app.db.models import UserModel, CompanyModel
 from app.db.utils import model_to_dict
 from app.api.v1.endpoints.plans import PLANS_DB
 
@@ -35,6 +35,10 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
+    company_count = (await db.execute(select(func.count()).select_from(CompanyModel))).scalar() or 0
+    company_id = f"cmp-{company_count + 1:03d}"
+    db.add(CompanyModel(id=company_id, name=b.company_name or "Minha Empresa"))
+
     user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
     user_id = f"usr-{user_count + 1:03d}"
     pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
@@ -44,6 +48,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
 
     new_user = UserModel(
         id=user_id,
+        company_id=company_id,
         email=email,
         full_name=b.full_name,
         role="ADMIN",

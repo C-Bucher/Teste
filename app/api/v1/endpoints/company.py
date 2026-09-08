@@ -11,23 +11,23 @@ from app.db.utils import model_to_dict, models_to_dicts
 
 router = APIRouter()
 
-_COMPANY_ID = "cmp-001"
 _COMPANY_COLUMNS = {c.name for c in CompanyModel.__table__.columns}
 _CC_COLUMNS = {c.name for c in CostCenterModel.__table__.columns}
 _CAT_COLUMNS = {c.name for c in CategoryModel.__table__.columns}
 
 
-async def _get_company(db: AsyncSession) -> CompanyModel:
-    company = await db.get(CompanyModel, _COMPANY_ID)
-    if not company:
-        result = await db.execute(select(CompanyModel).limit(1))
-        company = result.scalars().first()
-    return company
+async def _get_company(db: AsyncSession, company_id: str | None) -> CompanyModel:
+    if company_id:
+        company = await db.get(CompanyModel, company_id)
+        if company:
+            return company
+    result = await db.execute(select(CompanyModel).limit(1))
+    return result.scalars().first()
 
 
 @router.get("/")
 async def get_company(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    company = await _get_company(db)
+    company = await _get_company(db, u["company_id"])
     if not company:
         raise HTTPException(404)
     return model_to_dict(company)
@@ -35,7 +35,7 @@ async def get_company(u=Depends(get_current_user), db: AsyncSession = Depends(ge
 
 @router.put("/")
 async def upd_company(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    company = await _get_company(db)
+    company = await _get_company(db, u["company_id"])
     if not company:
         raise HTTPException(404)
     for k, v in d.items():
