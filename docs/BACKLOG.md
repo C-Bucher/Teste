@@ -5,7 +5,7 @@
 > ([.superpowers/sdd/](../.superpowers/sdd/)), dos relatórios de revisão e do
 > [registro de alterações §9](registro-de-alteracoes-para-documentacao.md).
 >
-> **Última atualização:** 2026-09-03
+> **Última atualização:** 2026-09-10 — reauditoria completa do código contra cada item do backlog anterior.
 >
 > **Legenda de status:** 🔲 aberto · 🔷 em andamento · ✅ concluído · ⏸️ pausado/bloqueado
 >
@@ -39,11 +39,11 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| EQ-1 | Botões do menu "kebab" na Gestão de Equipe | Menu de ações (⋮) dos cartões/linhas de funcionário sem handler ligado. | 🔲 | progress-db Task 14 |
-| KAN-1 | Excluir cartão no Kanban | Não há botão/UI para excluir um cartão. Verificar se o endpoint existe e ligar a ação. | 🔲 | progress-db Task 14 |
-| FIN-1 | DRE — composição por categoria | O detalhamento de receitas/despesas por categoria no DRE ainda tem trechos hardcoded que não batem com a composição real dos lançamentos. | 🔲 | progress-db Task 7 |
+| EQ-1 | Botões do menu "kebab" na Gestão de Equipe | ~~Menu de ações (⋮) sem handler ligado.~~ **Resolvido:** o menu `more_vert` na visão em cartões já dispara `handleViewHistory`/`handleEdit`/`handleTerminate`; a visão em lista também tem os três botões ligados. | ✅ | Verificado 2026-09-10 em `GestaoEquipe.tsx` |
+| KAN-1 | Excluir cartão no Kanban | O endpoint `DELETE /kanban/cards/{cid}` já existe e funciona (`kanban.py`), mas **ainda não há botão/ação na UI** que o chame — `Kanban.tsx` não tem nenhuma chamada `api.delete` para cartões. | 🔲 | Verificado 2026-09-10 |
+| FIN-1 | DRE — composição por categoria | ~~Trechos hardcoded.~~ **Resolvido:** `GET /financial/dre` agora agrega receitas e despesas por categoria a partir dos lançamentos reais do banco (`receitas_map`/`despesas_map` em `financial.py`), sem valores fixos. | ✅ | Verificado 2026-09-10 em `financial.py` |
 | NAV-1 | Guarda de rota do Hub Pessoal | Rotas `/pessoal/:tab` são protegidas só no nível de navegação, não de rota. Slug de aba inválido não redireciona a URL. `plan_scope` não é checado por rota. | 🔲 | progress.md revisão final |
-| API-1 | `id` do payload sobrescreve o gerado | Vários POST/PUT aceitam `id` vindo do corpo da requisição e sobrescrevem o id gerado pelo servidor (comportamento herdado do mock antigo). | 🔲 | progress-db (nota herdada) |
+| API-1 | `id` do payload sobrescreve o gerado | Vários POST/PUT (`clients.py`, `company.py`, `employees.py`, `exports.py`, `financial.py`, `kanban.py`, `suppliers.py`) ainda montam o dict como `{"id": gerado, **d}`, então um `id` vindo do corpo sobrescreve o gerado pelo servidor. | 🔲 | Verificado 2026-09-10 — ainda presente em 7 endpoints |
 
 ---
 
@@ -55,7 +55,7 @@
 | CSS-2 | Contraste das colunas do Kanban | O tema quase-preto comprime as razões de contraste WCAG. Fechar mais exige um novo token mais claro que `surface-container-highest` no design system. | 🔲 | task-23-report |
 | SEED-1 | Dados de seed "envelhecem" | As datas do seed são congeladas na primeira execução (o mock antigo recalculava a cada request). Com o tempo, o seed fica com datas defasadas. | 🔲 | progress-db (nota) |
 | DB-3 | Sem caminho de migração de schema | `Base.metadata.create_all` cria tabelas novas mas não faz `ALTER` em tabelas existentes. Qualquer coluna nova exige recriar o banco ou migração manual. | 🔲 | revisão final DB |
-| DB-4 | Limpeza pós-migração MySQL | `pool_recycle` e FK `ON DELETE SET NULL` já foram tratados. Confirmar que não sobrou nenhuma referência a `app/db/database.py` (removido) e revisar N+1 em `get_board`. | 🔲 | progress-db |
+| DB-4 | Limpeza pós-migração MySQL | `pool_recycle` e FK `ON DELETE SET NULL` já tratados; `app/db/database.py` **confirmado removido**, sem referências residuais. Falta só a segunda parte: `GET /kanban/projects/{pid}/board` ainda faz uma query por coluna e outra por cartão dentro de loops (N+1), sem `selectinload`/joins. | 🔲 | Verificado 2026-09-10 em `kanban.py::get_board` |
 
 ---
 
@@ -82,3 +82,6 @@ estão 100% concluídos e aprovados segundo os progress ledgers:
 - ✅ **Persistência real** (16 tasks) — migração de listas em memória para SQLAlchemy async, 28 modelos ORM, seed idempotente, 13 routers migrados. [progress-db.md](../.superpowers/sdd/progress-db.md)
 - ✅ **Troca para MySQL** — Docker Compose com MySQL 8 real, segredos fora do compose, `pool_recycle`/`pool_pre_ping`, FK `ON DELETE SET NULL`, e-mail case-insensitive. [progress-db.md](../.superpowers/sdd/progress-db.md)
 - ✅ **Revisão de segurança** — credenciais removidas do código-fonte, histórico do Git reescrito, `SECRET_KEY` rotacionada.
+- ✅ **Gestão de Equipe — menu de ações** (EQ-1) — botões de Histórico/Editar/Desligar ligados tanto na visão em lista quanto no menu "⋮" da visão em cartões.
+- ✅ **DRE por categoria real** (FIN-1) — `GET /financial/dre` passou a agregar receitas e despesas por categoria a partir dos lançamentos do banco, eliminando os valores hardcoded.
+- ✅ **Limpeza de `app/db/database.py`** (parte de DB-4) — arquivo legado removido sem referências pendentes; resta apenas o N+1 de `get_board`.
