@@ -19,7 +19,7 @@ Repositório institucional de Projeto Integrador do curso de Análise e Desenvol
 | **Repositório Institucional** | `ADS-DASHBOARD-PARA-GEST-O-OPERACIONAL` |
 | **Repositório da Solução (Código)** | [gabrielsalles-bit/TechConnect2.0](https://github.com/gabrielsalles-bit/TechConnect2.0) |
 | **Nome da Solução** | TechConnect 2.0 — CFO Virtual & Gestão Operacional |
-| **Equipe** | Equipe TechConnect (Gabriel Salles, Abner Trindade e integrantes do grupo) |
+| **Equipe** | Equipe TechConnect (Gabriel Salles, Abner Trindade , Caio Alexandre, Andrei Maciel) |
 
 ---
 
