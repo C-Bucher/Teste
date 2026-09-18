@@ -74,6 +74,24 @@ export default function Layout({ children }: LayoutProps) {
     fetchUnreadCount();
   }, []);
 
+  const [allowedModules, setAllowedModules] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (user.role === 'ADMIN') {
+      setAllowedModules(['dashboard', 'kanban', 'equipe', 'financeiro', 'fornecedores', 'configuracoes', 'exportacao', 'ia']);
+      return;
+    }
+    const fetchPermissions = async () => {
+      try {
+        const res = await api.get('/permissions/mine');
+        setAllowedModules(res.data.modules);
+      } catch (err) {
+        console.error('Erro ao carregar permissões', err);
+      }
+    };
+    fetchPermissions();
+  }, []);
+
   const openNotifPanel = async () => {
     setIsNotifPanelOpen(true);
     try {
@@ -159,16 +177,18 @@ export default function Layout({ children }: LayoutProps) {
   const bothScopesAvailable = showBusiness && showPersonal;
   const effectiveMode: 'empresarial' | 'pessoal' = bothScopesAvailable ? workspaceMode : (showPersonal ? 'pessoal' : 'empresarial');
 
-  const businessNavItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-    { name: 'Projetos', path: '/kanban', icon: 'view_kanban' },
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Equipe', path: '/equipe', icon: 'groups' }] : []),
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Financeiro', path: '/financeiro', icon: 'payments' }] : []),
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping' }] : []),
-    ...(user.role === 'ADMIN' ? [{ name: 'Configurações', path: '/configuracoes', icon: 'settings' }] : []),
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'Exportação', path: '/exportacao', icon: 'file_download' }] : []),
-    ...(user.role !== 'FUNCIONARIO' ? [{ name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome' }] : []),
+  const ALL_BUSINESS_ITEMS = [
+    { name: 'Dashboard', path: '/dashboard', icon: 'dashboard', module: 'dashboard' },
+    { name: 'Projetos', path: '/kanban', icon: 'view_kanban', module: 'kanban' },
+    { name: 'Equipe', path: '/equipe', icon: 'groups', module: 'equipe' },
+    { name: 'Financeiro', path: '/financeiro', icon: 'payments', module: 'financeiro' },
+    { name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping', module: 'fornecedores' },
+    { name: 'Configurações', path: '/configuracoes', icon: 'settings', module: 'configuracoes' },
+    { name: 'Exportação', path: '/exportacao', icon: 'file_download', module: 'exportacao' },
+    { name: 'IA Empresarial', path: '/ia', icon: 'auto_awesome', module: 'ia' },
   ];
+
+  const businessNavItems = ALL_BUSINESS_ITEMS.filter((item) => allowedModules.includes(item.module));
 
   const personalNavItems = [
     { name: 'Visão Geral', path: '/pessoal/visao-geral', icon: 'dashboard' },
