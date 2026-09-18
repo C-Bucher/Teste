@@ -5,8 +5,10 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import PermissionMatrix from '../components/PermissionMatrix';
+import IntegrationsStatus from '../components/IntegrationsStatus';
 
-type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario';
+type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'cargos' | 'conexoes';
 
 interface Category {
   id: string;
@@ -31,6 +33,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plano-contas', label: 'Plano de Contas', icon: 'account_tree' },
   { id: 'centros-custo', label: 'Centros de Custo', icon: 'apartment' },
   { id: 'calendario', label: 'Calendário Útil', icon: 'calendar_month' },
+  { id: 'cargos', label: 'Hierarquia de Cargos', icon: 'admin_panel_settings' },
+  { id: 'conexoes', label: 'Conexões de API', icon: 'cable' },
 ];
 
 const WEEKDAYS = [
@@ -53,7 +57,7 @@ export default function Configuracoes() {
 
   const toast = useToast();
   const confirm = useConfirm();
-  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario'];
+  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes'];
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && TAB_IDS.includes(tabFromUrl) ? tabFromUrl : 'empresa');
@@ -513,6 +517,28 @@ export default function Configuracoes() {
               </div>
             </>
           )}
+        </motion.div>
+      )}
+
+      {/* Aba: Hierarquia de Cargos */}
+      {activeTab === 'cargos' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Hierarquia de Cargos</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Escolha quais módulos cada cargo pode acessar. Bloqueado também no servidor, não só na tela.</p>
+          </div>
+          <PermissionMatrix />
+        </motion.div>
+      )}
+
+      {/* Aba: Conexões de API */}
+      {activeTab === 'conexoes' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Conexões de API</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Status das integrações do sistema em tempo real.</p>
+          </div>
+          <IntegrationsStatus />
         </motion.div>
       )}
 
