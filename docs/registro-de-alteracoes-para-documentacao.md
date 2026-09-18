@@ -116,7 +116,6 @@ Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era
 
 Importante ser honesto sobre isso na entrega — são lacunas reais, conhecidas, não escondidas:
 
-- **Controle de acesso (RBAC)** hoje só existe em nível de navegação/interface (o menu muda por papel), **não é reforçado em cada endpoint da API** — um usuário com token válido poderia, tecnicamente, chamar uma rota que a interface esconde dele.
 - **Autenticação de dois fatores (2FA)**: não implementada.
 - **IA (CFO Virtual, CFO Pessoal, etc.)**: hoje é um mock que reage a palavras-chave, **não uma integração real com um modelo de IA generativa** (apesar de já existir uma `GEMINI_API_KEY` configurada na infraestrutura, pronta para quando essa integração for feita).
 - **Auditoria e conformidade com LGPD**: não implementada.
@@ -124,8 +123,24 @@ Importante ser honesto sobre isso na entrega — são lacunas reais, conhecidas,
 
 ---
 
+---
+
+## 10. Hierarquia de cargos, painel de conexões e onboarding (em andamento)
+
+Trabalho iniciado em 08/09 pra fechar exatamente a lacuna de RBAC citada na seção 9 (agora removida daquela lista — parte já está resolvida). Backend commitado e funcional; telas de frontend ainda em construção.
+
+- **Permissões por cargo configuráveis**: nova tabela `role_permissions` (por empresa, cargo, módulo) substitui o controle hardcoded no frontend. Admin sempre tem acesso total; Gerente e Funcionário têm um conjunto de módulos configurável.
+- **Bloqueio real no backend**: os endpoints de equipe, fornecedores, financeiro, exportação, IA e configurações administrativas agora retornam **403 de verdade** para quem não tem permissão — não é mais só um item escondido no menu.
+- **Painel de status de integrações**: nova tela mostra se o banco de dados e a chave da API de IA estão configurados/saudáveis, testando de verdade (sem editar credenciais pela interface).
+- **Onboarding guiado**: toda empresa nova vai passar por um assistente de 3 passos (dados da empresa → hierarquia de cargos → conexões) no primeiro login do administrador.
+- **Bug crítico corrigido no caminho**: o cadastro de empresa (`POST /auth/register`) nunca criava uma empresa de verdade no banco — toda empresa cadastrada colidia na mesma linha de dados. Corrigido antes do resto da feature, já que sem isso a separação entre empresas diferentes não funcionaria.
+
+**Onde impacta**: ERS (novo requisito funcional de controle de acesso configurável, já não é mais "fora de escopo" como a seção 9 registrava antes); a lacuna de RBAC da seção 9 pode ser removida da lista de pendências assim que a interface (telas) for concluída.
+
+---
+
 ## Sugestão de como dividir a atualização entre Escopo / ERS / DAS
 
 - **Escopo**: seção 1 (modelo de planos/contas) é a mudança mais estrutural — precisa entrar como novo requisito de negócio. Seções 2 e 3 (lista de módulos) confirmam/expandem o que já estava previsto.
-- **ERS**: requisitos funcionais detalhados de cada módulo das seções 2 e 3, mais os requisitos não-funcionais de segurança (seção 7) e as lacunas da seção 9 (documentar como "fora do escopo desta entrega" é tão importante quanto documentar o que foi feito).
+- **ERS**: requisitos funcionais detalhados de cada módulo das seções 2 e 3, mais os requisitos não-funcionais de segurança (seção 7) e controle de acesso configurável (seção 10), e as lacunas restantes da seção 9 (documentar como "fora do escopo desta entrega" é tão importante quanto documentar o que foi feito).
 - **DAS**: arquitetura de persistência (seção 5), diagrama de implantação com os 4 containers Docker + MySQL (seção 6), e menção ao sistema de design de front-end (seção 4).

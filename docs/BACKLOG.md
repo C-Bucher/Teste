@@ -5,7 +5,7 @@
 > ([.superpowers/sdd/](../.superpowers/sdd/)), dos relatórios de revisão e do
 > [registro de alterações §9](registro-de-alteracoes-para-documentacao.md).
 >
-> **Última atualização:** 2026-09-10 — reauditoria completa do código contra cada item do backlog anterior.
+> **Última atualização:** 2026-09-18 — SEC-1 resolvido (RBAC real nos endpoints); DB-2 parcialmente resolvido (criação de empresa no registro).
 >
 > **Legenda de status:** 🔲 aberto · 🔷 em andamento · ✅ concluído · ⏸️ pausado/bloqueado
 >
@@ -17,9 +17,9 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| SEC-1 | RBAC nos endpoints da API | O controle de acesso por papel (Admin/Gerente/Funcionário) só existe na navegação/UI. Um usuário com token válido pode chamar qualquer rota que a interface esconde dele. Falta reforçar o papel em cada endpoint do backend. | 🔲 | registro §9 |
+| SEC-1 | RBAC nos endpoints da API | ~~Só existia na navegação/UI.~~ **Resolvido:** tabela `role_permissions` (por empresa/cargo/módulo) + dependência `require_module(...)` aplicada nos routers de equipe, fornecedores, financeiro, exportação, IA e nas rotas de configuração que alteram dados — retornam 403 real, testado com os 3 papéis de demo. | ✅ | Plano `2026-09-08-role-permissions-onboarding`, commits `446dbcd`..`6bce44d` |
 | DB-1 | Alinhar banco + persistência confiável | SQLite com caminho relativo (`./techconnect.db`), arquivo `.db` versionado no git (qualquer `git checkout`/`stash` apaga dados), `.env` aponta para MySQL mas não é carregado (`load_dotenv()` ausente). Resultado: "dados somem ao reiniciar". | 🔲 | diagnóstico 2026-09-03 |
-| DB-2 | Persistir assinatura/pagamento + registro | `payments.py` (`SUBSCRIPTIONS_DB`, `INVOICES_DB`) e `plans.py` são listas/dicts em memória. `POST /auth/register` cria o usuário mas **não** cria a empresa (`CompanyModel`) nem a assinatura (`SubscriptionModel`) do plano escolhido. | 🔲 | `payments.py`, `auth.py` |
+| DB-2 | Persistir assinatura/pagamento + registro | `payments.py` (`SUBSCRIPTIONS_DB`, `INVOICES_DB`) e `plans.py` seguem listas/dicts em memória — assinatura do plano escolhido ainda não persiste. ~~`POST /auth/register` não cria a empresa.~~ **Resolvido:** o registro agora cria uma `CompanyModel` própria por empresa (commit `446dbcd`), corrigindo também um bug de multi-tenant onde toda empresa cadastrada compartilhava os mesmos dados. | 🔷 | `payments.py` (aberto), `auth.py` (empresa: resolvido) |
 | SEC-2 | Auditoria e conformidade LGPD | Nenhuma trilha de auditoria (quem alterou o quê e quando), sem base para conformidade com LGPD. | 🔲 | registro §9 |
 
 ---
@@ -30,7 +30,7 @@
 |----|------|-----------|--------|-------|
 | IA-1 | Integração real de IA generativa | CFO Virtual, CFO Pessoal, Conciliação e Gerador de Orçamentos respondem por palavra-chave em `ai.py`. A `GEMINI_API_KEY` já está configurada na infra, mas não é usada. Histórico do CFO (`GET /ai/history`) sempre retorna vazio. | 🔲 | registro §9, `ai.py` |
 | AUTH-1 | Autenticação de dois fatores (2FA) | O campo `mfa_enabled` existe no `UserModel` e o login aceita `mfa_code`, mas não há fluxo de ativação nem verificação real. | 🔲 | registro §9 |
-| EXP-1 | Exportação nunca conclui | Relatórios ficavam presos em "PROCESSANDO". Há uma tentativa de correção nas alterações não commitadas de `exports.py` (gera CSV mock em `uploads/`) — precisa ser finalizada, revisada e commitada. | 🔷 | progress-db Task 14 |
+| EXP-1 | Exportação nunca conclui | Relatórios ficavam presos em "PROCESSANDO". Correção revisada em `exports.py` (gera arquivo real em `uploads/`, `GET /download/{eid}` serve a partir do mount `/uploads` já registrado) — funcional, só falta commitar. | 🔷 | Revisado 2026-09-18, aguardando commit |
 | CFG-1 | Configurações que não persistem | `PUT /company/calendar` (calendário de trabalho) e `GET /company/ctc-params` retornam dicts fixos calculados na hora — não gravam nada, não sobrevivem nem a um reload. Preferências de notificação idem. | 🔲 | task-4-report, `company.py`, `notifications.py` |
 
 ---
