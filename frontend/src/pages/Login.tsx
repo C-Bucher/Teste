@@ -22,6 +22,16 @@ export default function Login() {
       const response = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      try {
+        const companyRes = await api.get('/company/');
+        localStorage.setItem('company', JSON.stringify(companyRes.data));
+        if (response.data.user.role === 'ADMIN' && companyRes.data.onboarding_completed === false) {
+          navigate('/onboarding');
+          return;
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados da empresa', err);
+      }
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Erro ao realizar login');

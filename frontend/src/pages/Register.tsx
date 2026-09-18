@@ -57,6 +57,13 @@ export default function Register() {
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
+      try {
+        const companyRes = await api.get('/company/');
+        localStorage.setItem('company', JSON.stringify(companyRes.data));
+      } catch (err) {
+        console.error('Erro ao carregar dados da empresa', err);
+      }
+
       // Redirect to payment checkout with selected plan
       navigate(`/checkout?plan=${selectedPlan}&cycle=monthly`);
     } catch (err: any) {
