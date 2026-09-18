@@ -28,6 +28,12 @@ class RegisterReq(BaseModel):
     cnpj_cpf: Optional[str] = None
     selected_plan: Optional[str] = "plan-empresarial"
 
+class CreateUserReq(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    role: str
+
 @router.post("/register")
 async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     email = b.email.strip().lower()
@@ -111,6 +117,38 @@ async def refresh(b: RefreshReq = RefreshReq(), creds: HTTPAuthorizationCredenti
 async def get_auth_users(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     users = (await db.execute(select(UserModel))).scalars().all()
     return [{k: v for k, v in model_to_dict(x).items() if k != "password_hash"} for x in users]
+
+@router.post("/users")
+async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem criar novos acessos")
+    if b.role not in ("GERENTE", "FUNCIONARIO"):
+        raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
+
+    email = b.email.strip().lower()
+    existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
+
+    user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
+    new_id = f"usr-{user_count + 1:03d}"
+    pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
+
+    new_user = UserModel(
+        id=new_id,
+        company_id=u["company_id"],
+        email=email,
+        full_name=b.full_name,
+        role=b.role,
+        plan_scope="empresarial",
+        password_hash=pwd_hash,
+        is_active=True,
+        mfa_enabled=False,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return {k: v for k, v in model_to_dict(new_user).items() if k != "password_hash"}
 
 @router.put("/users/{uid}")
 async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
