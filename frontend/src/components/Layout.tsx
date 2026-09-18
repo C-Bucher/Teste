@@ -87,6 +87,7 @@ export default function Layout({ children }: LayoutProps) {
         setAllowedModules(res.data.modules);
       } catch (err) {
         console.error('Erro ao carregar permissões', err);
+        setAllowedModules(['dashboard', 'kanban']);
       }
     };
     fetchPermissions();
