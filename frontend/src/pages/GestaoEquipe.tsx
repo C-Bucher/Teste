@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import SystemAccessSection from '../components/SystemAccessSection';
 
 export default function GestaoEquipe() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -132,6 +133,7 @@ export default function GestaoEquipe() {
 
   return (
     <Layout>
+      {user.role === 'ADMIN' && <SystemAccessSection />}
       {/* Page Header & Actions */}
       <div className="mb-xl">
         <div className="flex justify-between items-end mb-xl">
