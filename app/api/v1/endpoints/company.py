@@ -47,6 +47,19 @@ async def upd_company(d: dict, u=Depends(get_current_user), db: AsyncSession = D
     return model_to_dict(company)
 
 
+@router.post("/onboarding/complete")
+async def complete_onboarding(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem concluir a configuração inicial")
+    company = await _get_company(db, u["company_id"])
+    if not company:
+        raise HTTPException(404)
+    company.onboarding_completed = True
+    await db.commit()
+    await db.refresh(company)
+    return model_to_dict(company)
+
+
 @router.get("/cost-centers")
 async def get_cc(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CostCenterModel))
