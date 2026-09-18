@@ -4,12 +4,14 @@ import { motion } from 'framer-motion';
 import { CreditCard, Calendar, CheckCircle2, Download, ArrowUpRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import api from '../api';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
 
 export default function Subscription() {
   const [sub, setSub] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -179,7 +181,7 @@ export default function Subscription() {
                     </td>
                     <td className="p-md text-right">
                       <button
-                        onClick={() => alert(`Download da fatura ${inv.id} iniciado.`)}
+                        onClick={() => toast.info(`Download da fatura ${inv.id} iniciado.`)}
                         className="p-2 text-primary hover:bg-primary-container/20 rounded-lg transition-all inline-flex items-center gap-1 text-xs font-semibold"
                       >
                         <Download size={14} /> PDF

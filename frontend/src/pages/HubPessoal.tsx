@@ -4,6 +4,8 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 // ---------------------------------------------------------------------------
 // Tab definitions. This exact list is shared with Tasks 13-17, which each
@@ -229,6 +231,8 @@ export default function HubPessoal() {
 
   const { tab } = useParams<{ tab: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const activeTab: TabId = (TABS.some((t) => t.id === tab) ? tab : 'visao-geral') as TabId;
 
   // Visão Geral
@@ -503,24 +507,32 @@ export default function HubPessoal() {
       setIsModalOpen(false);
       await fetchEntries();
       await fetchDashboard();
+      toast.success('Lançamento criado.');
     } catch (err) {
       console.error('Erro ao criar lançamento pessoal', err);
-      alert('Erro ao criar lançamento');
+      toast.error('Erro ao criar lançamento.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteEntry = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este lançamento?')) return;
+    const ok = await confirm({
+      title: 'Excluir lançamento',
+      message: 'Deseja realmente excluir este lançamento?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingId(id);
     try {
       await api.delete(`/personal/entries/${id}`);
       setEntries((prev) => prev.filter((en) => en.id !== id));
       await fetchDashboard();
+      toast.success('Lançamento excluído.');
     } catch (err) {
       console.error('Erro ao excluir lançamento pessoal', err);
-      alert('Erro ao excluir lançamento');
+      toast.error('Erro ao excluir lançamento.');
     } finally {
       setDeletingId(null);
     }
@@ -548,23 +560,31 @@ export default function HubPessoal() {
       await api.post('/personal/accounts', payload);
       setIsAccountModalOpen(false);
       await fetchAccounts();
+      toast.success('Conta/cartão criado.');
     } catch (err) {
       console.error('Erro ao criar conta/cartão', err);
-      alert('Erro ao criar conta/cartão');
+      toast.error('Erro ao criar conta/cartão.');
     } finally {
       setSavingAccount(false);
     }
   };
 
   const handleDeleteAccount = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta conta/cartão?')) return;
+    const ok = await confirm({
+      title: 'Excluir conta/cartão',
+      message: 'Deseja realmente excluir esta conta/cartão?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingAccountId(id);
     try {
       await api.delete(`/personal/accounts/${id}`);
       setAccounts((prev) => prev.filter((a) => a.id !== id));
+      toast.success('Conta/cartão excluído.');
     } catch (err) {
       console.error('Erro ao excluir conta/cartão', err);
-      alert('Erro ao excluir conta/cartão');
+      toast.error('Erro ao excluir conta/cartão.');
     } finally {
       setDeletingAccountId(null);
     }
@@ -585,23 +605,31 @@ export default function HubPessoal() {
       });
       setIsBudgetModalOpen(false);
       await fetchBudgets();
+      toast.success('Orçamento criado.');
     } catch (err) {
       console.error('Erro ao criar orçamento', err);
-      alert('Erro ao criar orçamento');
+      toast.error('Erro ao criar orçamento.');
     } finally {
       setSavingBudget(false);
     }
   };
 
   const handleDeleteBudget = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este orçamento?')) return;
+    const ok = await confirm({
+      title: 'Excluir orçamento',
+      message: 'Deseja realmente excluir este orçamento?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingBudgetId(id);
     try {
       await api.delete(`/personal/budgets/${id}`);
       setBudgets((prev) => prev.filter((b) => b.id !== id));
+      toast.success('Orçamento excluído.');
     } catch (err) {
       console.error('Erro ao excluir orçamento', err);
-      alert('Erro ao excluir orçamento');
+      toast.error('Erro ao excluir orçamento.');
     } finally {
       setDeletingBudgetId(null);
     }
@@ -623,23 +651,31 @@ export default function HubPessoal() {
       });
       setIsGoalModalOpen(false);
       await fetchGoals();
+      toast.success('Meta criada.');
     } catch (err) {
       console.error('Erro ao criar meta', err);
-      alert('Erro ao criar meta');
+      toast.error('Erro ao criar meta.');
     } finally {
       setSavingGoal(false);
     }
   };
 
   const handleDeleteGoal = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta meta?')) return;
+    const ok = await confirm({
+      title: 'Excluir meta',
+      message: 'Deseja realmente excluir esta meta?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingGoalId(id);
     try {
       await api.delete(`/personal/goals/${id}`);
       setGoals((prev) => prev.filter((g) => g.id !== id));
+      toast.success('Meta excluída.');
     } catch (err) {
       console.error('Erro ao excluir meta', err);
-      alert('Erro ao excluir meta');
+      toast.error('Erro ao excluir meta.');
     } finally {
       setDeletingGoalId(null);
     }
@@ -660,9 +696,10 @@ export default function HubPessoal() {
       setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, current_amount: updated.current_amount } : g)));
       setContributingGoalId(null);
       setContributeAmount('');
+      toast.success('Aporte adicionado.');
     } catch (err) {
       console.error('Erro ao adicionar aporte', err);
-      alert('Erro ao adicionar aporte');
+      toast.error('Erro ao adicionar aporte.');
     } finally {
       setSavingContribution(false);
     }
@@ -686,23 +723,31 @@ export default function HubPessoal() {
       });
       setIsDebtModalOpen(false);
       await fetchDebts();
+      toast.success('Dívida cadastrada.');
     } catch (err) {
       console.error('Erro ao criar dívida', err);
-      alert('Erro ao criar dívida');
+      toast.error('Erro ao criar dívida.');
     } finally {
       setSavingDebt(false);
     }
   };
 
   const handleDeleteDebt = async (id: string) => {
-    if (!confirm('Deseja realmente quitar/excluir esta dívida?')) return;
+    const ok = await confirm({
+      title: 'Quitar/excluir dívida',
+      message: 'Deseja realmente quitar/excluir esta dívida?',
+      confirmLabel: 'Confirmar',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingDebtId(id);
     try {
       await api.delete(`/personal/debts/${id}`);
       setDebts((prev) => prev.filter((d) => d.id !== id));
+      toast.success('Dívida removida.');
     } catch (err) {
       console.error('Erro ao excluir dívida', err);
-      alert('Erro ao excluir dívida');
+      toast.error('Erro ao excluir dívida.');
     } finally {
       setDeletingDebtId(null);
     }
@@ -725,23 +770,31 @@ export default function HubPessoal() {
       });
       setIsSubscriptionModalOpen(false);
       await fetchSubscriptions();
+      toast.success('Assinatura criada.');
     } catch (err) {
       console.error('Erro ao criar assinatura', err);
-      alert('Erro ao criar assinatura');
+      toast.error('Erro ao criar assinatura.');
     } finally {
       setSavingSubscription(false);
     }
   };
 
   const handleDeleteSubscription = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta assinatura?')) return;
+    const ok = await confirm({
+      title: 'Excluir assinatura',
+      message: 'Deseja realmente excluir esta assinatura?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingSubscriptionId(id);
     try {
       await api.delete(`/personal/subscriptions/${id}`);
       setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+      toast.success('Assinatura excluída.');
     } catch (err) {
       console.error('Erro ao excluir assinatura', err);
-      alert('Erro ao excluir assinatura');
+      toast.error('Erro ao excluir assinatura.');
     } finally {
       setDeletingSubscriptionId(null);
     }
@@ -786,23 +839,31 @@ export default function HubPessoal() {
       });
       setIsSplitModalOpen(false);
       await fetchSplits();
+      toast.success('Divisão de despesas criada.');
     } catch (err) {
       console.error('Erro ao criar divisão de despesas', err);
-      alert('Erro ao criar divisão de despesas');
+      toast.error('Erro ao criar divisão de despesas.');
     } finally {
       setSavingSplit(false);
     }
   };
 
   const handleDeleteSplit = async (id: string) => {
-    if (!confirm('Deseja realmente excluir esta divisão?')) return;
+    const ok = await confirm({
+      title: 'Excluir divisão',
+      message: 'Deseja realmente excluir esta divisão?',
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
     setDeletingSplitId(id);
     try {
       await api.delete(`/personal/splits/${id}`);
       setSplits((prev) => prev.filter((s) => s.id !== id));
+      toast.success('Divisão excluída.');
     } catch (err) {
       console.error('Erro ao excluir divisão de despesas', err);
-      alert('Erro ao excluir divisão de despesas');
+      toast.error('Erro ao excluir divisão de despesas.');
     } finally {
       setDeletingSplitId(null);
     }
@@ -824,9 +885,10 @@ export default function HubPessoal() {
       });
       setTimeboxes((prev) => [...prev, res.data]);
       setIsTimeboxModalOpen(false);
+      toast.success('Timebox criado.');
     } catch (err) {
       console.error('Erro ao criar timebox', err);
-      alert('Erro ao criar timebox');
+      toast.error('Erro ao criar timebox.');
     } finally {
       setSavingTimebox(false);
     }
@@ -867,9 +929,10 @@ export default function HubPessoal() {
       });
       setOkrs((prev) => [...prev, res.data]);
       setIsOkrModalOpen(false);
+      toast.success('OKR criado.');
     } catch (err) {
       console.error('Erro ao criar OKR', err);
-      alert('Erro ao criar OKR');
+      toast.error('Erro ao criar OKR.');
     } finally {
       setSavingOkr(false);
     }
@@ -882,7 +945,7 @@ export default function HubPessoal() {
       setCfoInsights(res.data.insights || []);
     } catch (err) {
       console.error('Erro ao gerar análise do CFO Pessoal IA', err);
-      alert('Erro ao gerar análise');
+      toast.error('Erro ao gerar análise.');
     } finally {
       setCfoInsightsLoading(false);
     }

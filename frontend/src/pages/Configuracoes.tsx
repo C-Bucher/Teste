@@ -3,6 +3,8 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario';
 
@@ -49,6 +51,8 @@ export default function Configuracoes() {
     return <Navigate to="/dashboard" />;
   }
 
+  const toast = useToast();
+  const confirm = useConfirm();
   const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario'];
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
@@ -122,9 +126,10 @@ export default function Configuracoes() {
         phone: res.data.phone || '',
         address: res.data.address || '',
       });
+      toast.success('Dados da empresa salvos.');
     } catch (err) {
       console.error('Erro ao salvar dados da empresa', err);
-      alert('Erro ao salvar dados da empresa');
+      toast.error('Erro ao salvar dados da empresa.');
     } finally {
       setSavingCompany(false);
     }
@@ -141,9 +146,10 @@ export default function Configuracoes() {
       const res = await api.post('/company/categories', categoryForm);
       setCategories([...categories, res.data]);
       setIsCategoryModalOpen(false);
+      toast.success('Categoria criada.');
     } catch (err) {
       console.error('Erro ao criar categoria', err);
-      alert('Erro ao criar categoria');
+      toast.error('Erro ao criar categoria.');
     }
   };
 
@@ -158,21 +164,28 @@ export default function Configuracoes() {
       const res = await api.post('/company/cost-centers', costCenterForm);
       setCostCenters([...costCenters, res.data]);
       setIsCostCenterModalOpen(false);
+      toast.success('Centro de custo criado.');
     } catch (err) {
       console.error('Erro ao criar centro de custo', err);
-      alert('Erro ao criar centro de custo');
+      toast.error('Erro ao criar centro de custo.');
     }
   };
 
   const handleDeleteCostCenter = async (id: string) => {
-    if (confirm('Deseja realmente remover este centro de custo?')) {
-      try {
-        await api.delete(`/company/cost-centers/${id}`);
-        setCostCenters(costCenters.filter((c) => c.id !== id));
-      } catch (err) {
-        console.error('Erro ao excluir centro de custo', err);
-        alert('Erro ao excluir centro de custo');
-      }
+    const ok = await confirm({
+      title: 'Remover centro de custo',
+      message: 'Deseja realmente remover este centro de custo?',
+      confirmLabel: 'Remover',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/company/cost-centers/${id}`);
+      setCostCenters(costCenters.filter((c) => c.id !== id));
+      toast.success('Centro de custo removido.');
+    } catch (err) {
+      console.error('Erro ao excluir centro de custo', err);
+      toast.error('Erro ao excluir centro de custo.');
     }
   };
 
@@ -189,9 +202,10 @@ export default function Configuracoes() {
     try {
       const res = await api.put('/company/calendar', calendar);
       setCalendar(res.data);
+      toast.success('Calendário salvo.');
     } catch (err) {
       console.error('Erro ao salvar calendário', err);
-      alert('Erro ao salvar calendário');
+      toast.error('Erro ao salvar calendário.');
     } finally {
       setSavingCalendar(false);
     }

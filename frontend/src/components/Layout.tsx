@@ -1,8 +1,25 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AICfoDrawer from './AICfoDrawer';
 import api from '../api';
+import { useToast } from '../context/ToastContext';
+
+interface SearchResult {
+  type: string;
+  id: string;
+  title: string;
+  subtitle: string;
+  url: string;
+}
+
+const SEARCH_TYPE_ICONS: Record<string, string> = {
+  employee: 'badge',
+  client: 'handshake',
+  project: 'view_kanban',
+  financial: 'payments',
+  supplier: 'local_shipping',
+};
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,8 +39,14 @@ export default function Layout({ children }: LayoutProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const [workspaceMode, setWorkspaceMode] = useState<'empresarial' | 'pessoal'>(() => {
@@ -86,6 +109,40 @@ export default function Layout({ children }: LayoutProps) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/');
+  };
+
+  const runSearch = async (term: string) => {
+    const q = term.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      setIsSearchOpen(false);
+      return;
+    }
+    setIsSearching(true);
+    setIsSearchOpen(true);
+    try {
+      const res = await api.get('/search/', { params: { q, limit: 8 } });
+      setSearchResults(res.data.results || []);
+    } catch (err) {
+      console.error('Erro na busca global', err);
+      setSearchResults([]);
+      toast.error('Não foi possível concluir a busca. Tente novamente.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => runSearch(value), 300);
+  };
+
+  const handleSelectResult = (url: string) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    navigate(url);
   };
 
   const getRoleLabel = (role: string) => {
@@ -188,7 +245,7 @@ export default function Layout({ children }: LayoutProps) {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="mb-xl px-sm flex justify-between items-center">
+        <div className="mb-xl px-sm flex justify-between items-center shrink-0">
           <div>
             <h1 className="font-headline-md text-headline-md font-bold text-primary">TechConnect</h1>
             <p className="font-label-md text-label-md text-on-surface-variant opacity-70">CFO Virtual IA</p>
@@ -201,7 +258,7 @@ export default function Layout({ children }: LayoutProps) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-xs">
+        <nav className="flex-1 min-h-0 overflow-y-auto custom-scrollbar nav-fade pr-1 space-y-xs">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -224,7 +281,7 @@ export default function Layout({ children }: LayoutProps) {
           })}
         </nav>
 
-        <div className="mt-auto space-y-xs pt-lg border-t border-border-subtle">
+        <div className="mt-auto space-y-xs pt-lg border-t border-border-subtle shrink-0">
           <button
             onClick={() => setIsAiDrawerOpen(true)}
             className="w-full flex items-center gap-md p-md rounded-lg text-primary hover:bg-primary-container/20 transition-colors"
@@ -245,13 +302,69 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* TopNavBar (Desktop) */}
       <header className="hidden lg:flex fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-glass-bg backdrop-blur-xl z-40 border-b border-border-subtle justify-between items-center px-lg">
-        <div className="flex items-center bg-surface-container-low rounded-full px-md py-xs w-96 border border-border-subtle">
-          <span className="material-symbols-outlined text-outline">search</span>
-          <input
-            className="bg-transparent border-none focus:ring-0 text-body-sm w-full text-on-surface focus:outline-none"
-            placeholder="Pesquisar métricas ou faturas..."
-            type="text"
-          />
+        <div className="relative w-96">
+          <div className="flex items-center bg-surface-container-low rounded-full px-md py-xs border border-border-subtle focus-within:border-primary/40 transition-colors">
+            <span className="material-symbols-outlined text-outline">search</span>
+            <input
+              className="bg-transparent border-none focus:ring-0 text-body-sm w-full text-on-surface focus:outline-none ml-2"
+              placeholder="Buscar projetos, pessoas, lançamentos..."
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onFocus={() => searchResults.length > 0 && setIsSearchOpen(true)}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => { setSearchQuery(''); setSearchResults([]); setIsSearchOpen(false); }}
+                className="text-on-surface-variant hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {isSearchOpen && (
+              <>
+                <div className="fixed inset-0 z-[59]" onClick={() => setIsSearchOpen(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full mt-2 left-0 w-full max-h-[60vh] overflow-y-auto custom-scrollbar bg-glass-bg backdrop-blur-xl border border-border-subtle rounded-xl shadow-2xl z-[60]"
+                >
+                  {isSearching ? (
+                    <div className="p-lg flex justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <p className="p-lg text-center font-label-md text-on-surface-variant text-body-sm">
+                      Nenhum resultado para "{searchQuery}"
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-border-subtle">
+                      {searchResults.map((r) => (
+                        <button
+                          key={`${r.type}-${r.id}`}
+                          onClick={() => handleSelectResult(r.url)}
+                          className="w-full flex items-center gap-md p-md text-left hover:bg-surface-variant/40 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[20px] text-primary shrink-0">
+                            {SEARCH_TYPE_ICONS[r.type] || 'search'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-body-sm text-on-surface font-medium truncate">{r.title}</p>
+                            <p className="text-[12px] text-on-surface-variant truncate">{r.subtitle}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
 
         <div className="flex items-center gap-md">
@@ -299,7 +412,7 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content Container */}
-      <main className="lg:ml-64 mt-16 p-md lg:p-lg min-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+      <main className="lg:ml-64 mt-16 p-md lg:p-lg pb-28 lg:pb-28 min-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
         {children}
       </main>
 

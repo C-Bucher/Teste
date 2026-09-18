@@ -3,6 +3,8 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function Fornecedores() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -11,6 +13,9 @@ export default function Fornecedores() {
   if (isFuncionario) {
     return <Navigate to="/dashboard" />;
   }
+
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,14 +47,20 @@ export default function Fornecedores() {
   }, []);
 
   const handleDeactivate = async (id: string) => {
-    if (confirm('Deseja realmente desativar este fornecedor?')) {
-      try {
-        const res = await api.put(`/suppliers/${id}`, { is_active: false });
-        setSuppliers(suppliers.map((s: any) => s.id === id ? res.data : s));
-      } catch (err) {
-        console.error("Erro ao desativar", err);
-        alert('Erro ao desativar fornecedor');
-      }
+    const ok = await confirm({
+      title: 'Desativar fornecedor',
+      message: 'Deseja realmente desativar este fornecedor?',
+      confirmLabel: 'Desativar',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await api.put(`/suppliers/${id}`, { is_active: false });
+      setSuppliers(suppliers.map((s: any) => s.id === id ? res.data : s));
+      toast.success('Fornecedor desativado.');
+    } catch (err) {
+      console.error("Erro ao desativar", err);
+      toast.error('Erro ao desativar fornecedor.');
     }
   };
 
@@ -81,14 +92,16 @@ export default function Fornecedores() {
       if (editingSup) {
         const res = await api.put(`/suppliers/${editingSup.id}`, { ...formData });
         setSuppliers(suppliers.map((sup: any) => sup.id === editingSup.id ? res.data : sup));
+        toast.success('Fornecedor atualizado.');
       } else {
         const res = await api.post('/suppliers/', { ...formData });
         setSuppliers([...suppliers, res.data]);
+        toast.success('Fornecedor cadastrado.');
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error("Erro ao salvar", err);
-      alert('Erro ao salvar fornecedor');
+      toast.error('Erro ao salvar fornecedor.');
     }
   };
 

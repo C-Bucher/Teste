@@ -3,6 +3,7 @@ import api from '../api';
 import { motion } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
 
 interface ExportLog {
   id: string;
@@ -60,6 +61,7 @@ export default function Exportacao() {
     return <Navigate to="/dashboard" />;
   }
 
+  const toast = useToast();
   const [logs, setLogs] = useState<ExportLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
@@ -86,9 +88,10 @@ export default function Exportacao() {
     try {
       const res = await api.post('/exports/request', { type, format });
       setLogs((prev) => [res.data, ...prev]);
+      toast.success(`Relatório ${type} (${format}) gerado.`);
     } catch (err) {
       console.error('Erro ao solicitar exportação', err);
-      alert('Erro ao solicitar exportação');
+      toast.error('Erro ao solicitar exportação.');
     } finally {
       setRequesting(null);
     }
@@ -97,10 +100,10 @@ export default function Exportacao() {
   const handleDownload = async (id: string) => {
     try {
       const res = await api.get(`/exports/download/${id}`);
-      window.open(res.data.download_url);
+      window.open(res.data.download_url, '_blank');
     } catch (err) {
       console.error('Erro ao baixar exportação', err);
-      alert('Erro ao baixar exportação');
+      toast.error('Erro ao baixar exportação.');
     }
   };
 

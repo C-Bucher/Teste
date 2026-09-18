@@ -3,6 +3,8 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function GestaoEquipe() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -12,6 +14,9 @@ export default function GestaoEquipe() {
   if (isFuncionario) {
     return <Navigate to="/dashboard" />;
   }
+
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,14 +50,20 @@ export default function GestaoEquipe() {
   }, []);
 
   const handleTerminate = async (id: string) => {
-    if (confirm('Deseja realmente desligar este colaborador? O histórico será preservado.')) {
-      try {
-        const res = await api.post(`/employees/${id}/terminate`);
-        setEmployees(employees.map((e: any) => (e.id === id ? res.data : e)));
-      } catch (err) {
-        console.error('Erro ao desligar', err);
-        alert('Erro ao desligar colaborador');
-      }
+    const ok = await confirm({
+      title: 'Desligar colaborador',
+      message: 'Deseja realmente desligar este colaborador? O histórico será preservado.',
+      confirmLabel: 'Desligar',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      const res = await api.post(`/employees/${id}/terminate`);
+      setEmployees(employees.map((e: any) => (e.id === id ? res.data : e)));
+      toast.success('Colaborador desligado.');
+    } catch (err) {
+      console.error('Erro ao desligar', err);
+      toast.error('Erro ao desligar colaborador.');
     }
   };
 
@@ -62,7 +73,7 @@ export default function GestaoEquipe() {
       setHistoryModal({ open: true, items: res.data.items, employeeName: emp.full_name });
     } catch (err) {
       console.error('Erro ao carregar histórico', err);
-      alert('Erro ao carregar histórico salarial');
+      toast.error('Erro ao carregar histórico salarial.');
     }
   };
 
@@ -96,14 +107,16 @@ export default function GestaoEquipe() {
       if (editingEmp) {
         const res = await api.put(`/employees/${editingEmp.id}`, { ...formData, base_salary: Number(formData.base_salary) });
         setEmployees(employees.map((emp: any) => emp.id === editingEmp.id ? res.data : emp));
+        toast.success('Colaborador atualizado.');
       } else {
         const res = await api.post('/employees/', { ...formData, base_salary: Number(formData.base_salary), is_active: true });
         setEmployees([...employees, res.data]);
+        toast.success('Colaborador cadastrado.');
       }
       setIsModalOpen(false);
     } catch (err) {
       console.error("Erro ao salvar", err);
-      alert('Erro ao salvar funcionário');
+      toast.error('Erro ao salvar funcionário.');
     }
   };
 

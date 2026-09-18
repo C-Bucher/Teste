@@ -3,6 +3,7 @@ import api from '../api';
 import { motion } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
 
 // ---------------------------------------------------------------------------
 // M8-IA — three independent AI-consultant tools sharing one page: CFO Virtual
@@ -67,6 +68,7 @@ export default function IAEmpresarial() {
     return <Navigate to="/dashboard" />;
   }
 
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabId>('cfo-virtual');
 
   // CFO Virtual
@@ -91,7 +93,7 @@ export default function IAEmpresarial() {
       setCfoInsights(res.data.insights || []);
     } catch (err) {
       console.error('Erro ao gerar análise do CFO Virtual', err);
-      alert('Erro ao gerar análise');
+      toast.error('Erro ao gerar análise.');
     } finally {
       setCfoLoading(false);
     }
@@ -119,7 +121,7 @@ export default function IAEmpresarial() {
       setConciliationRows(results);
     } catch (err) {
       console.error('Erro ao conciliar transações', err);
-      alert('Erro ao processar arquivo de conciliação');
+      toast.error('Erro ao processar arquivo de conciliação.');
     } finally {
       setConciliationLoading(false);
       // Reset the input value so selecting the same file again re-triggers onChange.
@@ -142,7 +144,7 @@ export default function IAEmpresarial() {
       setProposal(res.data);
     } catch (err) {
       console.error('Erro ao gerar orçamento', err);
-      alert('Erro ao gerar orçamento');
+      toast.error('Erro ao gerar orçamento.');
     } finally {
       setProposalLoading(false);
     }
