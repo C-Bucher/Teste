@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
+import { clearPermissionsCache } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ChevronRight, Loader2, User, Shield, Briefcase } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
@@ -15,6 +16,8 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    localStorage.removeItem('company');
+    clearPermissionsCache();
     setLoading(true);
     setError('');
 

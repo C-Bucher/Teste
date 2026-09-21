@@ -3,6 +3,7 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import PermissionMatrix from '../components/PermissionMatrix';
@@ -47,13 +48,8 @@ const WEEKDAYS = [
   { value: 6, label: 'Sáb' },
 ];
 
-export default function Configuracoes() {
+function ConfiguracoesContent() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" />;
-  }
 
   const toast = useToast();
   const confirm = useConfirm();
@@ -664,4 +660,19 @@ export default function Configuracoes() {
       </AnimatePresence>
     </Layout>
   );
+}
+
+export default function Configuracoes() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('configuracoes')) return <Navigate to="/dashboard" />;
+  return <ConfiguracoesContent />;
 }

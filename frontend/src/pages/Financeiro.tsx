@@ -4,6 +4,7 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
 
 type Tab = 'lancamentos' | 'dre' | 'fluxo-caixa';
@@ -91,13 +92,8 @@ const EMPTY_ENTRY_FORM = {
   due_date: '',
 };
 
-export default function Financeiro() {
+function FinanceiroContent() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isFuncionario = user.role === 'FUNCIONARIO';
-
-  if (isFuncionario) {
-    return <Navigate to="/dashboard" />;
-  }
 
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -736,4 +732,19 @@ export default function Financeiro() {
       </AnimatePresence>
     </Layout>
   );
+}
+
+export default function Financeiro() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('financeiro')) return <Navigate to="/dashboard" />;
+  return <FinanceiroContent />;
 }

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AICfoDrawer from './AICfoDrawer';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import { usePermissions, clearPermissionsCache } from '../hooks/usePermissions';
 
 interface SearchResult {
   type: string;
@@ -74,24 +75,7 @@ export default function Layout({ children }: LayoutProps) {
     fetchUnreadCount();
   }, []);
 
-  const [allowedModules, setAllowedModules] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (user.role === 'ADMIN') {
-      setAllowedModules(['dashboard', 'kanban', 'equipe', 'financeiro', 'fornecedores', 'configuracoes', 'exportacao', 'ia']);
-      return;
-    }
-    const fetchPermissions = async () => {
-      try {
-        const res = await api.get('/permissions/mine');
-        setAllowedModules(res.data.modules);
-      } catch (err) {
-        console.error('Erro ao carregar permissões', err);
-        setAllowedModules(['dashboard', 'kanban']);
-      }
-    };
-    fetchPermissions();
-  }, []);
+  const { modules: allowedModules } = usePermissions();
 
   const openNotifPanel = async () => {
     setIsNotifPanelOpen(true);
@@ -127,6 +111,8 @@ export default function Layout({ children }: LayoutProps) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('company');
+    clearPermissionsCache();
     navigate('/');
   };
 
