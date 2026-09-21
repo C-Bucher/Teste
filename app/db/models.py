@@ -15,6 +15,8 @@ class CompanyModel(Base):
     address = Column(String(255), nullable=True)
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     fiscal_year_start = Column(Integer, default=1)
+    onboarding_completed = Column(Boolean, default=False)
+    permissions_customized = Column(Boolean, default=False)
 
     users = relationship("UserModel", back_populates="company")
     subscriptions = relationship("SubscriptionModel", back_populates="company")
@@ -349,3 +351,12 @@ class PersonalOkrModel(Base):
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
     objective = Column(String(255), nullable=True)
     key_results = Column(JSON, nullable=False, default=list)
+
+
+class RolePermissionModel(Base):
+    __tablename__ = "role_permissions"
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False)        # GERENTE | FUNCIONARIO (ADMIN nunca é gravado aqui)
+    module_key = Column(String(50), nullable=False)  # ver MODULES em app/core/permissions.py

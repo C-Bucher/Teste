@@ -164,6 +164,13 @@
   .custom-scrollbar::-webkit-scrollbar { width: 4px; }
   .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
   .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+  /* Soft fade at the top/bottom of a scrollable nav so a partially-visible
+     item reads as "scroll for more" instead of looking clipped. */
+  .nav-fade {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  }
   
   .text-gradient {
     background-clip: text;

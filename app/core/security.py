@@ -27,4 +27,5 @@ async def get_current_user(creds:HTTPAuthorizationCredentials=Depends(bearer), d
     result = await db.execute(select(UserModel).where(or_(UserModel.email == p.get("email", "").lower(), UserModel.id == p.get("sub"))))
     u = result.scalars().first()
     if not u: raise HTTPException(401,"Usuario nao encontrado")
+    if u.is_active is False: raise HTTPException(401,"Usuario inativo")
     return model_to_dict(u)

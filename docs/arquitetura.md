@@ -15,7 +15,7 @@ graph TD
     User([Usuário / Gestor PME]) -->|HTTPS / REST| Frontend[Frontend SPA\nReact 19 + Vite + Tailwind v4]
     Frontend -->|JSON / Bearer JWT| Backend[Backend API\nFastAPI Python Async]
     
-    Backend -->|Async ORM / Port 3306| MySQL[(Banco de Dados\nMySQL 8.0 - ~28 Tabelas)]
+    Backend -->|Async ORM / Port 3306| MySQL[(Banco de Dados\nMySQL 8.0 - 29 Tabelas)]
     Backend -->|Key-Value / Port 6379| Redis[(Cache / Filas\nRedis 7)]
     Backend -->|REST HTTPS / JSON| GeminiAPI[Google Gemini 2.5 Flash\nCFO Virtual IA]
 ```
@@ -45,9 +45,12 @@ graph TD
   - `ai.py`: Execução dos POPs de inteligência artificial (CFO Virtual, Conciliação, Orçamentos).
   - `personal.py`: Rotas de persistência de todos os 10 módulos do Hub Pessoal.
   - `exports.py`: Geração de relatórios e trilha de auditoria.
+  - `permissions.py`: Matriz de permissões por cargo (`GET/PUT /permissions/matrix`) e módulos do usuário logado (`GET /permissions/mine`).
+  - `system.py`: Status das integrações (`GET /system/integrations`).
+  - `company.py`: Dados da empresa e conclusão do onboarding (`POST /company/onboarding/complete`).
 
 ### 2.3 Banco de Dados & Persistência (MySQL 8.0)
-- Estrutura relacional normalizada com ~28 tabelas gerenciadas pelo SQLAlchemy.
+- Estrutura relacional normalizada com 29 tabelas gerenciadas pelo SQLAlchemy.
 - Mecanismo de integridade com chaves estrangeiras (`ON DELETE SET NULL` em relacionamentos não-críticos para evitar deleção em cascata acidental de lançamentos financeiros).
 - Pool assíncrono otimizado com `pool_pre_ping=True` e `pool_recycle=3600` para evitar conexões inativas ou expiradas no contêiner.
 - Rotina de **Seed Idempotente** (`app/db/seed.py`) que insere planos padrão, usuário administrador e dados iniciais sem duplicidade.
@@ -61,6 +64,7 @@ erDiagram
     COMPANIES ||--o{ USERS : possui
     COMPANIES ||--o{ SUBSCRIPTIONS : assina
     COMPANIES ||--o{ EMPLOYEES : contrata
+    COMPANIES ||--o{ ROLE_PERMISSIONS : configura
     PLANS ||--o{ SUBSCRIPTIONS : define
     
     USERS ||--o{ PERSONAL_ENTRIES : registra
@@ -82,6 +86,8 @@ erDiagram
 
 ## 4. Arquitetura do Módulo de IA (CFO Virtual & POPs)
 
+> **Estado atual:** a integração com o Gemini e a sanitização LGPD abaixo são o **desenho-alvo** (IA-1, SEC-2). Hoje o módulo responde por palavras-chave, sem chamada externa.
+
 O módulo de IA opera sob **Procedimentos Operacionais Padrão (POPs)** determinísticos antes e depois da chamada ao LLM:
 
 1. **Coleta e Agregação:** O backend extrai do MySQL o DRE do período selecionado e as 10 tarefas do Kanban com maior desvio de custo (*Cost-per-Task* vs Estimado).
@@ -99,7 +105,7 @@ O sistema é 100% contêinerizado e orquestrado via `docker-compose.yml`:
 | Serviço | Imagem / Build | Porta Interna | Porta Exposta | Função |
 |---|---|---|---|---|
 | `db` | `mysql:8.0` | 3306 | 3307 (host) | Persistência Relacional |
-| `redis` | `redis:7-alpine` | 6379 | 6379 (host) | Cache de Sessão e Filas |
+| `redis` | `redis:7-alpine` | 6379 | 6379 (host) | Provisionado; ainda não utilizado pela aplicação |
 | `backend` | `Dockerfile` (Python 3.11) | 8000 | 8000 | API FastAPI + SQLAlchemy |
 | `frontend` | `Dockerfile` (Node 20 / Nginx) | 5173 / 80 | 5173 | Single Page Application |
 
@@ -107,9 +113,20 @@ O sistema é 100% contêinerizado e orquestrado via `docker-compose.yml`:
 
 ## 6. Segurança e Conformidade
 
+### 6.0 Modelo de Autorização por Módulo
+A autorização combina **papel** e **módulo** (decisão em [ADR 004](decisoes/adr-004-permissoes-por-cargo-e-onboarding.md)):
+
+- **Módulos:** `dashboard`, `kanban`, `equipe`, `financeiro`, `fornecedores`, `configuracoes`, `exportacao`, `ia`.
+- **Fonte única:** `get_allowed_modules(user, db)` em `app/core/permissions.py`. `ADMIN` recebe todos os módulos; para os demais, valem as linhas de `role_permissions` (empresa × cargo × módulo) e, se a empresa ainda não personalizou (`permissions_customized = false`), o padrão do sistema (Gerente: tudo exceto `configuracoes`; Funcionário: `dashboard`, `kanban`); empresa personalizada sem linhas para o cargo = nenhum módulo.
+- **Aplicação no servidor:** dependência `require_module(chave)` — em nível de router para `employees`, `suppliers`, `financial`, `exports` e `ai` (em `app/api/v1/api.py`) e por endpoint nas rotas que alteram a empresa. Sem permissão → HTTP 403. `/search` filtra resultados por módulo.
+- **Aplicação no cliente:** hook `usePermissions` alimenta o menu (`Layout`) e as páginas, que redirecionam quem não tem o módulo. O cliente apenas reflete o servidor; nunca é a barreira.
+- **Usuários:** `is_active` é exigido em toda requisição; `GET/PUT /auth/users` são restritos ao Admin da mesma empresa, com papéis permitidos `GERENTE`/`FUNCIONARIO` e colunas protegidas (`password_hash`, `company_id`, `id`).
+
+**Limites conhecidos** (ver [BACKLOG](BACKLOG.md)): dados de negócio não são separados por empresa (MT-1); Hub Pessoal usa proprietário fixo em vez do usuário autenticado (MT-2); rotas de Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal sem gate por módulo (SEC-3).
+
 - **Gestão de Segredos:** Variáveis como `SECRET_KEY`, `DATABASE_URL` e `GEMINI_API_KEY` são injetadas estritamente via `.env` (ignorado no Git).
 - **Proteção de Senhas:** Hashing unidirecional com Bcrypt e salting automático.
-- **Autorização em Dois Eixos:** Filtro por plano (`plan_scope`: pessoal, empresarial, completo) e controle de permissões por papel (`ADMIN`, `GERENTE`, `FUNCIONARIO`).
+- **Autorização em Três Eixos:** filtro por plano (`plan_scope`), papel (`ADMIN`, `GERENTE`, `FUNCIONARIO`) e módulo liberado ao cargo (seção 6.0).
 - **Segurança de Rede:** Serviços de banco e cache isolados na rede interna do Docker (`techconnect-net`), expondo apenas portas estritamente necessárias.
 
 ---
@@ -120,3 +137,4 @@ As justificativas técnicas detalhadas e os trade-offs considerados pela equipe 
 - [ADR 001: Adoção do FastAPI, SQLAlchemy 2.0 Async e MySQL 8.0](decisoes/adr-001-stack-fastapi-mysql-sqlalchemy.md)
 - [ADR 002: Arquitetura de Hub Duplo com Controle por Plan Scope e RBAC](decisoes/adr-002-arquitetura-hub-duplo-plan-scope.md)
 - [ADR 003: Design System Obsidian Flow e Stack Frontend (React 19 + Tailwind v4)](decisoes/adr-003-design-system-obsidian-flow.md)
+- [ADR 004: Permissões por Cargo, Onboarding e Painel de Integrações](decisoes/adr-004-permissoes-por-cargo-e-onboarding.md)

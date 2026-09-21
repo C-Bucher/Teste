@@ -1,7 +1,5 @@
 # Swap SQLite → MySQL real + fechar pendências de segurança e MySQL-readiness
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
-
 **Goal:** Ligar o backend (já 100% migrado para SQLAlchemy async) ao MySQL 8 real via Docker Compose, corrigir a exposição de credenciais em texto puro no `docker-compose.yml`, e fechar os 3 achados de "MySQL-readiness" que a revisão final do plano de banco de dados deixou documentados para esta etapa (cascata de FK, `pool_recycle`, e-mail case-insensitive).
 
 **Architecture:** Nenhum model ou router muda de lógica — a troca de banco é só a `DATABASE_URL`, exatamente como desenhado desde o início. O trabalho real desta fase é: (1) configuração seesegura (variáveis de ambiente em `.env`, não versionado), (2) os 3 ajustes de robustez que só importam quando o banco é MySQL de verdade (SQLite não força FK nem tem os mesmos limites de conexão/collation).

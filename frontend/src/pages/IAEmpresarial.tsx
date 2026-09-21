@@ -3,6 +3,8 @@ import api from '../api';
 import { motion } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
+import { useToast } from '../context/ToastContext';
 
 // ---------------------------------------------------------------------------
 // M8-IA — three independent AI-consultant tools sharing one page: CFO Virtual
@@ -59,14 +61,8 @@ const CFO_INSIGHT_CONFIG: Record<
   ALERTA: { label: 'Alerta', icon: 'warning', badge: 'bg-error/10 text-error', border: 'border-l-error' },
 };
 
-export default function IAEmpresarial() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isFuncionario = user.role === 'FUNCIONARIO';
-
-  if (isFuncionario) {
-    return <Navigate to="/dashboard" />;
-  }
-
+function IAEmpresarialContent() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabId>('cfo-virtual');
 
   // CFO Virtual
@@ -91,7 +87,7 @@ export default function IAEmpresarial() {
       setCfoInsights(res.data.insights || []);
     } catch (err) {
       console.error('Erro ao gerar análise do CFO Virtual', err);
-      alert('Erro ao gerar análise');
+      toast.error('Erro ao gerar análise.');
     } finally {
       setCfoLoading(false);
     }
@@ -119,7 +115,7 @@ export default function IAEmpresarial() {
       setConciliationRows(results);
     } catch (err) {
       console.error('Erro ao conciliar transações', err);
-      alert('Erro ao processar arquivo de conciliação');
+      toast.error('Erro ao processar arquivo de conciliação.');
     } finally {
       setConciliationLoading(false);
       // Reset the input value so selecting the same file again re-triggers onChange.
@@ -142,7 +138,7 @@ export default function IAEmpresarial() {
       setProposal(res.data);
     } catch (err) {
       console.error('Erro ao gerar orçamento', err);
-      alert('Erro ao gerar orçamento');
+      toast.error('Erro ao gerar orçamento.');
     } finally {
       setProposalLoading(false);
     }
@@ -549,4 +545,19 @@ export default function IAEmpresarial() {
       })()}
     </Layout>
   );
+}
+
+export default function IAEmpresarial() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('ia')) return <Navigate to="/dashboard" />;
+  return <IAEmpresarialContent />;
 }

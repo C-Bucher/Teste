@@ -1,21 +1,10 @@
-# Sistemas operacionais
-.DS_Store
-Thumbs.db
-Desktop.ini
-
-# Editores
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Ambiente local
+# Variáveis de ambiente — NUNCA commitar
 .env
 .env.*
 !.env.example
 *.local
 
-# Dependências e builds comuns
+# Dependências e artefatos de build
 node_modules/
 vendor/
 dist/
@@ -24,20 +13,48 @@ target/
 out/
 bin/
 obj/
+frontend/dist/
+backend/dist/
 
 # Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 .pytest_cache/
 .venv/
 venv/
 
+# Banco de dados local (SQLite) — gerado pelo seed, nunca versionar
+*.db
+
+# Uploads de usuários
+uploads/
+
 # Logs e temporários
 *.log
+logs/
 tmp/
 temp/
+scratch/
 
-# Arquivos sensíveis
+# Chaves e certificados
 *.key
 *.pem
 *.p12
 *.pfx
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Docker volumes locais
+mysql_data/
+redis_data/

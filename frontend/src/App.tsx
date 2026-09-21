@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Plans from './pages/Plans';
@@ -13,10 +13,20 @@ import Financeiro from './pages/Financeiro';
 import HubPessoal from './pages/HubPessoal';
 import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
+import Onboarding from './pages/Onboarding';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/" />;
+  const location = useLocation();
+  if (!token) return <Navigate to="/" />;
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const company = JSON.parse(localStorage.getItem('company') || '{}');
+  if (user.role === 'ADMIN' && company.onboarding_completed === false && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -28,6 +38,7 @@ function App() {
         <Route path="/planos" element={<Plans />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
         <Route path="/kanban" element={<PrivateRoute><Kanban /></PrivateRoute>} />
         <Route path="/equipe" element={<PrivateRoute><GestaoEquipe /></PrivateRoute>} />
         <Route path="/configuracoes" element={<PrivateRoute><Configuracoes /></PrivateRoute>} />

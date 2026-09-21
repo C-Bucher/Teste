@@ -10,6 +10,7 @@ Esta pasta concentra os planejamentos, acompanhamentos e relatórios de encerram
 |---|---|---|---|
 | [Sprint 00](sprint-00-planejamento.md) | Planejamento, Concepção e Arquitetura | Inicial | Concluída |
 | [Sprint 01](sprint-01.md) | MVP Frontend, Hub Duplo, Backend FastAPI & MySQL Real | Agosto / 2026 | Concluída |
+| [Sprint 02](sprint-02.md) | Permissões por Cargo, Onboarding e Consolidação do Repositório | Setembro / 2026 | Em revisão |
 
 ---
 

@@ -20,3 +20,7 @@ Implementou-se a arquitetura de **Hub Duplo** (Hub Empresarial e Hub Pessoal), g
 ## Consequências
 - **Positivas:** Modelo de negócio flexível, experiência de usuário fluida e segregação lógica estrita entre dados PJ e PF.
 - **Atenção:** Necessidade de garantir que rotas de API filtrem estritamente os dados pelo `owner_id` do token JWT para evitar vazamento entre usuários.
+
+## Atualização (2026-09-21)
+- O eixo de papéis passou a ser refinado por **módulos liberados por cargo** — ver [ADR 004](adr-004-permissoes-por-cargo-e-onboarding.md).
+- **Isolamento do Hub Pessoal ainda não cumprido:** as tabelas têm `owner_id`, mas `personal.py` usa um proprietário fixo (`usr-001`) em vez do usuário do token; hoje todos os usuários veem os mesmos dados pessoais. Pendência registrada como **MT-2** no [BACKLOG](../BACKLOG.md). O aviso de "Atenção" acima é, portanto, uma pendência aberta, não uma garantia já entregue.

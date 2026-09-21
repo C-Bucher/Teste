@@ -9,7 +9,7 @@ from sqlalchemy import select, or_, func
 
 from app.core.security import create_token, decode_token, get_current_user, bearer
 from app.db.session import get_db
-from app.db.models import UserModel
+from app.db.models import UserModel, CompanyModel
 from app.db.utils import model_to_dict
 from app.api.v1.endpoints.plans import PLANS_DB
 
@@ -28,12 +28,22 @@ class RegisterReq(BaseModel):
     cnpj_cpf: Optional[str] = None
     selected_plan: Optional[str] = "plan-empresarial"
 
+class CreateUserReq(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    role: str
+
 @router.post("/register")
 async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     email = b.email.strip().lower()
     existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
+
+    company_count = (await db.execute(select(func.count()).select_from(CompanyModel))).scalar() or 0
+    company_id = f"cmp-{company_count + 1:03d}"
+    db.add(CompanyModel(id=company_id, name=b.company_name or "Minha Empresa"))
 
     user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
     user_id = f"usr-{user_count + 1:03d}"
@@ -44,6 +54,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
 
     new_user = UserModel(
         id=user_id,
+        company_id=company_id,
         email=email,
         full_name=b.full_name,
         role="ADMIN",
@@ -76,6 +87,8 @@ async def login(b: LoginReq, db: AsyncSession = Depends(get_db)):
     u = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if not u or not bcrypt.checkpw(b.password.encode(), u.password_hash.encode()):
         raise HTTPException(401, "Credenciais invalidas")
+    if u.is_active is False:
+        raise HTTPException(401, "Usuario inativo")
     user_dict = model_to_dict(u)
     tok = create_token(user_dict)
     return {"access_token": tok, "refresh_token": tok, "token_type": "bearer", "user": {k: v for k, v in user_dict.items() if k != "password_hash"}}
@@ -104,15 +117,56 @@ async def refresh(b: RefreshReq = RefreshReq(), creds: HTTPAuthorizationCredenti
 
 @router.get("/users")
 async def get_auth_users(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    users = (await db.execute(select(UserModel))).scalars().all()
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem listar os acessos")
+    users = (await db.execute(select(UserModel).where(UserModel.company_id == u["company_id"]))).scalars().all()
     return [{k: v for k, v in model_to_dict(x).items() if k != "password_hash"} for x in users]
+
+@router.post("/users")
+async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem criar novos acessos")
+    if b.role not in ("GERENTE", "FUNCIONARIO"):
+        raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
+
+    email = b.email.strip().lower()
+    existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
+
+    user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
+    new_id = f"usr-{user_count + 1:03d}"
+    pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
+
+    new_user = UserModel(
+        id=new_id,
+        company_id=u["company_id"],
+        email=email,
+        full_name=b.full_name,
+        role=b.role,
+        plan_scope="empresarial",
+        password_hash=pwd_hash,
+        is_active=True,
+        mfa_enabled=False,
+    )
+    db.add(new_user)
+    await db.commit()
+    await db.refresh(new_user)
+    return {k: v for k, v in model_to_dict(new_user).items() if k != "password_hash"}
+
+_UPD_USER_BLOCKED_COLUMNS = {"password_hash", "company_id", "id"}
 
 @router.put("/users/{uid}")
 async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem editar acessos")
     usr = await db.get(UserModel, uid)
-    if not usr: raise HTTPException(404)
+    if not usr or usr.company_id != u["company_id"]:
+        raise HTTPException(404)
+    if "role" in d and d["role"] != usr.role and d["role"] not in ("GERENTE", "FUNCIONARIO"):
+        raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
     for k, v in d.items():
-        if k in _USER_COLUMNS and k != "password_hash":
+        if k in _USER_COLUMNS and k not in _UPD_USER_BLOCKED_COLUMNS:
             setattr(usr, k, v.strip().lower() if k == "email" and isinstance(v, str) else v)
     await db.commit()
     await db.refresh(usr)

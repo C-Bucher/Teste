@@ -30,7 +30,7 @@ Isso **não estava no Escopo/ERS original** e precisa virar um requisito documen
 | **Gestão de Equipe** | CRUD de funcionários, cálculo de CTC (Custo Total ao Colaborador), histórico salarial, ação de desligamento | |
 | **Financeiro** | Lançamentos financeiros, DRE (Demonstrativo de Resultado), fluxo de caixa projetado D+90 | |
 | **Fornecedores** | Cadastro e gestão de fornecedores | |
-| **Configurações** | Dados da empresa — acesso restrito a Admin | |
+| **Configurações** | Dados da empresa, plano de contas, centros de custo, calendário, hierarquia de cargos e conexões de API — acesso restrito a Admin por padrão | Ver seção 10 |
 | **Notificações** | Sino de notificações com painel, no cabeçalho | |
 | **Exportação** | Geração e histórico de relatórios exportados | |
 | **IA Empresarial** | CFO Virtual, Conciliação Bancária, Gerador de Orçamentos | **Ainda é um mock por palavra-chave, não uma integração real com IA generativa** — ver seção 9 |
@@ -75,7 +75,7 @@ O Hub Pessoal cresceu muito além do que a documentação original previa. Módu
 Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era simulada em listas/dicionários Python na memória do processo** — ou seja, qualquer reinício do servidor apagava tudo. Isso foi substituído por um banco de dados relacional real.
 
 - **SQLAlchemy 2.0 assíncrono** como camada de ORM.
-- **~28 tabelas** modelando todas as entidades do sistema (usuários, funcionários, fornecedores, lançamentos financeiros, projetos/kanban, notificações, módulos do Hub Pessoal, etc.).
+- **29 tabelas** modelando todas as entidades do sistema (usuários, funcionários, fornecedores, lançamentos financeiros, projetos/kanban, notificações, módulos do Hub Pessoal, etc.).
 - **Seed idempotente**: os dados de demonstração (3 usuários de teste, funcionários, projetos etc.) são inseridos automaticamente na primeira execução, e nunca duplicados em execuções seguintes.
 - **13 routers da API migrados** de leitura/escrita em memória para consultas reais ao banco, mantendo exatamente os mesmos contratos de resposta (nenhuma mudança perceptível pro front-end).
 - Autenticação (login/JWT) também migrada — usuários cadastrados agora persistem de verdade.
@@ -107,8 +107,9 @@ Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era
 
 ## 8. Repositório e versionamento
 
-- Projeto publicado no GitHub em `github.com/gabrielsalles-bit/TechConnect2.0`, branch `main` atualizada com todo o histórico de desenvolvimento.
-- `README.md` reescrito para refletir o estado atual: banco de dados real, passo de configuração de `.env`, modelo de planos, estrutura de pastas atualizada.
+- O código passa a viver no repositório institucional do curso (GitHub da organização CAMPUSCEUB, "ADS – Dashboard para Gestão Operacional"); o repositório pessoal usado no início do desenvolvimento deixa de ser a referência.
+- `README.md` mantido em sincronia com o código: banco real (MySQL no Docker, SQLite na execução manual), passo de configuração de `.env`, modelo de planos, permissões por cargo, onboarding, estrutura de pastas e limitações conhecidas.
+- `docs/BACKLOG.md` é o backlog oficial; `docs/planejamento/` guarda as especificações e os planos de cada fase como registro histórico do processo.
 
 ---
 
@@ -116,16 +117,37 @@ Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era
 
 Importante ser honesto sobre isso na entrega — são lacunas reais, conhecidas, não escondidas:
 
-- **Controle de acesso (RBAC)** hoje só existe em nível de navegação/interface (o menu muda por papel), **não é reforçado em cada endpoint da API** — um usuário com token válido poderia, tecnicamente, chamar uma rota que a interface esconde dele.
 - **Autenticação de dois fatores (2FA)**: não implementada.
 - **IA (CFO Virtual, CFO Pessoal, etc.)**: hoje é um mock que reage a palavras-chave, **não uma integração real com um modelo de IA generativa** (apesar de já existir uma `GEMINI_API_KEY` configurada na infraestrutura, pronta para quando essa integração for feita).
 - **Auditoria e conformidade com LGPD**: não implementada.
-- Histórico antigo do Git (antes da limpeza de segurança) só foi reescrito localmente — se este repositório já tinha sido clonado por outra pessoa em algum outro lugar antes desta limpeza, aquela cópia ainda teria as credenciais antigas.
+- **Credenciais antigas**: a chave da API de IA e a chave JWT que estiveram hardcoded no início do projeto foram removidas de todo o histórico publicado agora, mas precisam ser **revogadas/rotacionadas** nos respectivos serviços, pois chegaram a ficar em repositório público anterior.
+
+---
+
+---
+
+## 10. Hierarquia de cargos, painel de conexões e onboarding (entregue, com limites)
+
+Trabalho de 08/09 a 21/09 que fechou a lacuna de RBAC da seção 9 (removida daquela lista). Entregue e verificado de ponta a ponta no navegador.
+
+- **Permissões por cargo configuráveis**: tabela `role_permissions` (empresa × cargo × módulo) no lugar do controle fixo no código do frontend. Admin tem sempre acesso total; Gerente e Funcionário têm um conjunto configurável em *Configurações → Hierarquia de Cargos*. Empresas que ainda não salvaram uma matriz usam os padrões (Gerente: 7 módulos; Funcionário: Dashboard e Projetos); uma matriz salva prevalece, inclusive vazia.
+- **Bloqueio real no backend e nas páginas**: equipe, fornecedores, financeiro, exportação, IA e as rotas de configuração que alteram dados retornam **403** sem permissão; as páginas do frontend são protegidas pelo módulo concedido (conceder e revogar funcionam); a busca global só devolve resultados dos módulos permitidos.
+- **Painel de conexões de API** (Configurações): testa de verdade o banco de dados e informa se a chave da IA está configurada, sem editar credenciais pela interface. O `/health` deixou de afirmar um Redis que a aplicação nunca usou.
+- **Onboarding guiado**: assistente de 3 passos (empresa → cargos → conexões) no primeiro login do Admin de cada empresa nova; a empresa de demonstração já nasce configurada.
+- **Criação de logins**: o Admin cria Gerentes/Funcionários em *Gestão de Equipe → Acessos ao Sistema* (antes só existia cadastro de Admin).
+- **Correções de segurança encontradas no caminho**: o cadastro nunca criava a empresa no banco (todas colidiam na mesma linha); `GET/PUT /auth/users` não tinham autorização — qualquer usuário podia se promover a ADMIN ou alterar usuários de outras empresas — e agora são restritos ao Admin da própria empresa, com lista de cargos permitidos; usuários desativados agora perdem o acesso; `techconnect.db` saiu do controle de versão.
+
+**Limites que a documentação formal deve registrar honestamente** (detalhes no [BACKLOG](BACKLOG.md)):
+- **MT-1**: só empresas, usuários e permissões são isolados por empresa; funcionários, financeiro, Kanban, clientes, fornecedores, notificações e exportações são um conjunto único compartilhado — uma empresa nova vê os dados da demonstração.
+- **SEC-3**: Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal não têm gate por módulo; as permissões Dashboard/Projetos afetam só o menu.
+- **SEC-4/QA-1**: sem política de senha nem limite de tentativas de login; nenhum teste automatizado (toda verificação foi manual).
+
+**Onde impacta**: ERS (requisito funcional de controle de acesso configurável e de onboarding; requisitos não-funcionais de segurança); Escopo (a promessa de multiempresa deve ser descrita como "em evolução" enquanto MT-1 estiver aberto); DAS (diagrama de autorização: `role_permissions` + `require_module`).
 
 ---
 
 ## Sugestão de como dividir a atualização entre Escopo / ERS / DAS
 
 - **Escopo**: seção 1 (modelo de planos/contas) é a mudança mais estrutural — precisa entrar como novo requisito de negócio. Seções 2 e 3 (lista de módulos) confirmam/expandem o que já estava previsto.
-- **ERS**: requisitos funcionais detalhados de cada módulo das seções 2 e 3, mais os requisitos não-funcionais de segurança (seção 7) e as lacunas da seção 9 (documentar como "fora do escopo desta entrega" é tão importante quanto documentar o que foi feito).
+- **ERS**: requisitos funcionais detalhados de cada módulo das seções 2 e 3, mais os requisitos não-funcionais de segurança (seção 7) e controle de acesso configurável (seção 10), e as lacunas restantes da seção 9 (documentar como "fora do escopo desta entrega" é tão importante quanto documentar o que foi feito).
 - **DAS**: arquitetura de persistência (seção 5), diagrama de implantação com os 4 containers Docker + MySQL (seção 6), e menção ao sistema de design de front-end (seção 4).

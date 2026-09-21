@@ -4,6 +4,8 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
+import { useToast } from '../context/ToastContext';
 
 type Tab = 'lancamentos' | 'dre' | 'fluxo-caixa';
 
@@ -90,14 +92,8 @@ const EMPTY_ENTRY_FORM = {
   due_date: '',
 };
 
-export default function Financeiro() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isFuncionario = user.role === 'FUNCIONARIO';
-
-  if (isFuncionario) {
-    return <Navigate to="/dashboard" />;
-  }
-
+function FinanceiroContent() {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && ['lancamentos', 'dre', 'fluxo-caixa'].includes(tabFromUrl) ? tabFromUrl : 'lancamentos');
@@ -214,6 +210,7 @@ export default function Financeiro() {
         due_date: entryForm.due_date,
       });
       setIsModalOpen(false);
+      toast.success('Lançamento criado com sucesso.');
       if (page !== 1) {
         setPage(1);
       } else {
@@ -221,7 +218,7 @@ export default function Financeiro() {
       }
     } catch (err) {
       console.error('Erro ao criar lançamento', err);
-      alert('Erro ao criar lançamento');
+      toast.error('Erro ao criar lançamento.');
     } finally {
       setSaving(false);
     }
@@ -232,9 +229,10 @@ export default function Financeiro() {
     try {
       const res = await api.post(`/financial/entries/${id}/pay`);
       setEntries((prev) => prev.map((en) => (en.id === id ? res.data : en)));
+      toast.success('Lançamento marcado como pago.');
     } catch (err) {
       console.error('Erro ao marcar como pago', err);
-      alert('Erro ao marcar lançamento como pago');
+      toast.error('Erro ao marcar lançamento como pago.');
     } finally {
       setPayingId(null);
     }
@@ -322,7 +320,8 @@ export default function Financeiro() {
 
           {/* Table */}
           <div className="glass-panel bg-surface/60 border border-border-subtle rounded-xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full min-w-[820px] text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container-highest/30 border-b border-border-subtle">
                   <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Descrição</th>
@@ -403,6 +402,7 @@ export default function Financeiro() {
                 )}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
             {!entriesLoading && entries.length > 0 && (
@@ -730,4 +730,19 @@ export default function Financeiro() {
       </AnimatePresence>
     </Layout>
   );
+}
+
+export default function Financeiro() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('financeiro')) return <Navigate to="/dashboard" />;
+  return <FinanceiroContent />;
 }

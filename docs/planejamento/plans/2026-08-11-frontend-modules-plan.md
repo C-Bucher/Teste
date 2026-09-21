@@ -1,7 +1,5 @@
 # Expansão do Frontend TechConnect v2.0 — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Construir todas as telas/funcionalidades de frontend que faltam para cobrir os 10 módulos da ERS v2.0.1 (M0 expandido, M1–M8-IA), mais o modelo de conta por plano (Pessoal/Empresarial/Completo), consumindo endpoints mock do FastAPI já existentes ou adicionados neste plano.
 
 **Architecture:** React 19 + Vite + Tailwind v4 ("Obsidian Flow" — glass-card, tokens de `index.css`), React Router v7, Axios (`frontend/src/api.ts`), Framer Motion para transições, Recharts para gráficos, Lucide + Material Symbols para ícones. Backend: FastAPI com dados em memória (`app/db/database.py`), sem persistência real (fora de escopo). Cada página nova segue exatamente o padrão já estabelecido em `GestaoEquipe.tsx` (CRUD lista/cartão + modal), `Kanban.tsx` (board) e `Dashboard.tsx` (KPIs/gráficos).
@@ -14,7 +12,7 @@
 - Seguir o design system existente: classes `glass-card`, `font-headline-*`, `text-on-surface*`, `bg-surface-container-*`, espaçamento `p-{xs,sm,md,lg,xl}` — nunca introduzir valores de cor/espaçamento fora dos tokens definidos em `frontend/src/index.css`.
 - Toda página autenticada é envolvida por `<Layout>` (`frontend/src/components/Layout.tsx`), igual a `Dashboard.tsx`/`Kanban.tsx`/`GestaoEquipe.tsx`.
 - Toda chamada de API usa a instância `api` de `frontend/src/api.ts` (injeta o Bearer token automaticamente) — nunca `fetch` ou `axios` direto.
-- Não existe test runner configurado no frontend (`package.json` não tem Jest/Vitest apesar de o DAS mencionar) nem no backend (`requirements.txt` não tem pytest). Por isso, os passos de verificação deste plano usam checagem manual no navegador (via `mcp__Claude_Browser__*`) em vez de testes automatizados — cada task tem um checklist de verificação explícito no lugar do ciclo de teste tradicional. Isso é uma adaptação deliberada à realidade do código-base atual, não um placeholder.
+- Não existe test runner configurado no frontend (`package.json` não tem Jest/Vitest apesar de o DAS mencionar) nem no backend (`requirements.txt` não tem pytest). Por isso, os passos de verificação deste plano usam checagem manual no navegador em vez de testes automatizados — cada task tem um checklist de verificação explícito no lugar do ciclo de teste tradicional. Isso é uma adaptação deliberada à realidade do código-base atual, não um placeholder.
 - Fora de escopo (não tocar): persistência MySQL real, RBAC de fato aplicado no backend, 2FA/TOTP, chamadas reais à API Gemini, tabelas de auditoria append-only, correção da chave exposta em `docker-compose.yml`, atualização da Declaração de Escopo/ERS.
 - Backend continua rodando via `uvicorn app.main:app --reload --port 8000` (ou Docker Compose); frontend via `npm run dev` em `frontend/`. Ambos já sobem sem configuração adicional.
 - O diretório do projeto não é um repositório git nesta fase — por isso nenhuma task abaixo termina com passo de commit. Se isso mudar antes da execução, cada task deve ganhar um commit próprio ao final (`git add <arquivos da task> && git commit -m "..."`).
@@ -1175,8 +1173,8 @@ Acessar `/cadastro`, preencher o passo 1, avançar para o passo 2 e confirmar qu
 
 - [ ] **Step 1: Percorrer o sistema com os 3 usuários de teste**
 
-Com backend e frontend rodando, usando o navegador integrado (`mcp__Claude_Browser__*`):
-- Login `admin@techconnect.com.br` / `Admin@123`: percorrer todas as rotas novas (`/configuracoes`, `/fornecedores`, `/financeiro`, `/pessoal`, `/exportacao`, `/ia`), confirmar zero erros no console (`mcp__Claude_Browser__read_console_messages` com `onlyErrors: true`).
+Com backend e frontend rodando, usando o navegador:
+- Login `admin@techconnect.com.br` / `Admin@123`: percorrer todas as rotas novas (`/configuracoes`, `/fornecedores`, `/financeiro`, `/pessoal`, `/exportacao`, `/ia`), confirmar zero erros no console (console do navegador, filtrando só erros).
 - Login `gerente@techconnect.com.br` / `Gerente@123`: confirmar que "Configurações" não aparece no menu (só Admin), mas o restante sim.
 - Login `funcionario@techconnect.com.br` / `Func@123`: confirmar que "Equipe", "Financeiro", "Fornecedores", "Configurações", "Exportação", "IA Empresarial" não aparecem no menu (papel `FUNCIONARIO`), mas "Dashboard", "Projetos", "Hub Pessoal" sim.
 
