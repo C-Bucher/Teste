@@ -1174,7 +1174,7 @@ Acessar `/cadastro`, preencher o passo 1, avançar para o passo 2 e confirmar qu
 - [ ] **Step 1: Percorrer o sistema com os 3 usuários de teste**
 
 Com backend e frontend rodando, usando o navegador:
-- Login `admin@techconnect.com.br` / `Admin@123`: percorrer todas as rotas novas (`/configuracoes`, `/fornecedores`, `/financeiro`, `/pessoal`, `/exportacao`, `/ia`), confirmar zero erros no console (`mcp__Claude_Browser__read_console_messages` com `onlyErrors: true`).
+- Login `admin@techconnect.com.br` / `Admin@123`: percorrer todas as rotas novas (`/configuracoes`, `/fornecedores`, `/financeiro`, `/pessoal`, `/exportacao`, `/ia`), confirmar zero erros no console (console do navegador, filtrando só erros).
 - Login `gerente@techconnect.com.br` / `Gerente@123`: confirmar que "Configurações" não aparece no menu (só Admin), mas o restante sim.
 - Login `funcionario@techconnect.com.br` / `Func@123`: confirmar que "Equipe", "Financeiro", "Fornecedores", "Configurações", "Exportação", "IA Empresarial" não aparecem no menu (papel `FUNCIONARIO`), mas "Dashboard", "Projetos", "Hub Pessoal" sim.
 
