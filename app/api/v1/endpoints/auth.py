@@ -87,6 +87,8 @@ async def login(b: LoginReq, db: AsyncSession = Depends(get_db)):
     u = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if not u or not bcrypt.checkpw(b.password.encode(), u.password_hash.encode()):
         raise HTTPException(401, "Credenciais invalidas")
+    if u.is_active is False:
+        raise HTTPException(401, "Usuario inativo")
     user_dict = model_to_dict(u)
     tok = create_token(user_dict)
     return {"access_token": tok, "refresh_token": tok, "token_type": "bearer", "user": {k: v for k, v in user_dict.items() if k != "password_hash"}}

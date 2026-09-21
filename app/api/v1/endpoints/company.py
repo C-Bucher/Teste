@@ -17,13 +17,8 @@ _CC_COLUMNS = {c.name for c in CostCenterModel.__table__.columns}
 _CAT_COLUMNS = {c.name for c in CategoryModel.__table__.columns}
 
 
-async def _get_company(db: AsyncSession, company_id: str | None) -> CompanyModel:
-    if company_id:
-        company = await db.get(CompanyModel, company_id)
-        if company:
-            return company
-    result = await db.execute(select(CompanyModel).limit(1))
-    return result.scalars().first()
+async def _get_company(db: AsyncSession, company_id: str | None) -> CompanyModel | None:
+    return await db.get(CompanyModel, company_id) if company_id else None
 
 
 @router.get("/")
