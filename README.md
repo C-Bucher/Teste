@@ -12,7 +12,7 @@ TechConnect 2.0 é a evolução da plataforma financeira inteligente, projetada 
 - **Controle de Acesso por Papel configurável**: três cargos (Admin, Gerente, Funcionário); o Admin escolhe em *Configurações → Hierarquia de Cargos* quais módulos cada cargo acessa, e o bloqueio vale de verdade no servidor (resposta 403), não só no menu.
 - **Onboarding guiado**: no primeiro login, o Admin de uma empresa nova passa por um assistente de 3 passos (dados da empresa → hierarquia de cargos → conexões de API).
 - **Painel de Conexões de API**: mostra em tempo real se o banco de dados está online e se a chave da IA está configurada.
-- **Persistência real**: todo o backend roda sobre um banco de dados MySQL de verdade (via SQLAlchemy async), não mais dados em memória.
+- **Persistência real**: o backend roda sobre um banco relacional de verdade via SQLAlchemy async — MySQL no Docker Compose, SQLite local na execução manual — e não mais sobre dados em memória.
 
 ## 🛠 Tecnologias Utilizadas
 
@@ -27,10 +27,10 @@ TechConnect 2.0 é a evolução da plataforma financeira inteligente, projetada 
 
 ### Backend
 - **FastAPI (Python)**: Construído com pydantic, garantindo extrema rapidez.
-- **SQLAlchemy 2.0 (async)**: ORM assíncrono sobre o banco real, com seed idempotente dos dados de demonstração.
+- **SQLAlchemy 2.0 (async)**: ORM assíncrono sobre o banco real (29 tabelas), com seed idempotente dos dados de demonstração.
 - **Uvicorn**: Servidor ASGI leve para rodar o backend.
 - **MySQL 8.0**: Banco de dados relacional real (via Docker).
-- **Redis 7**: Cache e filas (via Docker).
+- **Redis 7**: provisionado no Docker Compose, **ainda não utilizado** pela aplicação (reservado para cache/filas futuros).
 
 ### Infraestrutura
 - **Docker & Docker Compose**: Orquestração dos 4 containers (DB, Redis, Backend, Frontend).
@@ -75,7 +75,7 @@ docker-compose down
 
 ### Opção 2 — Execução Manual
 
-> Fora do Docker Compose, as variáveis do `.env` não são carregadas automaticamente. Exporte-as manualmente no terminal antes de subir o backend (ou rode `sqlite+aiosqlite:///./techconnect.db` como `DATABASE_URL` para testar rápido em SQLite local, sem MySQL).
+> Sem Docker, o backend usa por padrão um **SQLite local** (`techconnect.db`, criado e populado automaticamente na primeira execução) — não precisa de MySQL nem de `.env` para rodar. Para apontar para outro banco, exporte `DATABASE_URL` no terminal; o `.env` só é carregado automaticamente pelo Docker Compose.
 
 #### 1. Rodando o Backend (FastAPI)
 Abra um terminal na pasta raiz do projeto:
@@ -137,25 +137,33 @@ O padrão vale até o Admin salvar uma matriz própria em *Configurações → H
 
 ```
 TechConnect2.0/
-├── app/                    # Backend FastAPI
-│   ├── api/v1/endpoints/   # Rotas da API (auth, financial, kanban, employees, personal...)
-│   ├── core/               # Segurança (JWT) e configurações
-│   └── db/                 # Banco de dados real (SQLAlchemy async)
-│       ├── models.py       # ~28 tabelas
-│       ├── session.py      # Engine/sessão async (MySQL, DATABASE_URL via .env)
-│       ├── seed.py         # Seed idempotente dos dados de demonstração
-│       └── utils.py        # Helpers de serialização
-├── frontend/               # Frontend React + Vite
+├── app/                        # Backend FastAPI
+│   ├── api/v1/endpoints/       # Rotas (auth, company, permissions, system, financial, kanban, employees, personal...)
+│   ├── core/                   # Segurança (JWT), configuração e permissões por módulo (permissions.py)
+│   └── db/                     # Banco real (SQLAlchemy async)
+│       ├── models.py           # 29 tabelas
+│       ├── session.py          # Engine/sessão async (SQLite por padrão; MySQL via DATABASE_URL)
+│       ├── seed.py             # Seed idempotente dos dados de demonstração
+│       └── utils.py            # Helpers de serialização
+├── frontend/                   # Frontend React + Vite
 │   └── src/
-│       ├── components/     # Componentes reutilizáveis (Layout com toggle Empresarial/Pessoal)
-│       └── pages/          # Páginas do Hub Empresarial e do Hub Pessoal
-├── architecture/           # POPs de IA (CFO Virtual, Conciliação, Orçamentos)
-├── docs/                   # Documentação do projeto (Escopo, ERS, DAS, planos de desenvolvimento)
-├── docker-compose.yml      # Orquestração Docker (MySQL, Redis, Backend, Frontend)
-├── Dockerfile              # Imagem do backend
-├── .env.example            # Modelo de variáveis de ambiente (sem segredos reais)
-└── requirements.txt        # Dependências Python
+│       ├── components/         # Layout, PermissionMatrix, IntegrationsStatus, SystemAccessSection, modais
+│       ├── context/            # Toasts e confirmação (ToastContext, ConfirmContext)
+│       ├── hooks/              # usePermissions (módulos liberados ao usuário)
+│       └── pages/              # Hub Empresarial, Hub Pessoal, Configurações, Onboarding, Login/Cadastro
+├── architecture/               # POPs de IA (CFO Virtual, Conciliação, Orçamentos)
+├── docs/                       # BACKLOG, registro de alterações e planos/specs de desenvolvimento
+├── docker-compose.yml          # Orquestração Docker (MySQL, Redis, Backend, Frontend)
+├── Dockerfile                  # Imagem do backend
+├── main.py                     # Atalho para subir o backend (uvicorn)
+├── .env.example                # Modelo de variáveis de ambiente (sem segredos reais)
+└── requirements.txt            # Dependências Python
 ```
+
+## 📚 Documentação
+- [docs/BACKLOG.md](docs/BACKLOG.md) — backlog priorizado (P0–P3), com o estado real de cada item e as limitações conhecidas.
+- [docs/registro-de-alteracoes-para-documentacao.md](docs/registro-de-alteracoes-para-documentacao.md) — tudo que foi implementado por área, para atualizar Escopo, ERS e DAS.
+- [docs/superpowers/specs](docs/superpowers/specs) e [docs/superpowers/plans](docs/superpowers/plans) — especificações e planos de execução de cada fase, em ordem cronológica (registro histórico do processo).
 
 ---
 *Desenvolvido focado em inovação, UX premium e escalabilidade.*

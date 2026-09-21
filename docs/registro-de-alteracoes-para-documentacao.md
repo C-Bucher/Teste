@@ -75,7 +75,7 @@ O Hub Pessoal cresceu muito além do que a documentação original previa. Módu
 Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era simulada em listas/dicionários Python na memória do processo** — ou seja, qualquer reinício do servidor apagava tudo. Isso foi substituído por um banco de dados relacional real.
 
 - **SQLAlchemy 2.0 assíncrono** como camada de ORM.
-- **~28 tabelas** modelando todas as entidades do sistema (usuários, funcionários, fornecedores, lançamentos financeiros, projetos/kanban, notificações, módulos do Hub Pessoal, etc.).
+- **29 tabelas** modelando todas as entidades do sistema (usuários, funcionários, fornecedores, lançamentos financeiros, projetos/kanban, notificações, módulos do Hub Pessoal, etc.).
 - **Seed idempotente**: os dados de demonstração (3 usuários de teste, funcionários, projetos etc.) são inseridos automaticamente na primeira execução, e nunca duplicados em execuções seguintes.
 - **13 routers da API migrados** de leitura/escrita em memória para consultas reais ao banco, mantendo exatamente os mesmos contratos de resposta (nenhuma mudança perceptível pro front-end).
 - Autenticação (login/JWT) também migrada — usuários cadastrados agora persistem de verdade.
@@ -107,8 +107,9 @@ Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era
 
 ## 8. Repositório e versionamento
 
-- Projeto publicado no GitHub em `github.com/gabrielsalles-bit/TechConnect2.0`, branch `main` atualizada com todo o histórico de desenvolvimento.
-- `README.md` reescrito para refletir o estado atual: banco de dados real, passo de configuração de `.env`, modelo de planos, estrutura de pastas atualizada.
+- O código passa a viver no repositório institucional do curso (GitHub da organização CAMPUSCEUB, "ADS – Dashboard para Gestão Operacional"); o repositório pessoal usado no início do desenvolvimento deixa de ser a referência.
+- `README.md` mantido em sincronia com o código: banco real (MySQL no Docker, SQLite na execução manual), passo de configuração de `.env`, modelo de planos, permissões por cargo, onboarding, estrutura de pastas e limitações conhecidas.
+- `docs/BACKLOG.md` é o backlog oficial; `docs/superpowers/` guarda as especificações e os planos de cada fase como registro histórico do processo.
 
 ---
 
@@ -119,7 +120,7 @@ Importante ser honesto sobre isso na entrega — são lacunas reais, conhecidas,
 - **Autenticação de dois fatores (2FA)**: não implementada.
 - **IA (CFO Virtual, CFO Pessoal, etc.)**: hoje é um mock que reage a palavras-chave, **não uma integração real com um modelo de IA generativa** (apesar de já existir uma `GEMINI_API_KEY` configurada na infraestrutura, pronta para quando essa integração for feita).
 - **Auditoria e conformidade com LGPD**: não implementada.
-- Histórico antigo do Git (antes da limpeza de segurança) só foi reescrito localmente — se este repositório já tinha sido clonado por outra pessoa em algum outro lugar antes desta limpeza, aquela cópia ainda teria as credenciais antigas.
+- **Credenciais antigas**: a chave da API de IA e a chave JWT que estiveram hardcoded no início do projeto foram removidas de todo o histórico publicado agora, mas precisam ser **revogadas/rotacionadas** nos respectivos serviços, pois chegaram a ficar em repositório público anterior.
 
 ---
 
