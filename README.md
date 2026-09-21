@@ -156,6 +156,8 @@ TechConnect2.0/
 ├── docker-compose.yml          # Orquestração Docker (MySQL, Redis, Backend, Frontend)
 ├── Dockerfile                  # Imagem do backend
 ├── main.py                     # Atalho para subir o backend (uvicorn)
+├── seed_financial_history.py   # Script avulso: insere 5 meses de lançamentos financeiros históricos (demo)
+├── test_api.py                 # Script manual de fumaça da API (login, resumo mensal, DRE) — não é uma suíte de testes
 ├── .env.example                # Modelo de variáveis de ambiente (sem segredos reais)
 └── requirements.txt            # Dependências Python
 ```
