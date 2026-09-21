@@ -1,7 +1,5 @@
 # Correções de Design: colisão max-w + reestruturação do Hub Pessoal
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
-
 **Goal:** Corrigir a colisão de tema Tailwind que quebra todas as classes `max-w-{xs,sm,md,lg,xl}` do projeto, e reestruturar o Hub Pessoal de "uma página com abas internas" para "itens de menu lateral próprios", com um alternador de workspace (Empresarial/Pessoal) no cabeçalho.
 
 **Architecture:** Fix 1 é uma correção pontual de classes CSS, sem mudança estrutural. Fix 2 muda `HubPessoal.tsx` de estado interno (`useState<TabId>`) para roteamento por parâmetro de URL (`useParams`), e adiciona um estado de "modo de workspace" em `Layout.tsx` que decide qual conjunto de `navItems` é renderizado.

@@ -1,7 +1,5 @@
 # Persistência Real (SQLite → MySQL-ready) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
-
 **Goal:** Substituir `app/db/database.py` (listas Python em memória, perdem tudo a cada restart) por persistência real via SQLAlchemy 2 assíncrono, sem mudar nenhum contrato de API (mesmas rotas, mesmos formatos de request/response) — o frontend não deve perceber diferença nenhuma.
 
 **Architecture:** Camada de sessão assíncrona (`app/db/session.py`) + modelos ORM completos (`app/db/models.py`, expandindo os 6 stubs não usados hoje) + script de seed idempotente que popula os mesmos dados de demonstração que já existem. Cada router (`app/api/v1/endpoints/*.py`) troca acesso a lista Python por consulta ao banco via `Depends(get_db)`, convertendo o resultado para dict com um helper compartilhado (`model_to_dict`) — preserva exatamente o mesmo formato JSON que os endpoints já devolvem hoje, sem introduzir uma camada de schemas Pydantic nova.

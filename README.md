@@ -163,7 +163,7 @@ TechConnect2.0/
 ## 📚 Documentação
 - [docs/BACKLOG.md](docs/BACKLOG.md) — backlog priorizado (P0–P3), com o estado real de cada item e as limitações conhecidas.
 - [docs/registro-de-alteracoes-para-documentacao.md](docs/registro-de-alteracoes-para-documentacao.md) — tudo que foi implementado por área, para atualizar Escopo, ERS e DAS.
-- [docs/superpowers/specs](docs/superpowers/specs) e [docs/superpowers/plans](docs/superpowers/plans) — especificações e planos de execução de cada fase, em ordem cronológica (registro histórico do processo).
+- [docs/planejamento/specs](docs/planejamento/specs) e [docs/planejamento/plans](docs/planejamento/plans) — especificações e planos de execução de cada fase, em ordem cronológica (registro histórico do processo).
 
 ---
 *Desenvolvido focado em inovação, UX premium e escalabilidade.*

@@ -1,7 +1,7 @@
 # Backlog — TechConnect 2.0
 
 > Backlog oficial do projeto. Consolidado a partir dos planos de execução já concluídos
-> ([docs/superpowers/plans/](superpowers/plans/)), dos registros de andamento e revisão de cada fase
+> ([docs/planejamento/plans/](planejamento/plans/)), dos registros de andamento e revisão de cada fase
 > (arquivos de trabalho locais, não versionados) e do
 > [registro de alterações](registro-de-alteracoes-para-documentacao.md). Cada item foi conferido contra o código em 2026-09-21.
 >
@@ -80,7 +80,7 @@ Trabalho de reescrita do Escopo / ERS / DAS oficiais:
 
 ## Concluído (histórico)
 
-Referência do que já foi entregue — todos os planos em [docs/superpowers/plans/](superpowers/plans/)
+Referência do que já foi entregue — todos os planos em [docs/planejamento/plans/](planejamento/plans/)
 estão 100% concluídos e aprovados segundo os registros de andamento de cada fase:
 
 - ✅ **Expansão do frontend** (22 tasks + redesign visual do Kanban) — 10 módulos do Hub Empresarial e Hub Pessoal, modelo de conta por plano, QA manual com os 3 papéis.
@@ -91,5 +91,5 @@ estão 100% concluídos e aprovados segundo os registros de andamento de cada fa
 - ✅ **Gestão de Equipe — menu de ações** (EQ-1) — botões de Histórico/Editar/Desligar ligados tanto na visão em lista quanto no menu "⋮" da visão em cartões.
 - ✅ **DRE por categoria real** (FIN-1) — `GET /financial/dre` passou a agregar receitas e despesas por categoria a partir dos lançamentos do banco, eliminando os valores hardcoded.
 - ✅ **Limpeza de `app/db/database.py`** (parte de DB-4) — arquivo legado removido sem referências pendentes; resta apenas o N+1 de `get_board`.
-- ✅ **Hierarquia de cargos, painel de conexões e onboarding** (plano `2026-09-08`, ~17 tasks + correções da revisão final) — permissões configuráveis por empresa com bloqueio real (403) no backend e nas páginas; abas "Hierarquia de Cargos" e "Conexões de API" em Configurações; assistente de 3 passos no primeiro login do admin; criação de logins de Gerente/Funcionário; `GET/PUT /auth/users` fechados (escalação de privilégio); `/health` sem o Redis falso. **Limite conhecido: MT-1.** [spec](superpowers/specs/2026-09-08-role-permissions-onboarding-design.md) · [plano](superpowers/plans/2026-09-08-role-permissions-onboarding-plan.md)
+- ✅ **Hierarquia de cargos, painel de conexões e onboarding** (plano `2026-09-08`, ~17 tasks + correções da revisão final) — permissões configuráveis por empresa com bloqueio real (403) no backend e nas páginas; abas "Hierarquia de Cargos" e "Conexões de API" em Configurações; assistente de 3 passos no primeiro login do admin; criação de logins de Gerente/Funcionário; `GET/PUT /auth/users` fechados (escalação de privilégio); `/health` sem o Redis falso. **Limite conhecido: MT-1.** [spec](planejamento/specs/2026-09-08-role-permissions-onboarding-design.md) · [plano](planejamento/plans/2026-09-08-role-permissions-onboarding-plan.md)
 - ✅ **UX de notificações/confirmação, busca global e exportação real** (`761afd4`) — toasts e modal de confirmação no lugar de `alert()`/`confirm()`, busca do topo ligada ao `/search/`, exportação que gera arquivo de verdade.

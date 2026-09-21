@@ -109,7 +109,7 @@ Esta é a mudança mais estrutural de todas. **Toda a persistência de dados era
 
 - O código passa a viver no repositório institucional do curso (GitHub da organização CAMPUSCEUB, "ADS – Dashboard para Gestão Operacional"); o repositório pessoal usado no início do desenvolvimento deixa de ser a referência.
 - `README.md` mantido em sincronia com o código: banco real (MySQL no Docker, SQLite na execução manual), passo de configuração de `.env`, modelo de planos, permissões por cargo, onboarding, estrutura de pastas e limitações conhecidas.
-- `docs/BACKLOG.md` é o backlog oficial; `docs/superpowers/` guarda as especificações e os planos de cada fase como registro histórico do processo.
+- `docs/BACKLOG.md` é o backlog oficial; `docs/planejamento/` guarda as especificações e os planos de cada fase como registro histórico do processo.
 
 ---
 

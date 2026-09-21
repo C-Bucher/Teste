@@ -1,14 +1,12 @@
 # Hierarquia de Cargos, Conexões de API e Onboarding Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task.
-
 **Goal:** Trocar o controle de acesso por cargo (hoje só visual, hardcoded) por um sistema real de permissões edit-ável e aplicado no backend, adicionar um painel de status de integrações em Configurações, e guiar toda empresa nova por um wizard de configuração inicial — corrigindo no caminho um bug de multi-tenant que faria todas essas features colidirem entre empresas diferentes.
 
 **Architecture:** Uma nova tabela `role_permissions` (company_id, role, module_key) substitui os `if user.role !== 'X'` hardcoded do frontend; uma dependência FastAPI `require_module(...)` aplica o mesmo controle no backend com 403 real. Um wizard de 3 passos (`/onboarding`) reaproveita os mesmos componentes usados em Configurações. Nenhuma mudança de contrato nas rotas já existentes além do que está listado aqui.
 
 **Tech Stack:** FastAPI + SQLAlchemy 2.0 async (já em uso), React + TypeScript + Tailwind (já em uso). Sem test runner configurado neste projeto — verificação é manual, com o backend rodando de verdade (curl + navegador), seguindo o mesmo padrão dos planos anteriores deste repositório.
 
-**Spec:** `docs/superpowers/specs/2026-09-08-role-permissions-onboarding-design.md`
+**Spec:** `docs/planejamento/specs/2026-09-08-role-permissions-onboarding-design.md`
 
 ## Global Constraints
 

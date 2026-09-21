@@ -43,9 +43,6 @@ redis_data/
 # Scripts de teste temporários
 scratch/
 
-# Arquivos internos de trabalho (config local e artefatos de desenvolvimento assistido)
-.claude/
-.superpowers/
 
 # Banco de dados local (SQLite) — gerado pelo seed, nunca versionar
 *.db
