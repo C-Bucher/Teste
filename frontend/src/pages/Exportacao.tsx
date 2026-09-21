@@ -55,8 +55,6 @@ const formatSize = (bytes?: number) => {
 };
 
 function ExportacaoContent() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const toast = useToast();
   const [logs, setLogs] = useState<ExportLog[]>([]);
   const [loading, setLoading] = useState(true);

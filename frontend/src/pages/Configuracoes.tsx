@@ -49,8 +49,6 @@ const WEEKDAYS = [
 ];
 
 function ConfiguracoesContent() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const toast = useToast();
   const confirm = useConfirm();
   const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes'];

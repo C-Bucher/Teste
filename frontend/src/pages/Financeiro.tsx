@@ -93,8 +93,6 @@ const EMPTY_ENTRY_FORM = {
 };
 
 function FinanceiroContent() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;

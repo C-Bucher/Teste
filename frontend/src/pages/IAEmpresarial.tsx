@@ -62,8 +62,6 @@ const CFO_INSIGHT_CONFIG: Record<
 };
 
 function IAEmpresarialContent() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabId>('cfo-virtual');
 

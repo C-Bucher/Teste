@@ -8,8 +8,6 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 
 function FornecedoresContent() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-
   const toast = useToast();
   const confirm = useConfirm();
 
