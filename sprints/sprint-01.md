@@ -31,6 +31,6 @@ Implementar os módulos centrais da interface (Hub Empresarial e Hub Pessoal), m
 - Configuração de `docker-compose.yml` orquestrando 4 serviços: `db` (MySQL 8.0), `redis` (Redis 7), `backend` (FastAPI) e `frontend` (React/Vite).
 
 ## 4. Evidências de Conclusão
-- Repositório de código atualizado: [gabrielsalles-bit/TechConnect2.0](https://github.com/gabrielsalles-bit/TechConnect2.0)
+- Código-fonte: neste repositório (o histórico da Sprint 01 foi preservado por merge).
 - Swagger OpenAPI operacional em `http://localhost:8000/docs`.
 - Sistema executando localmente e via Docker sem pendências impeditivas.
