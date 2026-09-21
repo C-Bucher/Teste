@@ -115,7 +115,9 @@ async def refresh(b: RefreshReq = RefreshReq(), creds: HTTPAuthorizationCredenti
 
 @router.get("/users")
 async def get_auth_users(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    users = (await db.execute(select(UserModel))).scalars().all()
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem listar os acessos")
+    users = (await db.execute(select(UserModel).where(UserModel.company_id == u["company_id"]))).scalars().all()
     return [{k: v for k, v in model_to_dict(x).items() if k != "password_hash"} for x in users]
 
 @router.post("/users")
@@ -150,12 +152,19 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
     await db.refresh(new_user)
     return {k: v for k, v in model_to_dict(new_user).items() if k != "password_hash"}
 
+_UPD_USER_BLOCKED_COLUMNS = {"password_hash", "company_id", "id"}
+
 @router.put("/users/{uid}")
 async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem editar acessos")
     usr = await db.get(UserModel, uid)
-    if not usr: raise HTTPException(404)
+    if not usr or usr.company_id != u["company_id"]:
+        raise HTTPException(404)
+    if d.get("role") == "ADMIN" and usr.role != "ADMIN":
+        raise HTTPException(400, "Não é possível promover um usuário a administrador por aqui")
     for k, v in d.items():
-        if k in _USER_COLUMNS and k != "password_hash":
+        if k in _USER_COLUMNS and k not in _UPD_USER_BLOCKED_COLUMNS:
             setattr(usr, k, v.strip().lower() if k == "email" and isinstance(v, str) else v)
     await db.commit()
     await db.refresh(usr)
