@@ -1,9 +1,9 @@
 # Backlog — TechConnect 2.0
 
 > Backlog oficial do projeto. Consolidado a partir dos planos de execução já concluídos
-> ([docs/superpowers/plans/](superpowers/plans/)), dos progress ledgers
-> ([.superpowers/sdd/](../.superpowers/sdd/)), dos relatórios de revisão e do
-> [registro de alterações §9](registro-de-alteracoes-para-documentacao.md).
+> ([docs/superpowers/plans/](superpowers/plans/)), dos registros de andamento e revisão de cada fase
+> (arquivos de trabalho locais, não versionados) e do
+> [registro de alterações](registro-de-alteracoes-para-documentacao.md). Cada item foi conferido contra o código em 2026-09-21.
 >
 > **Última atualização:** 2026-09-21 — entrega do plano de hierarquia de cargos/onboarding e revisão final do branch. SEC-1 passa a ✅ **com ressalvas explícitas**; abertos novos itens **MT-1** (dados de negócio compartilhados entre empresas — o maior limite atual do produto), **SEC-3**, **SEC-4**, **AUTH-2**, **QA-1** e **UX-1**.
 >
@@ -31,7 +31,7 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| IA-1 | Integração real de IA generativa | CFO Virtual, CFO Pessoal, Conciliação e Gerador de Orçamentos respondem por palavra-chave em `ai.py`. A `GEMINI_API_KEY` já está configurada na infra, mas não é usada. Histórico do CFO (`GET /ai/history`) sempre retorna vazio. | 🔲 | registro §9, `ai.py` |
+| IA-1 | Integração real de IA generativa | CFO Virtual, CFO Pessoal, Conciliação e Gerador de Orçamentos respondem por palavra-chave em `ai.py`. A `GEMINI_API_KEY` já está configurada na infra, mas não é usada. Histórico do CFO (`GET /ai/history`) sempre retorna vazio, e a resposta de `/ai/chat` informa um modelo (`gemini-2.5-flash`) e um consumo de tokens fixos que não correspondem a nenhuma chamada real. | 🔲 | registro §9, `ai.py` |
 | AUTH-1 | Autenticação de dois fatores (2FA) | O campo `mfa_enabled` existe no `UserModel` e o login aceita `mfa_code`, mas não há fluxo de ativação nem verificação real. | 🔲 | registro §9 |
 | EXP-1 | Exportação nunca conclui | ~~Relatórios ficavam presos em "PROCESSANDO".~~ **Resolvido:** `exports.py` gera um arquivo real em `uploads/` e `GET /download/{eid}` o serve pelo mount `/uploads` (commit `761afd4`). O conteúdo ainda é um CSV de exemplo, não os dados reais do relatório escolhido. | ✅ | Revisado e commitado 2026-09-18 |
 | CFG-1 | Configurações que não persistem | `PUT /company/calendar` (calendário de trabalho) e `GET /company/ctc-params` retornam dicts fixos calculados na hora — não gravam nada, não sobrevivem nem a um reload. Preferências de notificação idem. | 🔲 | task-4-report, `company.py`, `notifications.py` |
@@ -48,8 +48,8 @@
 | NAV-1 | Guarda de rota do Hub Pessoal | Rotas `/pessoal/:tab` são protegidas só no nível de navegação, não de rota. Slug de aba inválido não redireciona a URL. `plan_scope` não é checado por rota. | 🔲 | progress.md revisão final |
 | AUTH-2 | Gestão de acessos: regras de negócio faltando | Um admin pode se auto-rebaixar ou desativar o último admin da empresa (sem caminho de recuperação pela API); `PUT /auth/users` com `email` duplicado provavelmente retorna 500; usuários criados não podem ser editados/desativados pela interface (só listar e criar); IDs `usr-NNN`/`cmp-NNN` por contagem colidem após exclusões. | 🔲 | revisões das Tasks 1, 7 e 13b |
 | UX-1 | Polimento do onboarding e das permissões | Passo 1 do assistente abre vazio (não pré-preenche com os dados do cadastro); "Salvar Permissões" é um botão separado de "Próximo" (sem salvar, valem os padrões); menu do Layout pisca por um instante ao trocar de página; erro ao carregar a lista de acessos só vai para o console; botão/FAB da IA aparece mesmo sem o módulo `ia`. | 🔲 | revisões das Tasks 11/13, e2e Task 14, revisão final (M3) |
-| QA-1 | Sem testes automatizados | Nenhuma funcionalidade tem teste automático — toda verificação foi manual (curl/navegador) e por revisão de código. Atenção: `npx tsc --noEmit` **não verifica nada** neste repositório (o `tsconfig.json` raiz só tem `references`); use `npm run build` ou `npx tsc -p tsconfig.app.json --noEmit`. | 🔲 | revisão final |
-| API-1 | `id` do payload sobrescreve o gerado | Vários POST/PUT (`clients.py`, `company.py`, `employees.py`, `exports.py`, `financial.py`, `kanban.py`, `suppliers.py`) ainda montam o dict como `{"id": gerado, **d}`, então um `id` vindo do corpo sobrescreve o gerado pelo servidor. | 🔲 | Verificado 2026-09-10 — ainda presente em 7 endpoints |
+| QA-1 | Sem testes automatizados | Nenhuma funcionalidade tem teste automático — toda verificação foi manual (curl/navegador) e por revisão de código. Atenção: `npx tsc --noEmit` **não verifica nada** neste repositório (o `tsconfig.json` raiz só tem `references`); use `npm run build` ou `npx tsc -p tsconfig.app.json --noEmit`. Além disso, `npm run lint` ainda reporta 58 erros e 3 avisos pré-existentes (maioria de tipagem `any` e regras de hooks), que não bloqueiam o build. | 🔲 | revisão final |
+| API-1 | `id` do payload sobrescreve o gerado | Vários POST/PUT (`clients.py`, `company.py`, `employees.py`, `financial.py`, `kanban.py`, `notifications.py`, `suppliers.py`) ainda montam o dict como `{"id": gerado, **d}`, então um `id` vindo do corpo sobrescreve o gerado pelo servidor. | 🔲 | Verificado 2026-09-10 — ainda presente em 7 endpoints |
 
 ---
 
@@ -57,7 +57,7 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| CSS-1 | Token `--color-warning-container` ausente | Referenciado pela tag de prioridade "ALTA" no Kanban, mas nunca definido em `frontend/src/index.css`. | 🔲 | progress.md Task 23 |
+| CSS-1 | Token `--color-warning-container` ausente | Referenciado pela tag de prioridade "ALTA" no Kanban (`Kanban.tsx`) e pelos toasts de aviso (`ToastContext.tsx`), mas nunca definido em `frontend/src/index.css`. | 🔲 | progress.md Task 23 |
 | CSS-2 | Contraste das colunas do Kanban | O tema quase-preto comprime as razões de contraste WCAG. Fechar mais exige um novo token mais claro que `surface-container-highest` no design system. | 🔲 | task-23-report |
 | SEED-1 | Dados de seed "envelhecem" | As datas do seed são congeladas na primeira execução (o mock antigo recalculava a cada request). Com o tempo, o seed fica com datas defasadas. | 🔲 | progress-db (nota) |
 | DB-3 | Sem caminho de migração de schema | `Base.metadata.create_all` cria tabelas novas mas não faz `ALTER` em tabelas existentes. Qualquer coluna nova exige recriar o banco ou migração manual. | 🔲 | revisão final DB |
@@ -74,19 +74,19 @@ Trabalho de reescrita do Escopo / ERS / DAS oficiais:
 |----|-----------|-----------------|
 | DOC-1 | Escopo | Modelo de 3 planos (Pessoal / Empresarial / Completo) como novo requisito de negócio; confirmar lista de módulos dos dois Hubs. |
 | DOC-2 | ERS | Requisitos funcionais detalhados de cada módulo (CTC, fluxo de caixa D+90, timer em cartão, 10 módulos do Hub Pessoal); requisitos não-funcionais de segurança (segredos fora do código); lista honesta de lacunas (itens P0/P1 deste backlog) como "fora do escopo desta entrega". |
-| DOC-3 | DAS | Arquitetura de persistência (SQLAlchemy async, ~28 tabelas, seed idempotente); diagrama de implantação com os 4 containers Docker + MySQL; sistema de design de frontend "Obsidian Flow" (rotas por módulo, não abas). |
+| DOC-3 | DAS | Arquitetura de persistência (SQLAlchemy async, 29 tabelas, seed idempotente); diagrama de implantação com os 4 containers Docker + MySQL; sistema de design de frontend "Obsidian Flow" (rotas por módulo, não abas). |
 
 ---
 
 ## Concluído (histórico)
 
 Referência do que já foi entregue — todos os planos em [docs/superpowers/plans/](superpowers/plans/)
-estão 100% concluídos e aprovados segundo os progress ledgers:
+estão 100% concluídos e aprovados segundo os registros de andamento de cada fase:
 
-- ✅ **Expansão do frontend** (22 tasks + redesign visual do Kanban) — 10 módulos do Hub Empresarial e Hub Pessoal, modelo de conta por plano, QA manual com os 3 papéis. [progress.md](../.superpowers/sdd/progress.md)
-- ✅ **Correções de design** (colisão `max-w` do Tailwind, reestruturação do Hub Pessoal para rotas próprias + alternador Empresarial/Pessoal). [progress.md](../.superpowers/sdd/progress.md)
-- ✅ **Persistência real** (16 tasks) — migração de listas em memória para SQLAlchemy async, 28 modelos ORM, seed idempotente, 13 routers migrados. [progress-db.md](../.superpowers/sdd/progress-db.md)
-- ✅ **Troca para MySQL** — Docker Compose com MySQL 8 real, segredos fora do compose, `pool_recycle`/`pool_pre_ping`, FK `ON DELETE SET NULL`, e-mail case-insensitive. [progress-db.md](../.superpowers/sdd/progress-db.md)
+- ✅ **Expansão do frontend** (22 tasks + redesign visual do Kanban) — 10 módulos do Hub Empresarial e Hub Pessoal, modelo de conta por plano, QA manual com os 3 papéis.
+- ✅ **Correções de design** (colisão `max-w` do Tailwind, reestruturação do Hub Pessoal para rotas próprias + alternador Empresarial/Pessoal).
+- ✅ **Persistência real** (16 tasks) — migração de listas em memória para SQLAlchemy async, 28 modelos ORM, seed idempotente, 13 routers migrados.
+- ✅ **Troca para MySQL** — Docker Compose com MySQL 8 real, segredos fora do compose, `pool_recycle`/`pool_pre_ping`, FK `ON DELETE SET NULL`, e-mail case-insensitive.
 - ✅ **Revisão de segurança** — credenciais removidas do código-fonte, histórico do Git reescrito, `SECRET_KEY` rotacionada.
 - ✅ **Gestão de Equipe — menu de ações** (EQ-1) — botões de Histórico/Editar/Desligar ligados tanto na visão em lista quanto no menu "⋮" da visão em cartões.
 - ✅ **DRE por categoria real** (FIN-1) — `GET /financial/dre` passou a agregar receitas e despesas por categoria a partir dos lançamentos do banco, eliminando os valores hardcoded.
