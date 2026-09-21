@@ -3,6 +3,8 @@ import api from '../api';
 import { motion } from 'framer-motion';
 import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
+import { useToast } from '../context/ToastContext';
 
 interface ExportLog {
   id: string;
@@ -52,14 +54,8 @@ const formatSize = (bytes?: number) => {
   return `${(bytes / 1024).toFixed(1)} KB`;
 };
 
-export default function Exportacao() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isFuncionario = user.role === 'FUNCIONARIO';
-
-  if (isFuncionario) {
-    return <Navigate to="/dashboard" />;
-  }
-
+function ExportacaoContent() {
+  const toast = useToast();
   const [logs, setLogs] = useState<ExportLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState<string | null>(null);
@@ -86,9 +82,10 @@ export default function Exportacao() {
     try {
       const res = await api.post('/exports/request', { type, format });
       setLogs((prev) => [res.data, ...prev]);
+      toast.success(`Relatório ${type} (${format}) gerado.`);
     } catch (err) {
       console.error('Erro ao solicitar exportação', err);
-      alert('Erro ao solicitar exportação');
+      toast.error('Erro ao solicitar exportação.');
     } finally {
       setRequesting(null);
     }
@@ -97,10 +94,10 @@ export default function Exportacao() {
   const handleDownload = async (id: string) => {
     try {
       const res = await api.get(`/exports/download/${id}`);
-      window.open(res.data.download_url);
+      window.open(res.data.download_url, '_blank');
     } catch (err) {
       console.error('Erro ao baixar exportação', err);
-      alert('Erro ao baixar exportação');
+      toast.error('Erro ao baixar exportação.');
     }
   };
 
@@ -236,4 +233,19 @@ export default function Exportacao() {
       </div>
     </Layout>
   );
+}
+
+export default function Exportacao() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('exportacao')) return <Navigate to="/dashboard" />;
+  return <ExportacaoContent />;
 }

@@ -3,8 +3,13 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { usePermissions } from '../hooks/usePermissions';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
+import PermissionMatrix from '../components/PermissionMatrix';
+import IntegrationsStatus from '../components/IntegrationsStatus';
 
-type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario';
+type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'cargos' | 'conexoes';
 
 interface Category {
   id: string;
@@ -29,6 +34,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plano-contas', label: 'Plano de Contas', icon: 'account_tree' },
   { id: 'centros-custo', label: 'Centros de Custo', icon: 'apartment' },
   { id: 'calendario', label: 'Calendário Útil', icon: 'calendar_month' },
+  { id: 'cargos', label: 'Hierarquia de Cargos', icon: 'admin_panel_settings' },
+  { id: 'conexoes', label: 'Conexões de API', icon: 'cable' },
 ];
 
 const WEEKDAYS = [
@@ -41,15 +48,10 @@ const WEEKDAYS = [
   { value: 6, label: 'Sáb' },
 ];
 
-export default function Configuracoes() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdmin = user.role === 'ADMIN';
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" />;
-  }
-
-  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario'];
+function ConfiguracoesContent() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes'];
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && TAB_IDS.includes(tabFromUrl) ? tabFromUrl : 'empresa');
@@ -122,9 +124,10 @@ export default function Configuracoes() {
         phone: res.data.phone || '',
         address: res.data.address || '',
       });
+      toast.success('Dados da empresa salvos.');
     } catch (err) {
       console.error('Erro ao salvar dados da empresa', err);
-      alert('Erro ao salvar dados da empresa');
+      toast.error('Erro ao salvar dados da empresa.');
     } finally {
       setSavingCompany(false);
     }
@@ -141,9 +144,10 @@ export default function Configuracoes() {
       const res = await api.post('/company/categories', categoryForm);
       setCategories([...categories, res.data]);
       setIsCategoryModalOpen(false);
+      toast.success('Categoria criada.');
     } catch (err) {
       console.error('Erro ao criar categoria', err);
-      alert('Erro ao criar categoria');
+      toast.error('Erro ao criar categoria.');
     }
   };
 
@@ -158,21 +162,28 @@ export default function Configuracoes() {
       const res = await api.post('/company/cost-centers', costCenterForm);
       setCostCenters([...costCenters, res.data]);
       setIsCostCenterModalOpen(false);
+      toast.success('Centro de custo criado.');
     } catch (err) {
       console.error('Erro ao criar centro de custo', err);
-      alert('Erro ao criar centro de custo');
+      toast.error('Erro ao criar centro de custo.');
     }
   };
 
   const handleDeleteCostCenter = async (id: string) => {
-    if (confirm('Deseja realmente remover este centro de custo?')) {
-      try {
-        await api.delete(`/company/cost-centers/${id}`);
-        setCostCenters(costCenters.filter((c) => c.id !== id));
-      } catch (err) {
-        console.error('Erro ao excluir centro de custo', err);
-        alert('Erro ao excluir centro de custo');
-      }
+    const ok = await confirm({
+      title: 'Remover centro de custo',
+      message: 'Deseja realmente remover este centro de custo?',
+      confirmLabel: 'Remover',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/company/cost-centers/${id}`);
+      setCostCenters(costCenters.filter((c) => c.id !== id));
+      toast.success('Centro de custo removido.');
+    } catch (err) {
+      console.error('Erro ao excluir centro de custo', err);
+      toast.error('Erro ao excluir centro de custo.');
     }
   };
 
@@ -189,9 +200,10 @@ export default function Configuracoes() {
     try {
       const res = await api.put('/company/calendar', calendar);
       setCalendar(res.data);
+      toast.success('Calendário salvo.');
     } catch (err) {
       console.error('Erro ao salvar calendário', err);
-      alert('Erro ao salvar calendário');
+      toast.error('Erro ao salvar calendário.');
     } finally {
       setSavingCalendar(false);
     }
@@ -502,6 +514,28 @@ export default function Configuracoes() {
         </motion.div>
       )}
 
+      {/* Aba: Hierarquia de Cargos */}
+      {activeTab === 'cargos' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Hierarquia de Cargos</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Escolha quais módulos cada cargo pode acessar. Bloqueado também no servidor, não só na tela.</p>
+          </div>
+          <PermissionMatrix />
+        </motion.div>
+      )}
+
+      {/* Aba: Conexões de API */}
+      {activeTab === 'conexoes' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Conexões de API</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Status das integrações do sistema em tempo real.</p>
+          </div>
+          <IntegrationsStatus />
+        </motion.div>
+      )}
+
       {/* Modal: Nova Categoria */}
       <AnimatePresence>
         {isCategoryModalOpen && (
@@ -624,4 +658,19 @@ export default function Configuracoes() {
       </AnimatePresence>
     </Layout>
   );
+}
+
+export default function Configuracoes() {
+  const { loading, can } = usePermissions();
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+  if (!can('configuracoes')) return <Navigate to="/dashboard" />;
+  return <ConfiguracoesContent />;
 }

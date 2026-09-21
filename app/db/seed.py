@@ -28,6 +28,7 @@ from app.db.session import async_session_maker
 from app.db.models import (
     CompanyModel,
     UserModel,
+    RolePermissionModel,
     EmployeeModel,
     SalaryHistoryModel,
     SupplierModel,
@@ -49,6 +50,7 @@ from app.db.models import (
     PersonalSubscriptionModel,
     PersonalSplitModel,
 )
+from app.core.permissions import DEFAULT_PERMISSIONS
 
 hoje = date.today()
 
@@ -101,6 +103,7 @@ async def seed_if_empty() -> None:
                 phone="(61) 3344-5566",
                 address="SHCGN 713 Bloco A - Brasilia/DF",
                 fiscal_year_start=1,
+                onboarding_completed=True,
             )
         )
 
@@ -110,11 +113,18 @@ async def seed_if_empty() -> None:
         func_hash = bcrypt.hashpw(b"Func@123", bcrypt.gensalt()).decode()
         session.add_all(
             [
-                UserModel(id="usr-001", email="admin@techconnect.com.br", full_name="Administrador", role="ADMIN", plan_scope="completo", password_hash=admin_hash, is_active=True, mfa_enabled=False),
-                UserModel(id="usr-002", email="gerente@techconnect.com.br", full_name="Ana Souza", role="GERENTE", plan_scope="completo", password_hash=gerente_hash, is_active=True, mfa_enabled=False),
-                UserModel(id="usr-003", email="funcionario@techconnect.com.br", full_name="Carlos Mendes", role="FUNCIONARIO", plan_scope="completo", password_hash=func_hash, is_active=True, mfa_enabled=False),
+                UserModel(id="usr-001", company_id="cmp-001", email="admin@techconnect.com.br", full_name="Administrador", role="ADMIN", plan_scope="completo", password_hash=admin_hash, is_active=True, mfa_enabled=False),
+                UserModel(id="usr-002", company_id="cmp-001", email="gerente@techconnect.com.br", full_name="Ana Souza", role="GERENTE", plan_scope="completo", password_hash=gerente_hash, is_active=True, mfa_enabled=False),
+                UserModel(id="usr-003", company_id="cmp-001", email="funcionario@techconnect.com.br", full_name="Carlos Mendes", role="FUNCIONARIO", plan_scope="completo", password_hash=func_hash, is_active=True, mfa_enabled=False),
             ]
         )
+
+        # --- ROLE PERMISSIONS (empresa de demonstração) ---------------------
+        session.add_all([
+            RolePermissionModel(id=f"rp-seed-{role.lower()}-{module}", company_id="cmp-001", role=role, module_key=module)
+            for role, modules in DEFAULT_PERMISSIONS.items()
+            for module in modules
+        ])
 
         # --- EMPLOYEES -------------------------------------------------------
         # Mock has both "start_date" and an identical "hire_date" - both are
@@ -344,7 +354,7 @@ async def seed_if_empty() -> None:
         session.add_all(
             [
                 ExportLogModel(id="exp-001", type="DRE", format="PDF", status="PRONTO", created_at=(datetime.now() - timedelta(days=2)).isoformat(), size_bytes=245000),
-                ExportLogModel(id="exp-002", type="COLABORADORES", format="EXCEL", status="PRONTO", created_at=(datetime.now() - timedelta(days=5)).isoformat(), size_bytes=89000),
+                ExportLogModel(id="exp-002", type="COLABORADORES", format="XLSX", status="PRONTO", created_at=(datetime.now() - timedelta(days=5)).isoformat(), size_bytes=89000),
             ]
         )
 

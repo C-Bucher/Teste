@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
 import api from '../api';
+import { clearPermissionsCache } from '../hooks/usePermissions';
 
 export default function Register() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -41,6 +42,8 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
+    localStorage.removeItem('company');
+    clearPermissionsCache();
     setLoading(true);
     setError('');
 
@@ -56,6 +59,13 @@ export default function Register() {
 
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      try {
+        const companyRes = await api.get('/company/');
+        localStorage.setItem('company', JSON.stringify(companyRes.data));
+      } catch (err) {
+        console.error('Erro ao carregar dados da empresa', err);
+      }
 
       // Redirect to payment checkout with selected plan
       navigate(`/checkout?plan=${selectedPlan}&cycle=monthly`);

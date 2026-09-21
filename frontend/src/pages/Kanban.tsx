@@ -3,8 +3,10 @@ import api from '../api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useToast } from '../context/ToastContext';
 
 export default function Kanban() {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -175,8 +177,10 @@ export default function Kanban() {
       });
       setIsModalOpen(false);
       fetchBoard(selectedProjectId!);
+      toast.success('Tarefa criada.');
     } catch (err) {
       console.error("Erro ao criar tarefa", err);
+      toast.error('Erro ao criar tarefa.');
     }
   };
 
@@ -188,9 +192,10 @@ export default function Kanban() {
       setSelectedProjectId(res.data.id);
       setIsProjectModalOpen(false);
       setProjectForm({ name: '', description: '', client_id: '', start_date: '', end_date: '' });
+      toast.success('Projeto criado.');
     } catch (err) {
       console.error('Erro ao criar projeto', err);
-      alert('Erro ao criar projeto');
+      toast.error('Erro ao criar projeto.');
     }
   };
 
@@ -202,9 +207,10 @@ export default function Kanban() {
       setProjectForm({ ...projectForm, client_id: res.data.id });
       setIsClientModalOpen(false);
       setClientForm({ name: '', email: '', phone: '', cnpj: '', contact_name: '', segment: '' });
+      toast.success('Cliente criado.');
     } catch (err) {
       console.error('Erro ao criar cliente', err);
-      alert('Erro ao criar cliente');
+      toast.error('Erro ao criar cliente.');
     }
   };
 
