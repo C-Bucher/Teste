@@ -9,7 +9,9 @@ TechConnect 2.0 é a evolução da plataforma financeira inteligente, projetada 
 - **Design Obsidian Flow**: Interface moderna e elegante baseada no Glassmorphism (efeitos de vidro) com tipografia de alta performance (Inter e Outfit) e temas escuros focados em visibilidade.
 - **Kanban Interativo**: Gerenciamento de tarefas em colunas com recursos HTML5 de Drag & Drop (arrastar e soltar).
 - **Gestão de Equipes**: CRUD completo com sincronização imediata utilizando modais estilizados.
-- **Controle de Acesso por Papel**: Três níveis de acesso (Admin, Gerente, Funcionário) com menus e permissões diferenciados.
+- **Controle de Acesso por Papel configurável**: três cargos (Admin, Gerente, Funcionário); o Admin escolhe em *Configurações → Hierarquia de Cargos* quais módulos cada cargo acessa, e o bloqueio vale de verdade no servidor (resposta 403), não só no menu.
+- **Onboarding guiado**: no primeiro login, o Admin de uma empresa nova passa por um assistente de 3 passos (dados da empresa → hierarquia de cargos → conexões de API).
+- **Painel de Conexões de API**: mostra em tempo real se o banco de dados está online e se a chave da IA está configurada.
 - **Persistência real**: todo o backend roda sobre um banco de dados MySQL de verdade (via SQLAlchemy async), não mais dados em memória.
 
 ## 🛠 Tecnologias Utilizadas
@@ -109,7 +111,7 @@ npm run dev
 O Frontend estará rodando em `http://localhost:5173`.
 
 ## 🔑 Acessos de Teste
-O seed inicial popula o banco MySQL com 3 usuários de demonstração. Utilize as seguintes credenciais na tela de login:
+O seed inicial popula o banco (MySQL via Docker Compose; SQLite local na execução manual) com 3 usuários de demonstração, todos da empresa de demonstração. Utilize as seguintes credenciais na tela de login:
 
 | Papel        | E-mail                              | Senha         |
 |--------------|-------------------------------------|---------------|
@@ -118,9 +120,18 @@ O seed inicial popula o banco MySQL com 3 usuários de demonstração. Utilize a
 | Funcionário  | `funcionario@techconnect.com.br`    | `Func@123`    |
 
 ### Permissões por Papel
-- **Admin**: Acesso total — Dashboard financeiro, Kanban de projetos, Gestão de equipe (CRUD completo).
-- **Gerente**: Dashboard financeiro, Kanban de projetos, Gestão de equipe (somente visualização).
-- **Funcionário**: Dashboard pessoal, Kanban de projetos (apenas tarefas atribuídas).
+- **Admin**: acesso total e fixo (não editável) a todos os módulos; é o único que cria logins, edita a matriz de permissões e vê o status das integrações.
+- **Gerente** (padrão): Dashboard, Projetos, Equipe, Financeiro, Fornecedores, Exportação e IA Empresarial — **sem** Configurações.
+- **Funcionário** (padrão): Dashboard e Projetos.
+
+O padrão vale até o Admin salvar uma matriz própria em *Configurações → Hierarquia de Cargos*; a partir daí, a matriz salva prevalece (inclusive se ela deixar um cargo sem nenhum módulo). Novos Gerentes/Funcionários são criados pelo Admin em *Gestão de Equipe → Acessos ao Sistema*.
+
+## ⚠️ Limitações conhecidas (leia antes de avaliar o projeto)
+- **Os dados de negócio não são isolados por empresa.** Empresas, usuários e permissões são separados por empresa, mas funcionários, lançamentos financeiros, projetos/Kanban, clientes, fornecedores, notificações e exportações são um conjunto único: uma empresa recém-cadastrada enxerga os dados da empresa de demonstração. O isolamento completo está previsto no [BACKLOG](docs/BACKLOG.md) (item MT-1).
+- Ainda sem gate por módulo: Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal (SEC-3). As permissões *Dashboard* e *Projetos* da matriz só controlam o menu.
+- A IA (CFO Virtual etc.) responde por palavras-chave, não usa um modelo generativo real; não há 2FA, auditoria/LGPD nem testes automatizados.
+- Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`) — o comando `npx tsc --noEmit` sozinho não checa nada neste repositório.
+- Lista completa e priorizada: [docs/BACKLOG.md](docs/BACKLOG.md).
 
 ## 📁 Estrutura do Projeto
 

@@ -30,7 +30,7 @@ Isso **não estava no Escopo/ERS original** e precisa virar um requisito documen
 | **Gestão de Equipe** | CRUD de funcionários, cálculo de CTC (Custo Total ao Colaborador), histórico salarial, ação de desligamento | |
 | **Financeiro** | Lançamentos financeiros, DRE (Demonstrativo de Resultado), fluxo de caixa projetado D+90 | |
 | **Fornecedores** | Cadastro e gestão de fornecedores | |
-| **Configurações** | Dados da empresa — acesso restrito a Admin | |
+| **Configurações** | Dados da empresa, plano de contas, centros de custo, calendário, hierarquia de cargos e conexões de API — acesso restrito a Admin por padrão | Ver seção 10 |
 | **Notificações** | Sino de notificações com painel, no cabeçalho | |
 | **Exportação** | Geração e histórico de relatórios exportados | |
 | **IA Empresarial** | CFO Virtual, Conciliação Bancária, Gerador de Orçamentos | **Ainda é um mock por palavra-chave, não uma integração real com IA generativa** — ver seção 9 |
@@ -125,17 +125,23 @@ Importante ser honesto sobre isso na entrega — são lacunas reais, conhecidas,
 
 ---
 
-## 10. Hierarquia de cargos, painel de conexões e onboarding (em andamento)
+## 10. Hierarquia de cargos, painel de conexões e onboarding (entregue, com limites)
 
-Trabalho iniciado em 08/09 pra fechar exatamente a lacuna de RBAC citada na seção 9 (agora removida daquela lista — parte já está resolvida). Backend commitado e funcional; telas de frontend ainda em construção.
+Trabalho de 08/09 a 21/09 que fechou a lacuna de RBAC da seção 9 (removida daquela lista). Entregue e verificado de ponta a ponta no navegador.
 
-- **Permissões por cargo configuráveis**: nova tabela `role_permissions` (por empresa, cargo, módulo) substitui o controle hardcoded no frontend. Admin sempre tem acesso total; Gerente e Funcionário têm um conjunto de módulos configurável.
-- **Bloqueio real no backend**: os endpoints de equipe, fornecedores, financeiro, exportação, IA e configurações administrativas agora retornam **403 de verdade** para quem não tem permissão — não é mais só um item escondido no menu.
-- **Painel de status de integrações**: nova tela mostra se o banco de dados e a chave da API de IA estão configurados/saudáveis, testando de verdade (sem editar credenciais pela interface).
-- **Onboarding guiado**: toda empresa nova vai passar por um assistente de 3 passos (dados da empresa → hierarquia de cargos → conexões) no primeiro login do administrador.
-- **Bug crítico corrigido no caminho**: o cadastro de empresa (`POST /auth/register`) nunca criava uma empresa de verdade no banco — toda empresa cadastrada colidia na mesma linha de dados. Corrigido antes do resto da feature, já que sem isso a separação entre empresas diferentes não funcionaria.
+- **Permissões por cargo configuráveis**: tabela `role_permissions` (empresa × cargo × módulo) no lugar do controle fixo no código do frontend. Admin tem sempre acesso total; Gerente e Funcionário têm um conjunto configurável em *Configurações → Hierarquia de Cargos*. Empresas que ainda não salvaram uma matriz usam os padrões (Gerente: 7 módulos; Funcionário: Dashboard e Projetos); uma matriz salva prevalece, inclusive vazia.
+- **Bloqueio real no backend e nas páginas**: equipe, fornecedores, financeiro, exportação, IA e as rotas de configuração que alteram dados retornam **403** sem permissão; as páginas do frontend são protegidas pelo módulo concedido (conceder e revogar funcionam); a busca global só devolve resultados dos módulos permitidos.
+- **Painel de conexões de API** (Configurações): testa de verdade o banco de dados e informa se a chave da IA está configurada, sem editar credenciais pela interface. O `/health` deixou de afirmar um Redis que a aplicação nunca usou.
+- **Onboarding guiado**: assistente de 3 passos (empresa → cargos → conexões) no primeiro login do Admin de cada empresa nova; a empresa de demonstração já nasce configurada.
+- **Criação de logins**: o Admin cria Gerentes/Funcionários em *Gestão de Equipe → Acessos ao Sistema* (antes só existia cadastro de Admin).
+- **Correções de segurança encontradas no caminho**: o cadastro nunca criava a empresa no banco (todas colidiam na mesma linha); `GET/PUT /auth/users` não tinham autorização — qualquer usuário podia se promover a ADMIN ou alterar usuários de outras empresas — e agora são restritos ao Admin da própria empresa, com lista de cargos permitidos; usuários desativados agora perdem o acesso; `techconnect.db` saiu do controle de versão.
 
-**Onde impacta**: ERS (novo requisito funcional de controle de acesso configurável, já não é mais "fora de escopo" como a seção 9 registrava antes); a lacuna de RBAC da seção 9 pode ser removida da lista de pendências assim que a interface (telas) for concluída.
+**Limites que a documentação formal deve registrar honestamente** (detalhes no [BACKLOG](BACKLOG.md)):
+- **MT-1**: só empresas, usuários e permissões são isolados por empresa; funcionários, financeiro, Kanban, clientes, fornecedores, notificações e exportações são um conjunto único compartilhado — uma empresa nova vê os dados da demonstração.
+- **SEC-3**: Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal não têm gate por módulo; as permissões Dashboard/Projetos afetam só o menu.
+- **SEC-4/QA-1**: sem política de senha nem limite de tentativas de login; nenhum teste automatizado (toda verificação foi manual).
+
+**Onde impacta**: ERS (requisito funcional de controle de acesso configurável e de onboarding; requisitos não-funcionais de segurança); Escopo (a promessa de multiempresa deve ser descrita como "em evolução" enquanto MT-1 estiver aberto); DAS (diagrama de autorização: `role_permissions` + `require_module`).
 
 ---
 
