@@ -59,22 +59,47 @@ O **TechConnect 2.0** é uma plataforma integrada de gestão operacional e finan
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
-| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 (async), Uvicorn — 29 tabelas, seed idempotente |
-| Banco de dados | MySQL 8.0 (Docker Compose) · SQLite (execução manual, padrão) |
-| Infraestrutura | Docker & Docker Compose; segredos via `.env` (nunca commitado) |
+| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 (async via `asyncpg`), Uvicorn — 29 tabelas, seed idempotente |
+| Banco de dados | PostgreSQL 17 (Supabase via Connection Pooler IPv4) · MySQL 8.0 (Docker) · SQLite (fallback local) |
+| Infraestrutura | Docker & Docker Compose; segredos e credenciais via `.env` (ignorado pelo Git) |
 | Redis 7 | provisionado no Compose, **ainda não utilizado** pela aplicação (reservado para cache/filas) |
 
 ---
 
 ## ⚙️ Como Executar
 
-### 0. Variáveis de ambiente (Docker)
+### 0. Variáveis de ambiente (.env)
 ```bash
 cp .env.example .env
 ```
-Edite o `.env` e defina `SECRET_KEY` (gere com `python -c "import secrets; print(secrets.token_hex(32))"`), `GEMINI_API_KEY` (opcional; [Google AI Studio](https://aistudio.google.com/app/apikey)) e as credenciais do MySQL. O `.env` nunca deve ser commitado.
+Edite o arquivo `.env` com suas credenciais. Para conectar ao **Supabase**, defina a connection string do pooler:
+```env
+DATABASE_URL=postgresql+asyncpg://postgres.uduyqfctrdlrmsouwpgs:C3ub%40123%40321@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+SUPABASE_URL=https://uduyqfctrdlrmsouwpgs.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkdXlxZmN0cmRscm1zb3V3cGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODczNjksImV4cCI6MjEwNTc2MzM2OX0.Qmwz9yQ63M1rFzVGjG4exknsC8uo8Rd43k2eDdtW850
+SECRET_KEY=9a4c8a14b35e29dc37fd819c968f764516d2b5ff883017a229a1b1473fa58a40
+```
+> *Nota:* A senha do banco no pooler requer URL-encoding para caracteres especiais (ex: `@` torna-se `%40`).
 
-### Opção 1 — Docker Compose (recomendado)
+### Opção 1 — Execução com Supabase (Recomendado)
+**Backend (FastAPI)**:
+```bash
+python -m venv venv
+venv\Scripts\activate          # Windows  |  Linux/Mac: source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+Na primeira inicialização com o Supabase, o backend cria automaticamente as 29 tabelas relacionais e executa a carga de dados inicial (seed idempotente).
+
+**Frontend (React + Vite)** — em outro terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend disponível em `http://localhost:5173` e API em `http://localhost:8000`.
+
+### Opção 2 — Docker Compose (MySQL)
 ```bash
 docker-compose up -d
 docker ps
@@ -91,24 +116,8 @@ Na primeira subida o backend cria o schema no MySQL e popula os dados de demonst
 
 Para parar: `docker-compose down`.
 
-### Opção 2 — Execução manual (sem Docker)
-> Sem Docker o backend usa um **SQLite local** (`techconnect.db`, criado e populado automaticamente) — não precisa de MySQL nem de `.env`. Para outro banco, exporte `DATABASE_URL`.
-
-**Backend (FastAPI)** — na raiz do projeto:
-```bash
-python -m venv venv
-venv\Scripts\activate          # Windows  |  Linux/Mac: source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-**Frontend (React + Vite)** — em outro terminal:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Frontend em `http://localhost:5173`, API em `http://localhost:8000`.
+### Opção 3 — Execução manual com SQLite (Local Fallback)
+> Se nenhuma `DATABASE_URL` for informada no `.env`, o backend utiliza automaticamente o **SQLite local** (`techconnect.db`).
 
 ---
 

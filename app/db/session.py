@@ -1,10 +1,19 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.db.models import Base
 
+load_dotenv()
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./techconnect.db")
 
-engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True, pool_recycle=280)
+engine_kwargs = {"echo": False, "pool_pre_ping": True}
+if "postgresql" in DATABASE_URL:
+    engine_kwargs["connect_args"] = {"ssl": "require"}
+else:
+    engine_kwargs["pool_recycle"] = 280
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 
