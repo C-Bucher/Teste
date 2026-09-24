@@ -75,10 +75,10 @@ Desenvolver e disponibilizar uma plataforma web de alta produtividade (Full Stac
 | Identificador | Categoria | Descrição |
 |---|---|---|
 | **RNF01** | **Desempenho** | O backend deve responder às requisições da API com latência inferior a 300ms (operações transacionais) através de chamadas assíncronas com FastAPI e SQLAlchemy 2.0 Async. |
-| **RNF02** | **Persistência e Integridade** | O sistema deve utilizar banco de dados relacional MySQL 8.0, com schema normalizado em 29 tabelas, integridade referencial com chaves estrangeiras e índices otimizados. |
-| **RNF03** | **Segurança** | Todas as senhas devem ser armazenadas com hash criptográfico (Bcrypt). A autenticação deve utilizar tokens JWT com tempo de expiração. Chaves de API e segredos nunca devem constar no código-fonte, sendo injetadas via `.env`. |
+| **RNF02** | **Persistência e Integridade** | O sistema deve utilizar banco de dados relacional (PostgreSQL gerenciado via Supabase, MySQL 8.0 via Docker, ou SQLite como fallback local — selecionável por `DATABASE_URL`), com schema normalizado em 29 tabelas, integridade referencial com chaves estrangeiras e índices otimizados. |
+| **RNF03** | **Segurança** | Todas as senhas devem ser armazenadas com hash criptográfico (Bcrypt). A autenticação deve utilizar tokens JWT com tempo de expiração. Chaves de API e segredos nunca devem constar no código-fonte ou na documentação, sendo injetadas via `.env` (nunca commitado). |
 | **RNF04** | **Usabilidade e Design System** | A interface deve adotar o design system proprietário *Obsidian Flow* (Dark Theme, Glassmorphism, tipografia Outfit/Inter, Framer Motion para micro-interações) e ser responsiva. |
-| **RNF05** | **Contêinerização e Deploy** | O ambiente completo (Frontend, Backend, Banco MySQL e Cache Redis) deve ser orquestrado de forma reproduzível através de `docker-compose.yml`. |
+| **RNF05** | **Contêinerização e Deploy** | O ambiente completo (Frontend, Backend, Banco MySQL e Cache Redis) deve ser orquestrado de forma reproduzível através de `docker-compose.yml`; a opção de banco gerenciado (Supabase) roda fora do Compose, à parte dos demais serviços. |
 | **RNF06** | **Privacidade e LGPD** | Antes de enviar dados financeiros para modelos de IA generativa (Gemini), o backend deve sanitizar as entradas, ofuscando dados sensíveis e nomes de colaboradores ("Colaborador A", "Colaborador B"). |
 | **RNF07** | **Tolerância a Falhas em IA** | Falhas de conexão, rate limits ou timeouts na API do Gemini devem ser tratadas com fallback gracioso no backend, sem interromper as operações do ERP. |
 | **RNF08** | **Idempotência de Inicialização** | O banco de dados deve possuir rotina de *seed* idempotente que popula dados de demonstração automaticamente apenas quando a base estiver vazia. |
@@ -134,10 +134,10 @@ Legenda: ✅ **Atendido** · 🟡 **Parcial** (funciona com limitação registra
 | RF18 Painel de integrações | ✅ | Banco e chave de IA; Redis não é usado pela aplicação. |
 | RF19 Criação de acessos | ✅ | Faltam regras de negócio (edição/desativação pela interface, proteção do último admin): AUTH-2. |
 | RNF01 Latência < 300 ms | 🟡 | Stack assíncrona; **latência não medida formalmente**. |
-| RNF02 Persistência relacional | ✅ | 29 tabelas; MySQL 8 (Docker) e SQLite (execução manual). Sem migrações versionadas (DB-3). |
-| RNF03 Segurança | ✅ | Bcrypt, JWT com expiração, segredos em `.env`. |
+| RNF02 Persistência relacional | ✅ | 29 tabelas; PostgreSQL (Supabase, padrão), MySQL 8 (Docker) e SQLite (fallback). Troca de banco exige editar `DATABASE_URL` manualmente (DB-5). Sem migrações versionadas (DB-3). |
+| RNF03 Segurança | 🟡 | Bcrypt, JWT com expiração, segredos em `.env`. Um commit chegou a expor credenciais reais em texto puro no README; corrigido para placeholders, mas os valores originais ainda não foram rotacionados (SEC-5). |
 | RNF04 Design System | ✅ | Obsidian Flow. |
-| RNF05 Contêinerização | 🟡 | `docker-compose.yml` com 4 serviços; a verificação final foi feita por execução manual (SQLite), não pelo Compose. |
+| RNF05 Contêinerização | 🟡 | `docker-compose.yml` com 4 serviços; a verificação final foi feita por execução manual (SQLite), não pelo Compose. A opção de banco gerenciado (Supabase) não passa pelo Compose e exige troca manual da `DATABASE_URL` para não conflitar com o MySQL local (DB-5). |
 | RNF06 LGPD na IA | 🔲 | Sem chamada a LLM externo, não há sanitização implementada (SEC-2, IA-1). |
 | RNF07 Tolerância a falhas da IA | 🔲 | Depende da integração real (IA-1). |
 | RNF08 Seed idempotente | ✅ | Executa apenas com a base vazia. |
