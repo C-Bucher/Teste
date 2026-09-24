@@ -14,19 +14,42 @@ import HubPessoal from './pages/HubPessoal';
 import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
+import { usePermissions } from './hooks/usePermissions';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
   const location = useLocation();
   if (!token) return <Navigate to="/" />;
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const company = JSON.parse(localStorage.getItem('company') || '{}');
+  let user: { role?: string } = {};
+  let company: { onboarding_completed?: boolean } = {};
+  try {
+    user = JSON.parse(localStorage.getItem('user') || '{}');
+    company = JSON.parse(localStorage.getItem('company') || '{}');
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('company');
+    return <Navigate to="/" replace />;
+  }
   if (user.role === 'ADMIN' && company.onboarding_completed === false && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" />;
   }
 
   return children;
+};
+
+const ModuleRoute = ({ module, children }: { module: string; children: React.ReactNode }) => {
+  const { loading, can } = usePermissions();
+  if (loading) return <div className="min-h-screen bg-background" />;
+  return can(module) ? children : <Navigate to="/dashboard" replace />;
+};
+
+const ScopeRoute = ({ scope, children }: { scope: 'pessoal' | 'empresarial'; children: React.ReactNode }) => {
+  let user: { plan_scope?: string } = {};
+  try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch { /* sessão inválida */ }
+  const allowed = user.plan_scope === 'completo' || user.plan_scope === scope;
+  return allowed ? children : <Navigate to={scope === 'pessoal' ? '/dashboard' : '/pessoal/visao-geral'} replace />;
 };
 
 function App() {
@@ -37,9 +60,9 @@ function App() {
         <Route path="/cadastro" element={<Register />} />
         <Route path="/planos" element={<Plans />} />
         <Route path="/checkout" element={<Checkout />} />
-        <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+        <Route path="/dashboard" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="dashboard"><Dashboard /></ModuleRoute></ScopeRoute></PrivateRoute>} />
         <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
-        <Route path="/kanban" element={<PrivateRoute><Kanban /></PrivateRoute>} />
+        <Route path="/kanban" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="kanban"><Kanban /></ModuleRoute></ScopeRoute></PrivateRoute>} />
         <Route path="/equipe" element={<PrivateRoute><GestaoEquipe /></PrivateRoute>} />
         <Route path="/configuracoes" element={<PrivateRoute><Configuracoes /></PrivateRoute>} />
         <Route path="/fornecedores" element={<PrivateRoute><Fornecedores /></PrivateRoute>} />
@@ -47,8 +70,9 @@ function App() {
         <Route path="/exportacao" element={<PrivateRoute><Exportacao /></PrivateRoute>} />
         <Route path="/ia" element={<PrivateRoute><IAEmpresarial /></PrivateRoute>} />
         <Route path="/pessoal" element={<Navigate to="/pessoal/visao-geral" />} />
-        <Route path="/pessoal/:tab" element={<PrivateRoute><HubPessoal /></PrivateRoute>} />
+        <Route path="/pessoal/:tab" element={<PrivateRoute><ScopeRoute scope="pessoal"><HubPessoal /></ScopeRoute></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

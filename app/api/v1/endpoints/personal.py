@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 import uuid
 from datetime import date
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -24,14 +25,11 @@ from app.db.utils import model_to_dict, models_to_dicts
 router = APIRouter()
 
 _ENTRY_COLUMNS = {c.name for c in PersonalEntryModel.__table__.columns}
-_OWNER_ID = "usr-001"  # no real per-user isolation yet; deliberate simplification (see task constraints)
-
-
-async def _create_entry(d: dict, db: AsyncSession):
+async def _create_entry(d: dict, owner_id: str, db: AsyncSession):
     kwargs = {k: v for k, v in d.items() if k in _ENTRY_COLUMNS}
     kwargs["id"] = f"pes-{uuid.uuid4().hex[:6]}"
     kwargs.setdefault("date", date.today().isoformat())
-    kwargs["owner_id"] = _OWNER_ID
+    kwargs["owner_id"] = owner_id
     entry = PersonalEntryModel(**kwargs)
     db.add(entry)
     await db.commit()
@@ -39,11 +37,12 @@ async def _create_entry(d: dict, db: AsyncSession):
     return model_to_dict(entry)
 
 
-async def _delete_entry(eid: str, db: AsyncSession):
+async def _delete_entry(eid: str, owner_id: str, db: AsyncSession):
     entry = await db.get(PersonalEntryModel, eid)
-    if entry:
-        await db.delete(entry)
-        await db.commit()
+    if not entry or entry.owner_id != owner_id:
+        raise HTTPException(404)
+    await db.delete(entry)
+    await db.commit()
     return {"success": True}
 
 
@@ -61,18 +60,18 @@ _TIMEBOX_COLUMNS = _cols(PersonalTimeboxModel)
 _OKR_COLUMNS = _cols(PersonalOkrModel)
 
 
-async def _list_owned(model, db: AsyncSession):
-    result = await db.execute(select(model).where(model.owner_id == _OWNER_ID))
+async def _list_owned(model, owner_id: str, db: AsyncSession):
+    result = await db.execute(select(model).where(model.owner_id == owner_id))
     return models_to_dicts(result.scalars().all())
 
 
-async def _create_owned(model, columns: set, prefix: str, d: dict, db: AsyncSession, defaults: dict = None):
+async def _create_owned(model, columns: set, prefix: str, d: dict, owner_id: str, db: AsyncSession, defaults: Optional[dict] = None):
     kwargs = {k: v for k, v in d.items() if k in columns}
     if defaults:
         for k, v in defaults.items():
             kwargs.setdefault(k, v)
     kwargs["id"] = f"{prefix}-{uuid.uuid4().hex[:6]}"
-    kwargs["owner_id"] = _OWNER_ID
+    kwargs["owner_id"] = owner_id
     obj = model(**kwargs)
     db.add(obj)
     await db.commit()
@@ -80,47 +79,59 @@ async def _create_owned(model, columns: set, prefix: str, d: dict, db: AsyncSess
     return model_to_dict(obj)
 
 
-async def _delete_owned(model, oid: str, db: AsyncSession):
+async def _delete_owned(model, oid: str, owner_id: str, db: AsyncSession):
     obj = await db.get(model, oid)
-    if obj:
-        await db.delete(obj)
-        await db.commit()
+    if not obj or obj.owner_id != owner_id:
+        raise HTTPException(404)
+    await db.delete(obj)
+    await db.commit()
     return {"success": True}
+
+
+async def _ensure_personal_categories(owner_id: str, db: AsyncSession) -> None:
+    existing = await db.execute(select(PersonalCategoryModel.id).where(PersonalCategoryModel.owner_id == owner_id).limit(1))
+    if existing.scalar_one_or_none() is not None:
+        return
+    defaults = [("Salário", "RECEITA"), ("Moradia", "DESPESA"), ("Alimentação", "DESPESA"), ("Saúde", "DESPESA")]
+    for name, category_type in defaults:
+        db.add(PersonalCategoryModel(id=f"pc-{uuid.uuid4().hex[:8]}", owner_id=owner_id, name=name, type=category_type))
+    await db.commit()
 
 
 @router.get("/transactions")
 async def get_pers_tx(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
     return models_to_dicts(result.scalars().all())
 @router.post("/transactions")
 async def create_pers_tx(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_entry(d, db)
+    return await _create_entry(d, u["id"], db)
 @router.delete("/transactions/{eid}")
 async def del_pers_tx(eid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_entry(eid, db)
+    return await _delete_entry(eid, u["id"], db)
 
 @router.get("/categories")
 async def get_pers_cats(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalCategoryModel).where(PersonalCategoryModel.owner_id == _OWNER_ID))
+    await _ensure_personal_categories(u["id"], db)
+    result = await db.execute(select(PersonalCategoryModel).where(PersonalCategoryModel.owner_id == u["id"]))
     return models_to_dicts(result.scalars().all())
 
 @router.get("/timeboxes")
 async def get_timeboxes(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalTimeboxModel, db)
+    return await _list_owned(PersonalTimeboxModel, u["id"], db)
 @router.post("/timeboxes")
 async def create_timebox(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalTimeboxModel, _TIMEBOX_COLUMNS, "ptb", d, db)
+    return await _create_owned(PersonalTimeboxModel, _TIMEBOX_COLUMNS, "ptb", d, u["id"], db)
 
 @router.get("/okrs")
 async def get_okrs(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalOkrModel, db)
+    return await _list_owned(PersonalOkrModel, u["id"], db)
 @router.post("/okrs")
 async def create_okr(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalOkrModel, _OKR_COLUMNS, "pokr", d, db)
+    return await _create_owned(PersonalOkrModel, _OKR_COLUMNS, "pokr", d, u["id"], db)
 
 @router.get("/dashboard")
 async def pers_dash(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
     entries = models_to_dicts(result.scalars().all())
     rec=sum(e["amount"] for e in entries if e["type"]=="RECEITA")
     desp=sum(e["amount"] for e in entries if e["type"]=="DESPESA")
@@ -128,87 +139,87 @@ async def pers_dash(u=Depends(get_current_user), db: AsyncSession = Depends(get_
 
 @router.get("/entries")
 async def get_pers(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
     items = models_to_dicts(result.scalars().all())
     return {"items":items,"total":len(items)}
 @router.post("/entries")
 async def create_pers(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_entry(d, db)
+    return await _create_entry(d, u["id"], db)
 @router.delete("/entries/{eid}")
 async def del_pers(eid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_entry(eid, db)
+    return await _delete_entry(eid, u["id"], db)
 
 @router.get("/accounts")
 async def get_accounts(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalAccountModel, db)
+    return await _list_owned(PersonalAccountModel, u["id"], db)
 @router.post("/accounts")
 async def create_account(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalAccountModel, _ACCOUNT_COLUMNS, "pacc", d, db)
+    return await _create_owned(PersonalAccountModel, _ACCOUNT_COLUMNS, "pacc", d, u["id"], db)
 @router.delete("/accounts/{aid}")
 async def del_account(aid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalAccountModel, aid, db)
+    return await _delete_owned(PersonalAccountModel, aid, u["id"], db)
 
 @router.get("/budgets")
 async def get_budgets(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalBudgetModel, db)
+    return await _list_owned(PersonalBudgetModel, u["id"], db)
 @router.post("/budgets")
 async def create_budget(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalBudgetModel, _BUDGET_COLUMNS, "pbud", d, db, defaults={"spent_amount": 0.0})
+    return await _create_owned(PersonalBudgetModel, _BUDGET_COLUMNS, "pbud", d, u["id"], db, defaults={"spent_amount": 0.0})
 @router.delete("/budgets/{bid}")
 async def del_budget(bid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalBudgetModel, bid, db)
+    return await _delete_owned(PersonalBudgetModel, bid, u["id"], db)
 
 @router.get("/goals")
 async def get_goals(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalGoalModel, db)
+    return await _list_owned(PersonalGoalModel, u["id"], db)
 @router.post("/goals")
 async def create_goal(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalGoalModel, _GOAL_COLUMNS, "pgoal", d, db, defaults={"current_amount": 0.0})
+    return await _create_owned(PersonalGoalModel, _GOAL_COLUMNS, "pgoal", d, u["id"], db, defaults={"current_amount": 0.0})
 @router.post("/goals/{gid}/contribute")
 async def contribute_goal(gid:str,d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     g = await db.get(PersonalGoalModel, gid)
-    if not g: raise HTTPException(404)
+    if not g or g.owner_id != u["id"]: raise HTTPException(404)
     g.current_amount = round((g.current_amount or 0) + d.get("amount", 0), 2)
     await db.commit()
     await db.refresh(g)
     return model_to_dict(g)
 @router.delete("/goals/{gid}")
 async def del_goal(gid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalGoalModel, gid, db)
+    return await _delete_owned(PersonalGoalModel, gid, u["id"], db)
 
 @router.get("/debts")
 async def get_debts(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalDebtModel, db)
+    return await _list_owned(PersonalDebtModel, u["id"], db)
 @router.post("/debts")
 async def create_debt(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalDebtModel, _DEBT_COLUMNS, "pdebt", d, db, defaults={"installments_paid": 0})
+    return await _create_owned(PersonalDebtModel, _DEBT_COLUMNS, "pdebt", d, u["id"], db, defaults={"installments_paid": 0})
 @router.delete("/debts/{did}")
 async def del_debt(did:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalDebtModel, did, db)
+    return await _delete_owned(PersonalDebtModel, did, u["id"], db)
 
 @router.get("/subscriptions")
 async def get_subs(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalSubscriptionModel, db)
+    return await _list_owned(PersonalSubscriptionModel, u["id"], db)
 @router.post("/subscriptions")
 async def create_sub(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalSubscriptionModel, _SUBSCRIPTION_COLUMNS, "psub", d, db, defaults={"is_active": True})
+    return await _create_owned(PersonalSubscriptionModel, _SUBSCRIPTION_COLUMNS, "psub", d, u["id"], db, defaults={"is_active": True})
 @router.delete("/subscriptions/{sid}")
 async def del_sub(sid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalSubscriptionModel, sid, db)
+    return await _delete_owned(PersonalSubscriptionModel, sid, u["id"], db)
 
 @router.get("/splits")
 async def get_splits(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _list_owned(PersonalSplitModel, db)
+    return await _list_owned(PersonalSplitModel, u["id"], db)
 @router.post("/splits")
 async def create_split(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_owned(PersonalSplitModel, _SPLIT_COLUMNS, "psplit", d, db)
+    return await _create_owned(PersonalSplitModel, _SPLIT_COLUMNS, "psplit", d, u["id"], db)
 @router.delete("/splits/{spid}")
 async def del_split(spid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_owned(PersonalSplitModel, spid, db)
+    return await _delete_owned(PersonalSplitModel, spid, u["id"], db)
 
 @router.get("/analytics")
 async def get_analytics(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == _OWNER_ID))
+    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
     entries = models_to_dicts(result.scalars().all())
     total_by_cat: dict = {}
     for e in entries:

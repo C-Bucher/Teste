@@ -1,58 +1,35 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
 import uuid
-from app.core.security import get_current_user
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.v1.endpoints.plans import PLANS_DB
+from app.core.security import get_current_user
+from app.db.models import CompanyModel, InvoiceModel, PlanModel, SubscriptionModel, UserModel
+from app.db.session import get_db
 
 router = APIRouter()
 
-# Derived directly from PLANS_DB so plan ids/prices never drift out of sync
-# with the source of truth in plans.py.
 PLAN_PRICES = {
-    p["id"]: {"monthly": p["price_monthly"], "yearly": p["price_yearly"] * 12, "name": p["name"]}
-    for p in PLANS_DB
-}
-
-# Default/fallback plan used to seed mock subscription data (Empresarial,
-# matching the default selected_plan used at registration).
-DEFAULT_PLAN = next(p for p in PLANS_DB if p["id"] == "plan-empresarial")
-
-# In-memory subscription storage
-SUBSCRIPTIONS_DB = {
-    "usr-001": {
-        "id": "sub-001",
-        "company_name": "TechConnect Soluções Ltda",
-        "plan_id": DEFAULT_PLAN["id"],
-        "plan_name": DEFAULT_PLAN["name"],
-        "billing_cycle": "monthly",
-        "amount": DEFAULT_PLAN["price_monthly"],
-        "status": "ACTIVE",
-        "payment_method": "credit_card",
-        "card_last4": "4242",
-        "card_brand": "Visa",
-        "current_period_end": (datetime.now() + timedelta(days=30)).isoformat(),
-        "auto_renew": True
+    plan["id"]: {
+        "monthly": plan["price_monthly"],
+        "yearly": plan["price_yearly"] * 12,
+        "name": plan["name"],
+        "data": plan,
     }
+    for plan in PLANS_DB
 }
+DEFAULT_PLAN = next(plan for plan in PLANS_DB if plan["id"] == "plan-empresarial")
 
-INVOICES_DB = [
-    {
-        "id": "inv-2026-001",
-        "subscription_id": "sub-001",
-        "amount": DEFAULT_PLAN["price_monthly"],
-        "status": "PAID",
-        "date": (datetime.now() - timedelta(days=5)).isoformat(),
-        "pdf_url": "/api/v1/exports/invoice/inv-2026-001",
-        "description": f"Plano {DEFAULT_PLAN['name']} - Mensalidade (Fevereiro 2026)"
-    }
-]
 
 class CheckoutReq(BaseModel):
     plan_id: str
-    billing_cycle: str  # 'monthly' or 'yearly'
-    payment_method: str  # 'credit_card' or 'pix'
+    billing_cycle: str
+    payment_method: str
     card_number: Optional[str] = None
     card_name: Optional[str] = None
     card_expiry: Optional[str] = None
@@ -60,75 +37,161 @@ class CheckoutReq(BaseModel):
     company_name: Optional[str] = None
     cnpj_cpf: Optional[str] = None
 
+
+def _subscription_dict(subscription: SubscriptionModel, plan_name: str, company_name: str) -> dict:
+    return {
+        "id": subscription.id,
+        "company_name": company_name,
+        "plan_id": subscription.plan_id,
+        "plan_name": plan_name,
+        "billing_cycle": subscription.billing_cycle,
+        "amount": subscription.amount,
+        "status": subscription.status,
+        "payment_method": subscription.payment_method,
+        "card_last4": subscription.card_last4,
+        "card_brand": subscription.card_brand,
+        "current_period_end": subscription.current_period_end,
+        "auto_renew": subscription.auto_renew,
+    }
+
+
+async def _ensure_plan(db: AsyncSession, plan_data: dict) -> PlanModel:
+    plan = await db.get(PlanModel, plan_data["id"])
+    limits = plan_data.get("limits", {})
+    if plan is None:
+        plan = PlanModel(
+            id=plan_data["id"],
+            name=plan_data["name"],
+            tagline=plan_data.get("tagline"),
+            price_monthly=plan_data["price_monthly"],
+            price_yearly=plan_data["price_yearly"],
+            max_employees=limits.get("max_employees", 0),
+            max_projects=limits.get("max_projects", 0),
+            ai_cfo_unlimited=limits.get("ai_queries") == -1,
+        )
+        db.add(plan)
+        await db.flush()
+    return plan
+
+
 @router.post("/checkout")
-async def checkout(body: CheckoutReq, u=Depends(get_current_user)):
+async def checkout(body: CheckoutReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if body.plan_id not in PLAN_PRICES:
-        raise HTTPException(status_code=400, detail="Plano inválido")
+        raise HTTPException(400, "Plano inválido")
+    if body.billing_cycle not in {"monthly", "yearly"}:
+        raise HTTPException(400, "Ciclo de cobrança inválido")
+    if body.payment_method not in {"credit_card", "pix"}:
+        raise HTTPException(400, "Forma de pagamento inválida")
 
     price_info = PLAN_PRICES[body.plan_id]
-    amount = price_info["monthly"] if body.billing_cycle == "monthly" else price_info["yearly"]
+    await _ensure_plan(db, price_info["data"])
+    amount = price_info[body.billing_cycle]
+    current_subscriptions = (await db.execute(
+        select(SubscriptionModel).where(
+            SubscriptionModel.company_id == u["company_id"],
+            SubscriptionModel.status == "ACTIVE",
+        )
+    )).scalars().all()
+    for current_subscription in current_subscriptions:
+        current_subscription.status = "REPLACED"
+    subscription = SubscriptionModel(
+        id=f"sub-{uuid.uuid4().hex[:10]}",
+        company_id=u["company_id"],
+        plan_id=body.plan_id,
+        billing_cycle=body.billing_cycle,
+        amount=amount,
+        status="ACTIVE",
+        payment_method=body.payment_method,
+        card_last4=body.card_number[-4:] if body.card_number and len(body.card_number) >= 4 else None,
+        card_brand="Visa" if body.payment_method == "credit_card" else None,
+        auto_renew=True,
+        current_period_end=(datetime.utcnow() + timedelta(days=365 if body.billing_cycle == "yearly" else 30)).isoformat(),
+    )
+    db.add(subscription)
+    invoice = InvoiceModel(
+        id=f"inv-{uuid.uuid4().hex[:10]}",
+        subscription_id=subscription.id,
+        amount=amount,
+        status="PAID",
+        description=f"Assinatura Plano {price_info['name']} ({'Anual' if body.billing_cycle == 'yearly' else 'Mensal'})",
+        pdf_url=None,
+    )
+    db.add(invoice)
+    company_users = (await db.execute(select(UserModel).where(UserModel.company_id == u["company_id"]))).scalars().all()
+    for company_user in company_users:
+        company_user.plan_scope = price_info["data"]["scope"]
+    await db.commit()
+    await db.refresh(subscription)
+    await db.refresh(invoice)
 
-    sub_id = f"sub-{uuid.uuid4().hex[:6]}"
-    inv_id = f"inv-{uuid.uuid4().hex[:6]}"
-    
-    last4 = body.card_number[-4:] if body.card_number and len(body.card_number) >= 4 else "8888"
-
-    sub_data = {
-        "id": sub_id,
-        "company_name": body.company_name or "Sua Empresa",
-        "plan_id": body.plan_id,
-        "plan_name": price_info["name"],
-        "billing_cycle": body.billing_cycle,
-        "amount": amount,
-        "status": "ACTIVE",
-        "payment_method": body.payment_method,
-        "card_last4": last4,
-        "card_brand": "Visa",
-        "current_period_end": (datetime.now() + timedelta(days=365 if body.billing_cycle == "yearly" else 30)).isoformat(),
-        "auto_renew": True
-    }
-    SUBSCRIPTIONS_DB[u["id"]] = sub_data
-
+    subscription_data = _subscription_dict(subscription, price_info["name"], body.company_name or "Sua Empresa")
     invoice_data = {
-        "id": inv_id,
-        "subscription_id": sub_id,
-        "amount": amount,
-        "status": "PAID",
-        "date": datetime.now().isoformat(),
-        "pdf_url": f"/api/v1/exports/invoice/{inv_id}",
-        "description": f"Assinatura Plano {price_info['name']} ({'Anual' if body.billing_cycle == 'yearly' else 'Mensal'})"
+        "id": invoice.id,
+        "subscription_id": invoice.subscription_id,
+        "amount": invoice.amount,
+        "status": invoice.status,
+        "date": invoice.created_at,
+        "pdf_url": invoice.pdf_url,
+        "description": invoice.description,
     }
-    INVOICES_DB.append(invoice_data)
-
     return {
         "success": True,
         "message": f"Pagamento realizado com sucesso! Seu plano {price_info['name']} está ativo.",
-        "subscription": sub_data,
+        "subscription": subscription_data,
         "invoice": invoice_data,
-        "pix_code": "00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-4266141740005204000053039865405" + str(int(amount)) + "5802BR5913TechConnect6009SAO PAULO62070503***6304E2CA" if body.payment_method == "pix" else None
+        "pix_code": "PAGAMENTO-PIX-SIMULADO" if body.payment_method == "pix" else None,
+        "plan_scope": price_info["data"]["scope"],
     }
 
+
 @router.get("/subscription")
-async def get_subscription(u=Depends(get_current_user)):
-    sub = SUBSCRIPTIONS_DB.get(u["id"])
-    if not sub:
-        # Default starter fallback
-        sub = {
-            "id": "sub-default",
-            "company_name": "Sua Empresa",
-            "plan_id": DEFAULT_PLAN["id"],
-            "plan_name": DEFAULT_PLAN["name"],
-            "billing_cycle": "monthly",
-            "amount": DEFAULT_PLAN["price_monthly"],
-            "status": "ACTIVE",
-            "payment_method": "credit_card",
-            "card_last4": "4242",
-            "card_brand": "Mastercard",
-            "current_period_end": (datetime.now() + timedelta(days=25)).isoformat(),
-            "auto_renew": True
-        }
-    return sub
+async def get_subscription(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SubscriptionModel)
+        .where(SubscriptionModel.company_id == u["company_id"])
+        .order_by(SubscriptionModel.created_at.desc())
+    )
+    subscription = result.scalars().first()
+    if subscription is None:
+        await _ensure_plan(db, DEFAULT_PLAN)
+        subscription = SubscriptionModel(
+            id=f"sub-{uuid.uuid4().hex[:10]}",
+            company_id=u["company_id"],
+            plan_id=DEFAULT_PLAN["id"],
+            billing_cycle="monthly",
+            amount=DEFAULT_PLAN["price_monthly"],
+            status="ACTIVE",
+            payment_method="credit_card",
+            card_last4=None,
+            card_brand=None,
+            auto_renew=True,
+            current_period_end=(datetime.utcnow() + timedelta(days=30)).isoformat(),
+        )
+        db.add(subscription)
+        await db.commit()
+        await db.refresh(subscription)
+    plan = await db.get(PlanModel, subscription.plan_id)
+    company = await db.get(CompanyModel, u["company_id"])
+    return _subscription_dict(subscription, plan.name if plan else subscription.plan_id, company.name if company else "Sua Empresa")
+
 
 @router.get("/invoices")
-async def get_invoices(u=Depends(get_current_user)):
-    return INVOICES_DB
+async def get_invoices(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(InvoiceModel)
+        .join(SubscriptionModel, InvoiceModel.subscription_id == SubscriptionModel.id)
+        .where(SubscriptionModel.company_id == u["company_id"])
+        .order_by(InvoiceModel.created_at.desc())
+    )
+    return [
+        {
+            "id": invoice.id,
+            "subscription_id": invoice.subscription_id,
+            "amount": invoice.amount,
+            "status": invoice.status,
+            "date": invoice.created_at,
+            "pdf_url": invoice.pdf_url,
+            "description": invoice.description,
+        }
+        for invoice in result.scalars().all()
+    ]

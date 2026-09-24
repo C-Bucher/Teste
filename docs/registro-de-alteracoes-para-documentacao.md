@@ -77,7 +77,7 @@ Onde impacta: se o DAS descreve a stack de front-end, vale mencionar o sistema d
 Esta é a mudança mais estrutural de todas. Toda a persistência de dados era simulada em listas/dicionários Python na memória do processo — ou seja, qualquer reinício do servidor apagava tudo. Isso foi substituído por um banco de dados relacional real.
 
 - SQLAlchemy 2.0 assíncrono como camada de ORM.
-- 29 tabelas modelando todas as entidades do sistema (usuários, funcionários, fornecedores, lançamentos financeiros, projetos/kanban, notificações, módulos do Hub Pessoal, etc.).
+- 32 tabelas modelando as entidades do sistema, incluindo timers ativos, calendário e preferências de notificação persistentes.
 - Seed idempotente: os dados de demonstração (3 usuários de teste, funcionários, projetos etc.) são inseridos automaticamente na primeira execução, e nunca duplicados em execuções seguintes.
 - 13 routers da API migrados de leitura/escrita em memória para consultas reais ao banco, mantendo exatamente os mesmos contratos de resposta (nenhuma mudança perceptível pro front-end).
 - Autenticação (login/JWT) também migrada — usuários cadastrados agora persistem de verdade.

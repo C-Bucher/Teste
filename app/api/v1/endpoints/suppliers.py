@@ -17,7 +17,7 @@ _SUP_COLUMNS = {c.name for c in SupplierModel.__table__.columns}
 
 @router.get("/")
 async def get_sups(active_only: Optional[bool] = None, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    stmt = select(SupplierModel)
+    stmt = select(SupplierModel).where(SupplierModel.company_id == u["company_id"])
     if active_only is not None:
         stmt = stmt.where(SupplierModel.is_active == active_only)
     result = await db.execute(stmt)
@@ -26,7 +26,7 @@ async def get_sups(active_only: Optional[bool] = None, u=Depends(get_current_use
 
 @router.post("/")
 async def create_sup(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    sup_dict = {"id": f"sup-{uuid.uuid4().hex[:6]}", "is_active": True, **d}
+    sup_dict = {**d, "id": f"sup-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"], "is_active": True}
     model_kwargs = {k: v for k, v in sup_dict.items() if k in _SUP_COLUMNS}
     s = SupplierModel(**model_kwargs)
     db.add(s)
@@ -38,16 +38,17 @@ async def create_sup(d: dict, u=Depends(get_current_user), db: AsyncSession = De
 @router.delete("/{sid}")
 async def del_sup(sid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     s = await db.get(SupplierModel, sid)
-    if s:
-        await db.delete(s)
-        await db.commit()
+    if not s or s.company_id != u["company_id"]:
+        raise HTTPException(404)
+    await db.delete(s)
+    await db.commit()
     return {"success": True}
 
 
 @router.get("/{sid}")
 async def get_sup(sid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     s = await db.get(SupplierModel, sid)
-    if not s:
+    if not s or s.company_id != u["company_id"]:
         raise HTTPException(404)
     return model_to_dict(s)
 
@@ -55,10 +56,10 @@ async def get_sup(sid: str, u=Depends(get_current_user), db: AsyncSession = Depe
 @router.put("/{sid}")
 async def upd_sup(sid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     s = await db.get(SupplierModel, sid)
-    if not s:
+    if not s or s.company_id != u["company_id"]:
         raise HTTPException(404)
     for k, v in d.items():
-        if k in _SUP_COLUMNS:
+        if k in _SUP_COLUMNS and k not in {"id", "company_id"}:
             setattr(s, k, v)
     await db.commit()
     await db.refresh(s)

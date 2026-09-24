@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.core.security import get_current_user
 from app.db.session import get_db
-from app.db.models import ExportLogModel
+from app.db.models import ExportLogModel, FinancialEntryModel, EmployeeModel, SupplierModel, ProjectModel, KanbanColumnModel, KanbanCardModel
 from app.db.utils import model_to_dict, models_to_dicts
 
 router = APIRouter()
@@ -15,26 +15,55 @@ router = APIRouter()
 _EXPORT_COLUMNS = {c.name for c in ExportLogModel.__table__.columns}
 
 import os
-import io
-import csv
+import json
 
 @router.get("/")
 async def get_exports_main(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ExportLogModel).order_by(ExportLogModel.created_at.desc()))
+    result = await db.execute(select(ExportLogModel).where(ExportLogModel.company_id == u["company_id"]).order_by(ExportLogModel.created_at.desc()))
     return models_to_dicts(result.scalars().all())
 
 @router.post("/request")
 async def req_export(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    eid = f"exp-{uuid.uuid4().hex[:6]}"
+    eid = f"exp-{uuid.uuid4().hex}"
     exp_type = d.get("type", "RELATORIO")
     exp_format = d.get("format", "CSV").upper()
+    if exp_format not in {"CSV", "JSON"}:
+        raise HTTPException(400, "Formato não suportado. Use CSV ou JSON")
     
     # Generate mock exported file
     os.makedirs("uploads", exist_ok=True)
-    filename = f"export_{eid}.{exp_format.lower() if exp_format in ['csv', 'pdf', 'xlsx', 'json'] else 'csv'}"
+    filename = f"export_{eid}.{exp_format.lower()}"
     filepath = os.path.join("uploads", filename)
     
-    content = f"TechConnect 2.0 - Relatorio {exp_type}\nData de Geracao: {datetime.now().strftime('%d/%m/%Y %H:%M')}\nTipo: {exp_type}\nFormato: {exp_format}\nStatus: Concluido\n\nID,Descricao,Valor,Status\n1,Lancamento Exemplo 1,1500.00,PAGO\n2,Lancamento Exemplo 2,2850.50,PAGO\n"
+    if exp_type in {"DRE", "FLUXO_CAIXA"}:
+        result = await db.execute(select(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"]))
+        rows = models_to_dicts(result.scalars().all())
+    elif exp_type == "COLABORADORES":
+        result = await db.execute(select(EmployeeModel).where(EmployeeModel.company_id == u["company_id"]))
+        rows = models_to_dicts(result.scalars().all())
+    elif exp_type == "FORNECEDORES":
+        result = await db.execute(select(SupplierModel).where(SupplierModel.company_id == u["company_id"]))
+        rows = models_to_dicts(result.scalars().all())
+    elif exp_type == "COST_PER_TASK":
+        result = await db.execute(
+            select(KanbanCardModel)
+            .join(KanbanColumnModel, KanbanCardModel.column_id == KanbanColumnModel.id)
+            .join(ProjectModel, KanbanColumnModel.project_id == ProjectModel.id)
+            .where(ProjectModel.company_id == u["company_id"])
+        )
+        rows = models_to_dicts(result.scalars().all())
+    else:
+        raise HTTPException(400, "Tipo de relatório não suportado")
+    if exp_format == "JSON":
+        content = json.dumps({"tipo": exp_type, "gerado_em": datetime.now().isoformat(), "items": rows}, ensure_ascii=False, indent=2)
+    else:
+        headers = list(rows[0].keys()) if rows else []
+        def csv_value(value):
+            return '"' + str(value if value is not None else "").replace('"', '""') + '"'
+        content = ",".join(headers) + "\n"
+        content += "\n".join(",".join(csv_value(row.get(header)) for header in headers) for row in rows)
+        if rows:
+            content += "\n"
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
         
@@ -42,6 +71,7 @@ async def req_export(d: dict, u=Depends(get_current_user), db: AsyncSession = De
     
     ex_dict = {
         "id": eid,
+        "company_id": u["company_id"],
         "type": exp_type,
         "format": exp_format,
         "status": "PRONTO",
@@ -57,22 +87,20 @@ async def req_export(d: dict, u=Depends(get_current_user), db: AsyncSession = De
 
 @router.get("/logs")
 async def get_exports(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ExportLogModel).order_by(ExportLogModel.created_at.desc()))
+    result = await db.execute(select(ExportLogModel).where(ExportLogModel.company_id == u["company_id"]).order_by(ExportLogModel.created_at.desc()))
     return models_to_dicts(result.scalars().all())
 
 @router.get("/download/{eid}")
-async def dl_export(eid: str, request: Request, u=Depends(get_current_user)):
+async def dl_export(eid: str, request: Request, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     base_url = str(request.base_url).rstrip("/")
+    export = await db.get(ExportLogModel, eid)
+    if not export or export.company_id != u["company_id"]:
+        raise HTTPException(404, "Exportação não encontrada")
 
     # Check if file exists in uploads
-    for ext in ["csv", "pdf", "xlsx", "json"]:
+    for ext in ["csv", "json"]:
         candidate = f"export_{eid}.{ext}"
         if os.path.exists(os.path.join("uploads", candidate)):
-            return {"download_url": f"{base_url}/uploads/{candidate}", "filename": candidate, "expires_in": 3600}
+            return {"download_url": f"{base_url}/uploads/{candidate}", "filename": candidate}
 
-    # Fallback created on the fly
-    filename = f"export_{eid}.csv"
-    filepath = os.path.join("uploads", filename)
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(f"TechConnect 2.0 - Exportacao {eid}\nData: {datetime.now().isoformat()}\n")
-    return {"download_url": f"{base_url}/uploads/{filename}", "filename": filename, "expires_in": 3600}
+    raise HTTPException(404, "Arquivo de exportação não encontrado")

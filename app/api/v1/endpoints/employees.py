@@ -36,7 +36,7 @@ async def _add_salary_history(db: AsyncSession, employee: EmployeeModel, reason:
 
 @router.get("/")
 async def get_emps(skip: int = 0, limit: int = 100, active: Optional[bool] = None, search: Optional[str] = None, contract_type: Optional[str] = None, department: Optional[str] = None, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(EmployeeModel))
+    result = await db.execute(select(EmployeeModel).where(EmployeeModel.company_id == u["company_id"]))
     e = models_to_dicts(result.scalars().all())
     e = [x for x in e if active is None or x["is_active"] == active]
     if search:
@@ -54,7 +54,7 @@ async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = De
     base = d.get("base_salary", 0)
     ctc = base * 1.75 if d.get("contract_type") == "CLT" else base * 1.1
     hr = round(ctc / 176, 2)
-    emp_dict = {"id": f"emp-{uuid.uuid4().hex[:6]}", "ctc_snapshot": round(ctc, 2), "ctc_monthly": round(ctc, 2), "hourly_rate": hr, "hourly_cost": hr, "is_active": True, "position": d.get("role", ""), "hire_date": d.get("start_date", date.today().isoformat()), **d}
+    emp_dict = {**d, "id": f"emp-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"], "ctc_snapshot": round(ctc, 2), "ctc_monthly": round(ctc, 2), "hourly_rate": hr, "hourly_cost": hr, "is_active": True, "position": d.get("role", ""), "hire_date": d.get("start_date", date.today().isoformat())}
     model_kwargs = {k: v for k, v in emp_dict.items() if k in _EMP_COLUMNS}
     emp = EmployeeModel(**model_kwargs)
     db.add(emp)
@@ -68,7 +68,7 @@ async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = De
 @router.get("/{eid}")
 async def get_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     e = await db.get(EmployeeModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     return model_to_dict(e)
 
@@ -76,14 +76,14 @@ async def get_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Depe
 @router.put("/{eid}")
 async def upd_emp(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     e = await db.get(EmployeeModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
 
     old_base = e.base_salary
     old_contract = e.contract_type
 
     for k, v in d.items():
-        if k in _EMP_COLUMNS:
+        if k in _EMP_COLUMNS and k not in {"id", "company_id"}:
             setattr(e, k, v)
 
     new_base = e.base_salary
@@ -106,7 +106,7 @@ async def upd_emp(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSessi
 @router.delete("/{eid}")
 async def del_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     e = await db.get(EmployeeModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     e.is_active = False
     e.end_date = date.today().isoformat()
@@ -117,7 +117,7 @@ async def del_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Depe
 @router.post("/{eid}/terminate")
 async def term_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     e = await db.get(EmployeeModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     e.is_active = False
     e.end_date = date.today().isoformat()
@@ -129,7 +129,7 @@ async def term_emp(eid: str, u=Depends(get_current_user), db: AsyncSession = Dep
 @router.get("/{eid}/salary-history")
 async def sal_hist(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     e = await db.get(EmployeeModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     result = await db.execute(select(SalaryHistoryModel).where(SalaryHistoryModel.employee_id == eid).order_by(SalaryHistoryModel.changed_at))
     return {"items": models_to_dicts(result.scalars().all())}

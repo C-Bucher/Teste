@@ -56,10 +56,10 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
-| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 assíncrono (via `asyncpg`), Uvicorn — 29 tabelas, seed idempotente |
+| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 assíncrono, Uvicorn — 32 tabelas, seed idempotente e migrações aditivas de compatibilidade |
 | Banco de dados | PostgreSQL gerenciado (Supabase, via Connection Pooler), MySQL 8.0 (Docker) ou SQLite (fallback local) |
-| Infraestrutura | Docker e Docker Compose; segredos via `.env`, que fica de fora do Git |
-| Redis 7 | provisionado no Compose, mas ainda não usado pela aplicação (reservado para cache/filas) |
+| Infraestrutura | Docker e Docker Compose; segredos e credenciais via `.env`, que fica fora do Git |
+| Redis 7 | provisionado no Compose, mas ainda não utilizado pela aplicação (reservado para cache/filas) |
 
 ---
 
@@ -92,8 +92,7 @@ venv\Scripts\activate          # Windows  |  Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
-
-Na primeira inicialização, o backend cria as 29 tabelas no Supabase e roda o seed idempotente com os dados de demonstração.
+Na primeira inicialização com o Supabase, o backend cria automaticamente as 32 tabelas relacionais e executa a carga de dados inicial (seed idempotente). Bases anteriores recebem as colunas aditivas de compatibilidade durante o startup.
 
 Frontend (React + Vite), em outro terminal:
 
@@ -150,14 +149,15 @@ O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logi
 
 Estão registradas aqui de propósito, para que a avaliação parta do estado real do sistema. Os detalhes e a prioridade de cada uma estão em [docs/BACKLOG.md](docs/BACKLOG.md).
 
-- Os dados de negócio não são isolados por empresa (**MT-1**): empresas, usuários e permissões são separados por `company_id`, mas funcionários, lançamentos, projetos, clientes, fornecedores, notificações e exportações continuam num conjunto único, compartilhado por todas as empresas cadastradas.
-- O Hub Pessoal não é isolado por usuário (**MT-2**): as rotas usam um proprietário fixo (`usr-001`) em vez do usuário autenticado, então qualquer pessoa logada vê os mesmos dados pessoais, embora as tabelas já tenham a coluna `owner_id`.
-- Kanban, clientes, notificações, planos, pagamentos e o próprio Hub Pessoal ainda não têm bloqueio por módulo no servidor (**SEC-3**); as permissões de Dashboard e Projetos, hoje, só controlam o menu.
-- A IA responde por palavras-chave, sem modelo generativo real, e não há sanitização de dados sensíveis para LGPD (**IA-1**).
-- Não há 2FA, auditoria nem suíte de testes automatizados. O `test_api.py` é um script manual de fumaça, não uma suíte de testes.
-- A troca entre os três bancos não é automática (**DB-5**): como o `.env.example` ativa o Supabase por padrão, usar o MySQL do Docker Compose ou o fallback em SQLite exige editar manualmente a `DATABASE_URL` antes de subir o sistema.
-- Um commit chegou a expor, em texto puro neste README, a senha real do banco no Supabase, a `SUPABASE_ANON_KEY` e um `SECRET_KEY` reais (**SEC-5**). Um commit seguinte trocou esses valores por placeholders, mas eles ainda não foram rotacionados no Supabase e continuam visíveis no histórico do Git.
-- Para checar o frontend, use `npm run build` ou `npx tsc -p tsconfig.app.json --noEmit`; rodar só `npx tsc --noEmit` não verifica nada neste projeto.
+- Migrações ainda não são versionadas com Alembic: há uma rotina aditiva e idempotente para compatibilidade com bases anteriores, mas mudanças destrutivas de schema continuam exigindo planejamento manual (DB-3).
+- A IA generativa ainda não está integrada: CFO, conciliação e propostas continuam demonstrativos baseados em regras; a API identifica corretamente o modelo como `rule-based-demo` e não declara consumo fictício de tokens (IA-1).
+- O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
+- MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
+- Uploads permanecem locais no volume `uploads`; não há storage externo nem antivírus.
+- Sem auditoria de alterações e sem suíte de testes automatizados (o `test_api.py` é um script manual de fumaça).
+- A troca de banco não é automática (DB-5): o `.env.example` ativa o Supabase (PostgreSQL) por padrão; usar o MySQL do Docker Compose ou o fallback SQLite exige editar manualmente a linha `DATABASE_URL` no `.env` antes de subir o sistema.
+- Um commit anterior expôs credenciais reais (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda não foram rotacionados no Supabase e permanecem visíveis no histórico do Git (SEC-5).
+- Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.
 
 ---
 
@@ -168,7 +168,7 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 ├── app/                        # Backend FastAPI
 │   ├── api/v1/endpoints/       # Rotas (auth, company, permissions, system, financial, kanban, employees, personal...)
 │   ├── core/                   # Segurança (JWT), configuração e permissões por módulo (permissions.py)
-│   └── db/                     # models.py (29 tabelas), session.py, seed.py, utils.py
+│   └── db/                     # models.py (32 tabelas), migrations.py, session.py, seed.py, utils.py
 ├── frontend/src/               # Frontend React + Vite
 │   ├── components/             # Layout, PermissionMatrix, IntegrationsStatus, SystemAccessSection, modais
 │   ├── context/                # Toasts e confirmação

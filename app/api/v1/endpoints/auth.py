@@ -3,6 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 import bcrypt
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
@@ -41,16 +42,18 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
-    company_count = (await db.execute(select(func.count()).select_from(CompanyModel))).scalar() or 0
-    company_id = f"cmp-{company_count + 1:03d}"
-    db.add(CompanyModel(id=company_id, name=b.company_name or "Minha Empresa"))
+    if len(b.password) < 8:
+        raise HTTPException(400, "A senha deve ter pelo menos 8 caracteres")
+    plan = next((p for p in PLANS_DB if p["id"] == b.selected_plan), None)
+    if not plan:
+        raise HTTPException(400, "Plano inválido")
+    company_id = f"cmp-{uuid.uuid4().hex[:12]}"
+    db.add(CompanyModel(id=company_id, name=b.company_name or "Minha Empresa", cnpj=b.cnpj_cpf))
 
-    user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
-    user_id = f"usr-{user_count + 1:03d}"
+    user_id = f"usr-{uuid.uuid4().hex[:12]}"
     pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
 
-    plan = next((p for p in PLANS_DB if p["id"] == b.selected_plan), None)
-    plan_scope = plan["scope"] if plan else "completo"
+    plan_scope = plan["scope"]
 
     new_user = UserModel(
         id=user_id,
@@ -128,14 +131,15 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
         raise HTTPException(403, "Somente administradores podem criar novos acessos")
     if b.role not in ("GERENTE", "FUNCIONARIO"):
         raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
+    if len(b.password) < 8:
+        raise HTTPException(400, "A senha deve ter pelo menos 8 caracteres")
 
     email = b.email.strip().lower()
     existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
-    user_count = (await db.execute(select(func.count()).select_from(UserModel))).scalar() or 0
-    new_id = f"usr-{user_count + 1:03d}"
+    new_id = f"usr-{uuid.uuid4().hex[:12]}"
     pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
 
     new_user = UserModel(
@@ -144,7 +148,7 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
         email=email,
         full_name=b.full_name,
         role=b.role,
-        plan_scope="empresarial",
+        plan_scope=u.get("plan_scope", "empresarial"),
         password_hash=pwd_hash,
         is_active=True,
         mfa_enabled=False,
@@ -165,6 +169,24 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
         raise HTTPException(404)
     if "role" in d and d["role"] != usr.role and d["role"] not in ("GERENTE", "FUNCIONARIO"):
         raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
+    if usr.id == u["id"] and (d.get("is_active") is False or d.get("role") not in (None, "ADMIN")):
+        raise HTTPException(400, "O administrador não pode remover o próprio acesso administrativo")
+    removing_admin = usr.role == "ADMIN" and (d.get("is_active") is False or d.get("role") not in (None, "ADMIN"))
+    if removing_admin:
+        admin_count = (await db.execute(
+            select(func.count()).select_from(UserModel).where(
+                UserModel.company_id == u["company_id"],
+                UserModel.role == "ADMIN",
+                UserModel.is_active == True,
+            )
+        )).scalar() or 0
+        if admin_count <= 1:
+            raise HTTPException(400, "A empresa deve manter pelo menos um administrador ativo")
+    if "email" in d:
+        normalized_email = str(d["email"]).strip().lower()
+        duplicate = (await db.execute(select(UserModel).where(UserModel.email == normalized_email, UserModel.id != uid))).scalar_one_or_none()
+        if duplicate:
+            raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
     for k, v in d.items():
         if k in _USER_COLUMNS and k not in _UPD_USER_BLOCKED_COLUMNS:
             setattr(usr, k, v.strip().lower() if k == "email" and isinstance(v, str) else v)

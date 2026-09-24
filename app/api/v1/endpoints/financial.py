@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import get_current_user
+from app.core.permissions import require_module
 from app.db.session import get_db
 from app.db.models import FinancialEntryModel
 from app.db.utils import model_to_dict, models_to_dicts
@@ -32,8 +33,9 @@ async def get_entries(
     category: Optional[str] = None,
     u=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _p=Depends(require_module("financeiro")),
 ):
-    result = await db.execute(select(FinancialEntryModel))
+    result = await db.execute(select(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"]))
     e = models_to_dicts(result.scalars().all())
     if type:
         e = [x for x in e if x["type"] == type]
@@ -53,8 +55,20 @@ async def get_entries(
 
 
 @router.post("/entries")
-async def create_entry(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    en_dict = {"id": f"fin-{uuid.uuid4().hex[:6]}", "status": "PENDENTE", "payment_date": None, **d}
+async def create_entry(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
+    try:
+        amount = float(d.get("amount", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Valor do lançamento inválido")
+    if d.get("type") not in {"RECEITA", "DESPESA"} or amount <= 0:
+        raise HTTPException(400, "Tipo ou valor do lançamento inválido")
+    d = {**d, "amount": amount}
+    if d.get("supplier_id"):
+        from app.db.models import SupplierModel
+        supplier = await db.get(SupplierModel, d["supplier_id"])
+        if not supplier or supplier.company_id != u["company_id"]:
+            raise HTTPException(404, "Fornecedor não encontrado")
+    en_dict = {**d, "id": f"fin-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"], "status": "PENDENTE", "payment_date": None}
     model_kwargs = {k: v for k, v in en_dict.items() if k in _FIN_COLUMNS}
     en = FinancialEntryModel(**model_kwargs)
     db.add(en)
@@ -64,20 +78,20 @@ async def create_entry(d: dict, u=Depends(get_current_user), db: AsyncSession = 
 
 
 @router.get("/entries/{eid}")
-async def get_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
     e = await db.get(FinancialEntryModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     return model_to_dict(e)
 
 
 @router.put("/entries/{eid}")
-async def upd_entry(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def upd_entry(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
     e = await db.get(FinancialEntryModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     for k, v in d.items():
-        if k in _FIN_COLUMNS:
+        if k in _FIN_COLUMNS and k not in {"id", "company_id"}:
             setattr(e, k, v)
     await db.commit()
     await db.refresh(e)
@@ -85,9 +99,9 @@ async def upd_entry(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSes
 
 
 @router.post("/entries/{eid}/pay")
-async def pay_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def pay_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
     e = await db.get(FinancialEntryModel, eid)
-    if not e:
+    if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     e.status = "PAGO"
     e.payment_date = date.today().isoformat()
@@ -97,8 +111,11 @@ async def pay_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = De
 
 
 @router.post("/entries/{eid}/attachment")
-async def attach(eid: str, u=Depends(get_current_user)):
-    return {"attachment_url": f"/uploads/{eid}.pdf"}
+async def attach(eid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
+    entry = await db.get(FinancialEntryModel, eid)
+    if not entry or entry.company_id != u["company_id"]:
+        raise HTTPException(404)
+    raise HTTPException(501, "Upload de anexo ainda não implementado")
 
 
 @router.get("/dre")
@@ -109,8 +126,19 @@ async def get_dre(
     end: Optional[str] = None,
     u=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _p=Depends(require_module("financeiro")),
 ):
-    result = await db.execute(select(FinancialEntryModel))
+    period_start = start_date or start or dias(-30)
+    period_end = end_date or end or dias(0)
+    if period_start > period_end:
+        raise HTTPException(400, "Período inválido")
+    result = await db.execute(
+        select(FinancialEntryModel).where(
+            FinancialEntryModel.company_id == u["company_id"],
+            FinancialEntryModel.due_date >= period_start,
+            FinancialEntryModel.due_date <= period_end,
+        )
+    )
     entries = result.scalars().all()
 
     rec = sum(e.amount for e in entries if e.type == "RECEITA")
@@ -136,7 +164,7 @@ async def get_dre(
     margem = round((rec - desp) / rec * 100, 1) if rec else 0.0
 
     return {
-        "period": {"start": start_date or start or dias(-30), "end": end_date or end or dias(0)},
+        "period": {"start": period_start, "end": period_end},
         "total_receitas": round(rec, 2),
         "total_despesas": round(desp, 2),
         "receitas": receitas_list,
@@ -147,8 +175,8 @@ async def get_dre(
 
 
 @router.get("/cashflow")
-async def get_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(FinancialEntryModel))
+async def get_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
+    result = await db.execute(select(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"]))
     entries = result.scalars().all()
 
     # Saldo atual = lançamentos PAGOS (receitas - despesas)
@@ -194,20 +222,26 @@ async def get_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(g
 
     # Série temporal D-30 até D+60 com lançamentos reais por data
     items = []
-    saldo_acumulado = saldo_atual
+    series_start = hoje_dt - timedelta(days=30)
+    saldo_acumulado = round(
+        sum(
+            e.amount if e.type == "RECEITA" else -e.amount
+            for e in entries
+            if e.status == "PAGO" and e.payment_date and e.payment_date < series_start.isoformat()
+        ),
+        2,
+    )
     for i in range(-30, 61):
         d = hoje_dt + timedelta(days=i)
         d_str = d.isoformat()
-        rec_dia = sum(
-            e.amount for e in entries
-            if e.type == "RECEITA"
-            and ((e.payment_date == d_str) if e.status == "PAGO" else (e.due_date == d_str))
-        )
-        desp_dia = sum(
-            e.amount for e in entries
-            if e.type == "DESPESA"
-            and ((e.payment_date == d_str) if e.status == "PAGO" else (e.due_date == d_str))
-        )
+        rec_dia = sum(e.amount for e in entries if e.type == "RECEITA" and (
+            (e.status == "PAGO" and e.payment_date == d_str)
+            or (d > hoje_dt and e.status == "PENDENTE" and e.due_date == d_str)
+        ))
+        desp_dia = sum(e.amount for e in entries if e.type == "DESPESA" and (
+            (e.status == "PAGO" and e.payment_date == d_str)
+            or (d > hoje_dt and e.status == "PENDENTE" and e.due_date == d_str)
+        ))
         saldo_acumulado = round(saldo_acumulado + rec_dia - desp_dia, 2)
         items.append({
             "date": d_str,
@@ -231,9 +265,9 @@ async def get_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(g
 
 
 @router.get("/monthly-summary")
-async def get_monthly_summary(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_monthly_summary(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
     """Retorna receitas e despesas agrupadas por mês (últimos 6 meses), para o gráfico do Dashboard."""
-    result = await db.execute(select(FinancialEntryModel))
+    result = await db.execute(select(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"]))
     entries = result.scalars().all()
 
     hoje_dt = date.today()
@@ -254,3 +288,30 @@ async def get_monthly_summary(u=Depends(get_current_user), db: AsyncSession = De
         summary.append({"name": label, "year": year, "month": month, "receitas": rec, "despesas": desp})
 
     return {"items": summary}
+
+
+@router.get("/dashboard/entries")
+async def dashboard_entries(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("dashboard"))):
+    result = await db.execute(
+        select(FinancialEntryModel)
+        .where(FinancialEntryModel.company_id == u["company_id"])
+        .order_by(FinancialEntryModel.due_date.desc())
+        .limit(5)
+    )
+    items = models_to_dicts(result.scalars().all())
+    return {"items": items, "total": len(items), "page": 1, "size": 5, "pages": 1}
+
+
+@router.get("/dashboard/dre")
+async def dashboard_dre(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("dashboard"))):
+    return await get_dre(u=u, db=db, _p=u)
+
+
+@router.get("/dashboard/cashflow")
+async def dashboard_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("dashboard"))):
+    return await get_cashflow(u=u, db=db, _p=u)
+
+
+@router.get("/dashboard/monthly-summary")
+async def dashboard_monthly_summary(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("dashboard"))):
+    return await get_monthly_summary(u=u, db=db, _p=u)

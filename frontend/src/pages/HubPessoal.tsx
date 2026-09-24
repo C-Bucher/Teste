@@ -235,6 +235,10 @@ export default function HubPessoal() {
   const confirm = useConfirm();
   const activeTab: TabId = (TABS.some((t) => t.id === tab) ? tab : 'visao-geral') as TabId;
 
+  useEffect(() => {
+    if (!TABS.some((t) => t.id === tab)) navigate('/pessoal/visao-geral', { replace: true });
+  }, [tab, navigate]);
+
   // Visão Geral
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);

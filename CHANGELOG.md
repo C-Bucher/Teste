@@ -1,5 +1,17 @@
 # Histórico de mudanças
 
+## 2026-09-23 - Isolamento, autorização e persistência operacional
+
+- Dados empresariais passaram a ser isolados por `company_id` em modelos, CRUDs, busca, notificações e exportações.
+- O Hub Pessoal passou a usar o usuário autenticado como `owner_id`, com verificação de propriedade nas mutações.
+- Kanban e clientes agora exigem o módulo correspondente; escopos de plano são verificados no backend e nas rotas React.
+- Assinaturas, faturas, timers ativos, calendário de trabalho e preferências de notificação passaram a ser persistidos no banco.
+- Corrigidos: timer inexistente adicionando uma hora, resposta de custo divergente, DRE ignorando período e dupla contagem no fluxo de caixa.
+- IDs de empresa/usuário passaram a usar UUID; cadastro valida senha/plano e a gestão de acessos protege o último administrador.
+- Exportações passaram a aceitar apenas CSV/JSON válidos e a consultar dados reais da empresa.
+- CORS tornou-se configurável e `SECRET_KEY` insegura bloqueia inicialização em produção.
+- Adicionada migração aditiva de compatibilidade para bancos existentes e ADR-006.
+
 Registre aqui as mudanças relevantes por sprint ou marco avaliativo.
 
 ## Sprint 00 - Planejamento

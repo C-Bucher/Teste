@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '../api';
@@ -19,6 +19,19 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
   const [savingCompany, setSavingCompany] = useState(false);
   const [companyForm, setCompanyForm] = useState({ name: '', cnpj: '', email: '', phone: '', address: '' });
+
+  useEffect(() => {
+    api.get('/company/').then((res) => {
+      const company = res.data;
+      setCompanyForm({
+        name: company.name || '',
+        cnpj: company.cnpj || '',
+        email: company.email || '',
+        phone: company.phone || '',
+        address: company.address || '',
+      });
+    }).catch((err) => console.error('Erro ao carregar dados da empresa', err));
+  }, []);
 
   const handleSaveCompanyStep = async (e: React.FormEvent) => {
     e.preventDefault();

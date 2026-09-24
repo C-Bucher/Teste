@@ -63,6 +63,8 @@ class SubscriptionModel(Base):
     status = Column(String(50), default="ACTIVE")
     payment_method = Column(String(50), default="credit_card")
     card_last4 = Column(String(4), nullable=True)
+    card_brand = Column(String(30), nullable=True)
+    auto_renew = Column(Boolean, default=True)
     current_period_end = Column(String(50), nullable=False)
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
 
@@ -87,7 +89,7 @@ class EmployeeModel(Base):
     __tablename__ = "employees"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     full_name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     role = Column(String(100), nullable=False)
@@ -123,6 +125,7 @@ class SupplierModel(Base):
     __tablename__ = "suppliers"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     name = Column(String(255), nullable=False)
     cnpj_cpf = Column(String(20), nullable=True)
     category = Column(String(100), nullable=True)
@@ -134,6 +137,7 @@ class FinancialEntryModel(Base):
     __tablename__ = "financial_entries"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     type = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
     description = Column(String(255), nullable=True)
@@ -149,6 +153,7 @@ class ClientModel(Base):
     __tablename__ = "clients"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -163,6 +168,7 @@ class ProjectModel(Base):
     __tablename__ = "projects"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     client_id = Column(String(50), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
@@ -210,10 +216,12 @@ class NotificationModel(Base):
     __tablename__ = "notifications"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     title = Column(String(255), nullable=False)
     message = Column(String(255), nullable=True)
     type = Column(String(20), default="INFO")
     is_read = Column(Boolean, default=False)
+    is_archived = Column(Boolean, default=False)
     created_at = Column(String(50), nullable=True)
 
 
@@ -221,6 +229,7 @@ class CostCenterModel(Base):
     __tablename__ = "cost_centers"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     name = Column(String(100), nullable=False)
     code = Column(String(20), nullable=True)
 
@@ -229,6 +238,7 @@ class CategoryModel(Base):
     __tablename__ = "categories"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     name = Column(String(100), nullable=False)
     type = Column(String(20), nullable=True)
 
@@ -258,6 +268,7 @@ class ExportLogModel(Base):
     __tablename__ = "export_logs"
 
     id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
     type = Column(String(50), nullable=True)
     format = Column(String(20), nullable=True)
     status = Column(String(20), default="PRONTO")
@@ -360,3 +371,29 @@ class RolePermissionModel(Base):
     company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     role = Column(String(20), nullable=False)        # GERENTE | FUNCIONARIO (ADMIN nunca é gravado aqui)
     module_key = Column(String(50), nullable=False)  # ver MODULES em app/core/permissions.py
+
+
+class WorkCalendarModel(Base):
+    __tablename__ = "work_calendars"
+
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True)
+    work_days = Column(JSON, nullable=False, default=lambda: [1, 2, 3, 4, 5])
+    work_hours_per_day = Column(Float, nullable=False, default=8.0)
+    holidays = Column(JSON, nullable=False, default=list)
+
+
+class NotificationPreferenceModel(Base):
+    __tablename__ = "notification_preferences"
+
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    email_enabled = Column(Boolean, nullable=False, default=True)
+    inapp_enabled = Column(Boolean, nullable=False, default=True)
+
+
+class ActiveTimerModel(Base):
+    __tablename__ = "active_timers"
+
+    card_id = Column(String(50), ForeignKey("kanban_cards.id", ondelete="CASCADE"), primary_key=True)
+    employee_id = Column(String(50), nullable=True)
+    timer_id = Column(String(50), nullable=False)
+    started_at = Column(String(50), nullable=False)

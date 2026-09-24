@@ -6,7 +6,7 @@ Este documento formaliza os requisitos do TechConnect 2.0, desenvolvido como sol
 
 ## 1. Visão do produto
 
-O TechConnect 2.0 junta a gestão operacional de projetos e equipes (Kanban com tempo e custo real por tarefa) com controle financeiro (DRE, projeção de fluxo de caixa D+90, cálculo de CTC) e um assistente de IA pensado para atuar como CFO Virtual usando o Google Gemini — hoje essa integração ainda não existe de fato, e o módulo responde por palavras-chave (ver seção 9). O público é PME, gestor e profissional autônomo. Além do Hub Empresarial, o sistema tem um Hub Pessoal para o usuário manter as próprias finanças organizadas sem misturar com as da empresa.
+O TechConnect 2.0 junta a gestão operacional de projetos e equipes (Kanban com tempo e custo real por tarefa) com controle financeiro (DRE, projeção de fluxo de caixa D+90, cálculo de CTC) e um CFO Virtual demonstrativo baseado em regras. A integração com o Google Gemini permanece como requisito futuro. O público é PME, gestor e profissional autônomo. Além do Hub Empresarial, o sistema tem um Hub Pessoal que mantém finanças e metas isoladas pelo usuário autenticado, sem misturá-las com os fluxos da empresa.
 
 ---
 
@@ -75,7 +75,7 @@ Desenvolver uma plataforma web que una gestão operacional (Kanban com custo por
 | Identificador | Categoria | Descrição |
 |---|---|---|
 | **RNF01** | **Desempenho** | O backend deve responder às requisições da API com latência inferior a 300ms (operações transacionais) através de chamadas assíncronas com FastAPI e SQLAlchemy 2.0 Async. |
-| **RNF02** | **Persistência e Integridade** | O sistema deve utilizar banco de dados relacional (PostgreSQL gerenciado via Supabase, MySQL 8.0 via Docker, ou SQLite como fallback local — selecionável por `DATABASE_URL`), com schema normalizado em 29 tabelas, integridade referencial com chaves estrangeiras e índices otimizados. |
+| **RNF02** | **Persistência e Integridade** | O sistema deve utilizar banco de dados relacional (PostgreSQL gerenciado via Supabase, MySQL 8.0 via Docker, ou SQLite como fallback local — selecionável por `DATABASE_URL`), com 32 tabelas, escopo empresarial/pessoal e integridade referencial. |
 | **RNF03** | **Segurança** | Todas as senhas devem ser armazenadas com hash criptográfico (Bcrypt). A autenticação deve utilizar tokens JWT com tempo de expiração. Chaves de API e segredos nunca devem constar no código-fonte ou na documentação, sendo injetadas via `.env` (nunca commitado). |
 | **RNF04** | **Usabilidade e Design System** | A interface deve adotar o design system proprietário *Obsidian Flow* (Dark Theme, Glassmorphism, tipografia Outfit/Inter, Framer Motion para micro-interações) e ser responsiva. |
 | **RNF05** | **Contêinerização e Deploy** | O ambiente completo (Frontend, Backend, Banco MySQL e Cache Redis) deve ser orquestrado de forma reproduzível através de `docker-compose.yml`; a opção de banco gerenciado (Supabase) roda fora do Compose, à parte dos demais serviços. |
@@ -119,22 +119,22 @@ Legenda: ✅ **Atendido** · 🟡 **Parcial** (funciona com limitação registra
 
 | Requisito | Status | Observação / item do backlog |
 |---|---|---|
-| RF01 Autenticação e RBAC | ✅ | JWT, usuário inativo bloqueado, 403 real. Lacunas de rotas sem gate: SEC-3; endurecimento de senha/lockout: SEC-4. |
-| RF02 Planos e escopo | 🟡 | Alternância de hub implementada; assinatura/pagamento ainda em memória (DB-2). |
-| RF03 Dashboard executivo | ✅ | DRE e fluxo de caixa a partir de `/financial/*`. Dados compartilhados entre empresas: MT-1. |
-| RF04–RF05 Kanban e Cost-per-Task | 🟡 | Implementados; rotas sem gate de módulo (SEC-3) e dados globais (MT-1). |
-| RF06 Clientes / RF08 Fornecedores / RF09 Lançamentos | 🟡 | CRUD funcional; dados globais (MT-1). |
-| RF07 Equipe e CTC | ✅ | CRUD, CTC, histórico salarial e desligamento; dados globais (MT-1). |
-| RF10–RF11 IA (CFO Virtual, orçamentos) | 🟡 | Respostas por palavras-chave, sem modelo generativo real (IA-1). |
-| RF12 Exportação e auditoria | 🟡 | Arquivo real gerado e servido para download, com log registrado (EXP-1); porém o conteúdo é um CSV de exemplo, não os dados reais do relatório, e não há PDF. |
+| RF01 Autenticação e RBAC | ✅ | JWT, usuário inativo bloqueado, 403 no backend, guards de módulo/escopo no frontend e proteção do último administrador. Rate limiting e MFA permanecem pendentes. |
+| RF02 Planos e escopo | 🟡 | Alternância de hub e persistência de assinatura/fatura implementadas; processamento financeiro externo continua simulado. |
+| RF03 Dashboard executivo | ✅ | Endpoints próprios de leitura, DRE e fluxo de caixa escopados pela empresa. |
+| RF04–RF05 Kanban e Cost-per-Task | ✅ | Gate de módulo, isolamento empresarial e timer persistente, sem acréscimo fictício ao parar timer inexistente. |
+| RF06 Clientes / RF08 Fornecedores / RF09 Lançamentos | ✅ | CRUD e consultas isolados por empresa. |
+| RF07 Equipe e CTC | ✅ | CRUD, CTC, histórico salarial, desligamento e isolamento empresarial. |
+| RF10–RF11 IA (CFO Virtual, orçamentos) | 🟡 | Respostas por palavras-chave; **sem** modelo generativo real (IA-1). |
+| RF12 Exportação e auditoria | 🟡 | CSV e JSON válidos são gerados a partir dos dados reais da empresa e possuem log; PDF/XLSX não são anunciados enquanto não houver geradores próprios. Trilha de auditoria de alterações continua pendente. |
 | RF13 Notificações | 🟡 | Painel funciona com notificações do seed; não há geração automática de alertas. |
-| RF14–RF15 Hub Pessoal | 🟡 | Módulos funcionais, mas sem isolamento por usuário (MT-2). |
+| RF14–RF15 Hub Pessoal | ✅ | Módulos isolados pelo usuário autenticado e limitados aos planos Pessoal/Completo. |
 | RF16 Hierarquia de cargos | ✅ | Verificado ponta a ponta com 3 papéis (matriz, 403, menu). |
 | RF17 Onboarding | ✅ | Verificado ponta a ponta; refinamentos em UX-1. |
 | RF18 Painel de integrações | ✅ | Banco e chave de IA; Redis não é usado pela aplicação. |
-| RF19 Criação de acessos | ✅ | Faltam regras de negócio (edição/desativação pela interface, proteção do último admin): AUTH-2. |
+| RF19 Criação de acessos | ✅ | IDs não sequenciais, senha mínima, e-mail duplicado tratado e proteção contra remoção do último administrador. Edição completa pela interface ainda pode evoluir. |
 | RNF01 Latência < 300 ms | 🟡 | Stack assíncrona; latência não medida formalmente. |
-| RNF02 Persistência relacional | ✅ | 29 tabelas; PostgreSQL (Supabase, padrão), MySQL 8 (Docker) e SQLite (fallback). Troca de banco exige editar `DATABASE_URL` manualmente (DB-5). Sem migrações versionadas (DB-3). |
+| RNF02 Persistência relacional | ✅ | 32 tabelas; PostgreSQL, MySQL e SQLite. Migração aditiva de compatibilidade implementada; Alembic e troca automática de banco continuam pendentes (DB-3/DB-5). |
 | RNF03 Segurança | 🟡 | Bcrypt, JWT com expiração, segredos em `.env`. Um commit chegou a expor credenciais reais em texto puro no README; corrigido para placeholders, mas os valores originais ainda não foram rotacionados (SEC-5). |
 | RNF04 Design System | ✅ | Obsidian Flow. |
 | RNF05 Contêinerização | 🟡 | `docker-compose.yml` com 4 serviços; a verificação final foi feita por execução manual (SQLite), não pelo Compose. A opção de banco gerenciado (Supabase) não passa pelo Compose e exige troca manual da `DATABASE_URL` para não conflitar com o MySQL local (DB-5). |

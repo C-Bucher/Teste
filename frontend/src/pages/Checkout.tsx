@@ -58,6 +58,10 @@ export default function Checkout() {
         company_name: companyName,
         cnpj_cpf: cnpjCpf
       });
+      if (res.data.plan_scope) {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...user, plan_scope: res.data.plan_scope }));
+      }
 
       setSuccess(res.data);
     } catch (err: any) {

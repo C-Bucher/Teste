@@ -5,6 +5,7 @@ from datetime import datetime
 from app.api.v1.api import api_router
 from app.db.session import init_db
 from app.db.seed import seed_if_empty
+from app.core.config import CORS_ORIGINS
 
 app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 
@@ -13,7 +14,7 @@ async def on_startup():
     await init_db()
     await seed_if_empty()
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(api_router, prefix="/api/v1")

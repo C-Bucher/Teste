@@ -10,10 +10,7 @@ checks whether the `users` table already has rows; if so it no-ops, so
 restarting the backend never creates duplicate rows.
 
 Intentionally NOT seeded:
-- `ACTIVE_TIMERS`: transient runtime state (card_id -> {started_at,
-  employee_id, timer_id}) in the original mock, not durable data. Where
-  this state now lives is a decision for the kanban.py router migration
-  task, not this one.
+- `active_timers`: runtime state persisted only when a user starts a timer.
 - `PERSONAL_TIMEBOXES` / `PERSONAL_OKRS`: empty lists in the mock. The
   tables exist (via Task 2's models) for later routers to write into,
   but there is nothing to seed.
@@ -42,7 +39,6 @@ from app.db.models import (
     CategoryModel,
     PersonalEntryModel,
     PersonalCategoryModel,
-    ExportLogModel,
     PersonalAccountModel,
     PersonalBudgetModel,
     PersonalGoalModel,
@@ -296,8 +292,7 @@ async def seed_if_empty() -> None:
                         )
                     )
 
-        # ACTIVE_TIMERS ({}) is transient runtime state, not durable data —
-        # intentionally not seeded. See module docstring.
+        # Active timers are created only by explicit user action.
 
         # --- NOTIFICATIONS ---------------------------------------------------
         session.add_all(
@@ -349,14 +344,6 @@ async def seed_if_empty() -> None:
         # migration). See _seed_personal_categories_if_empty() above for why
         # this has its own independent idempotency check.
         await _seed_personal_categories_if_empty(session)
-
-        # --- EXPORT_LOGS -------------------------------------------------------
-        session.add_all(
-            [
-                ExportLogModel(id="exp-001", type="DRE", format="PDF", status="PRONTO", created_at=(datetime.now() - timedelta(days=2)).isoformat(), size_bytes=245000),
-                ExportLogModel(id="exp-002", type="COLABORADORES", format="XLSX", status="PRONTO", created_at=(datetime.now() - timedelta(days=5)).isoformat(), size_bytes=89000),
-            ]
-        )
 
         # --- PERSONAL_ACCOUNTS --------------------------------------------------
         session.add_all(

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 
@@ -8,6 +9,7 @@ interface SystemUser {
   full_name: string;
   email: string;
   role: string;
+  is_active: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,8 +33,19 @@ export default function SystemAccessSection() {
       setUsers(res.data);
     } catch (err) {
       console.error('Erro ao carregar acessos', err);
+      toast.error('Erro ao carregar acessos.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (user: SystemUser) => {
+    try {
+      await api.put(`/auth/users/${user.id}`, { is_active: !user.is_active });
+      toast.success(user.is_active ? 'Acesso desativado.' : 'Acesso reativado.');
+      await fetchUsers();
+    } catch (err: unknown) {
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao alterar o acesso.' : 'Erro ao alterar o acesso.');
     }
   };
 
@@ -47,9 +60,9 @@ export default function SystemAccessSection() {
       setIsModalOpen(false);
       setForm({ full_name: '', email: '', password: '', role: 'FUNCIONARIO' });
       fetchUsers();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao criar acesso', err);
-      toast.error(err?.response?.data?.detail || 'Erro ao criar acesso.');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao criar acesso.' : 'Erro ao criar acesso.');
     } finally {
       setSaving(false);
     }
@@ -83,6 +96,8 @@ export default function SystemAccessSection() {
                 <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Nome</th>
                 <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">E-mail</th>
                 <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Cargo</th>
+                <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant">Status</th>
+                <th className="px-lg py-md font-label-md text-label-md text-on-surface-variant text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle/50">
@@ -94,6 +109,14 @@ export default function SystemAccessSection() {
                     <span className="px-sm py-0.5 rounded-full text-[11px] font-bold bg-surface-container-highest text-on-surface-variant uppercase tracking-wider">
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
+                  </td>
+                  <td className="px-lg py-md text-label-md text-on-surface-variant">{u.is_active ? 'Ativo' : 'Inativo'}</td>
+                  <td className="px-lg py-md text-right">
+                    {u.role !== 'ADMIN' && (
+                      <button onClick={() => handleToggleActive(u)} className="text-primary hover:underline text-label-md">
+                        {u.is_active ? 'Desativar' : 'Reativar'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -133,7 +156,7 @@ export default function SystemAccessSection() {
                 </div>
                 <div>
                   <label className="block text-label-md text-on-surface-variant mb-1">Senha</label>
-                  <input required type="password" minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  <input required type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
                     className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                 </div>
                 <div>

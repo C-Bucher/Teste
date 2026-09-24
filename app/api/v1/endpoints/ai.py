@@ -10,7 +10,7 @@ async def ai_chat(d:dict,u=Depends(get_current_user)):
     elif "dre" in msg or "resultado" in msg: resp="DRE Consolidado: Receita bruta R$ 102.500 vs despesas R$ 21.340. Margem liquida 79,2%. Segmento SaaS e o maior gerador de receita."
     elif "ctc" in msg or "colaborador" in msg: resp="Analise CTC: Custo total da equipe R$ 51.875/mes. Fernanda Costa (PJ) tem menor overhead (10%). Cost-per-Task medio R$ 391,40."
     else: resp="TechConnect CFO Virtual: Posso auxiliar com fluxo de caixa, DRE, analise de CTC e insights de produtividade. O que gostaria de explorar?"
-    return {"response":resp,"model":"gemini-2.5-flash","tokens_used":245}
+    return {"response":resp,"model":"rule-based-demo","tokens_used":0}
 
 @router.post("/consultant/cfo")
 async def ai_cfo(d:dict,u=Depends(get_current_user)):

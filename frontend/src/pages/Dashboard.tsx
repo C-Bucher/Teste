@@ -40,10 +40,10 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         const [monthlyRes, dreRes, entriesRes, cashflowRes] = await Promise.allSettled([
-          api.get('/financial/monthly-summary'),
-          api.get('/financial/dre'),
-          api.get('/financial/entries?page=1&size=5'),
-          api.get('/financial/cashflow'),
+          api.get('/financial/dashboard/monthly-summary'),
+          api.get('/financial/dashboard/dre'),
+          api.get('/financial/dashboard/entries'),
+          api.get('/financial/dashboard/cashflow'),
         ]);
 
         if (monthlyRes.status === 'fulfilled') {

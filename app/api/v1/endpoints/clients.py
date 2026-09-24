@@ -15,12 +15,12 @@ _CLIENT_COLUMNS = {c.name for c in ClientModel.__table__.columns}
 
 @router.get("/")
 async def get_clients(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ClientModel))
+    result = await db.execute(select(ClientModel).where(ClientModel.company_id == u["company_id"]))
     return models_to_dicts(result.scalars().all())
 
 @router.post("/")
 async def create_client(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    c_dict = {"id": f"cli-{uuid.uuid4().hex[:6]}", **d}
+    c_dict = {**d, "id": f"cli-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"]}
     model_kwargs = {k: v for k, v in c_dict.items() if k in _CLIENT_COLUMNS}
     c = ClientModel(**model_kwargs)
     db.add(c)
@@ -31,10 +31,10 @@ async def create_client(d: dict, u=Depends(get_current_user), db: AsyncSession =
 @router.put("/{cid}")
 async def upd_client(cid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     c = await db.get(ClientModel, cid)
-    if not c:
+    if not c or c.company_id != u["company_id"]:
         raise HTTPException(404)
     for k, v in d.items():
-        if k in _CLIENT_COLUMNS:
+        if k in _CLIENT_COLUMNS and k not in {"id", "company_id"}:
             setattr(c, k, v)
     await db.commit()
     await db.refresh(c)
@@ -43,7 +43,8 @@ async def upd_client(cid: str, d: dict, u=Depends(get_current_user), db: AsyncSe
 @router.delete("/{cid}")
 async def del_client(cid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     c = await db.get(ClientModel, cid)
-    if c:
-        await db.delete(c)
-        await db.commit()
+    if not c or c.company_id != u["company_id"]:
+        raise HTTPException(404)
+    await db.delete(c)
+    await db.commit()
     return {"success": True}

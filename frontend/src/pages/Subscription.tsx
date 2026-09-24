@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Calendar, CheckCircle2, Download, ArrowUpRight, ShieldCheck, RefreshCw } from 'lucide-react';
+import { CreditCard, Calendar, CheckCircle2, ArrowUpRight, ShieldCheck, RefreshCw } from 'lucide-react';
 import api from '../api';
 import Layout from '../components/Layout';
-import { useToast } from '../context/ToastContext';
 
 export default function Subscription() {
   const [sub, setSub] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const toast = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -146,7 +144,7 @@ export default function Subscription() {
           <div className="p-lg border-b border-border-subtle flex justify-between items-center">
             <div>
               <h4 className="font-headline-sm text-headline-sm text-on-surface">Histórico de Faturas e Notas Fiscais</h4>
-              <p className="text-xs text-on-surface-variant">Baixe os comprovantes e documentos em PDF.</p>
+              <p className="text-xs text-on-surface-variant">Consulte as cobranças registradas para a empresa.</p>
             </div>
             <span className="text-xs text-outline font-mono">Total de faturas: {invoices.length}</span>
           </div>
@@ -160,7 +158,6 @@ export default function Subscription() {
                   <th className="p-md font-label-md text-on-surface-variant">Data</th>
                   <th className="p-md font-label-md text-on-surface-variant">Status</th>
                   <th className="p-md font-label-md text-on-surface-variant text-right">Valor</th>
-                  <th className="p-md font-label-md text-on-surface-variant text-right">Download</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -178,14 +175,6 @@ export default function Subscription() {
                     </td>
                     <td className="p-md text-right font-bold text-on-surface">
                       R$ {inv.amount.toFixed(2).replace('.', ',')}
-                    </td>
-                    <td className="p-md text-right">
-                      <button
-                        onClick={() => toast.info(`Download da fatura ${inv.id} iniciado.`)}
-                        className="p-2 text-primary hover:bg-primary-container/20 rounded-lg transition-all inline-flex items-center gap-1 text-xs font-semibold"
-                      >
-                        <Download size={14} /> PDF
-                      </button>
                     </td>
                   </tr>
                 ))}
