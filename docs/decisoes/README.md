@@ -1,10 +1,10 @@
 # Registros de Decisões Arquiteturais (ADRs)
 
-Esta pasta documenta o histórico de decisões técnicas, de arquitetura e de design tomadas ao longo da concepção e evolução do **TechConnect 2.0**.
+Esta pasta reúne as decisões técnicas, de arquitetura e de design tomadas ao longo do desenvolvimento do TechConnect 2.0.
 
 ---
 
-## 📋 Lista de ADRs
+## Lista de ADRs
 
 | ADR | Título | Status | Data |
 |---|---|---|---|
@@ -16,5 +16,5 @@ Esta pasta documenta o histórico de decisões técnicas, de arquitetura e de de
 
 ---
 
-## 📝 Como Criar um Novo ADR
-Para propor uma nova decisão arquitetural, copie o arquivo [template-adr.md](template-adr.md) para um novo arquivo sequencial (ex: `adr-004-nome-do-topico.md`) e submeta via Pull Request para revisão da equipe.
+## Como criar um novo ADR
+Copie o arquivo [template-adr.md](template-adr.md) para um novo arquivo sequencial (por exemplo, `adr-006-nome-do-topico.md`) e submeta via pull request para revisão da equipe.

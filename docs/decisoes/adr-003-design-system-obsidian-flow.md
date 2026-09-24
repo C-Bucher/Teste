@@ -4,20 +4,20 @@
 Aprovado / Implementado
 
 ## Contexto
-Painéis de gestão financeira e operacional tradicionais frequentemente sofrem de sobrecarga visual, interfaces truncadas e baixa usabilidade. A proposta do TechConnect 2.0 exigia uma interface de alta produtividade para visualização contínua de gráficos, quadro Kanban e dados contábeis em ambientes com baixa fadiga visual.
+Painéis de gestão financeira tradicionais costumam sofrer de sobrecarga visual e baixa usabilidade. O TechConnect 2.0 precisava de uma interface confortável para olhar gráficos, o quadro Kanban e dados contábeis por longos períodos, sem cansar a vista.
 
 ## Decisão
-Adotou-se o design system proprietário **Obsidian Flow**, implementado sobre:
-1. **React 19 + TypeScript + Vite** para renderização reativa e componentes concorrentes.
-2. **Tailwind CSS v4** com motor nativo `@theme` e paleta Dark Mode com glassmorphism.
-3. **Framer Motion** para animações suaves de gavetas (*Drawers*), modais e transições de cards no Kanban.
-4. **Recharts e Lucide React** para gráficos financeiros e iconografia consistente.
+Adotamos um design system próprio, o Obsidian Flow, construído sobre:
+1. React 19, TypeScript e Vite, para renderização reativa e componentes concorrentes.
+2. Tailwind CSS v4, com o motor nativo `@theme` e uma paleta dark mode com glassmorphism.
+3. Framer Motion, para animações de gavetas (*drawers*), modais e transições de elementos.
+4. Recharts e Lucide React, para os gráficos financeiros e os ícones.
 
 ## Justificativa
-- **Performance de Renderização:** O Vite e o React 19 proporcionam recarregamento instantâneo (*Hot Module Replacement*) e menor tempo de inicialização do bundle.
-- **Ergonomia Visual:** O tema escuro com contraste calibrado e efeitos de vidro translúcido melhora a leitura de relatórios densos (DRE, tabelas de funcionários, extratos).
-- **Interatividade:** O Drag & Drop nativo com Framer Motion torna o manuseio do quadro Kanban dinâmico e responsivo.
+- Vite e React 19 dão um Hot Module Replacement praticamente instantâneo e um bundle mais leve para carregar.
+- O tema escuro, com contraste calibrado e efeito de vidro translúcido, ajuda na leitura de telas densas como o DRE, a tabela de funcionários e os extratos.
+- O quadro Kanban usa a API nativa de drag and drop do HTML5 (`draggable`, `onDragStart`, `onDrop`); o Framer Motion cuida das animações ao redor — abrir/fechar modais e gavetas, entrada e saída de elementos —, não do arrasto dos cards em si.
 
 ## Consequências
-- **Positivas:** Interface moderna, responsiva, com forte apelo visual executivo e fluidez operacional.
-- **Cuidados:** Configuração cuidadosa dos tokens de espaçamento e larguras máximas do Tailwind v4 para evitar sobreposição em telas menores.
+- Positivas: interface moderna e responsiva, com boa legibilidade nas telas de dados densos.
+- Cuidados: os tokens de espaçamento e as larguras máximas do Tailwind v4 precisam de atenção para não sobrepor elementos em telas menores.

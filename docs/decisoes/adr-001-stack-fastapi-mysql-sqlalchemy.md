@@ -4,17 +4,17 @@
 Aprovado / Implementado
 
 ## Contexto
-O projeto TechConnect 2.0 necessitava evoluir de um protótipo com armazenamento em memória para uma solução robusta, persistente e escalável, capaz de processar dados financeiros corporativos (DRE, CTC de colaboradores, lançamentos) e dados operacionais de alta frequência (apontamento de tempo no Kanban e cronômetro em tempo real).
+O TechConnect 2.0 precisava sair de um protótipo com armazenamento em memória para uma persistência real, capaz de lidar com dados financeiros corporativos (DRE, CTC de colaboradores, lançamentos) e com dados operacionais de alta frequência, como o apontamento de tempo no Kanban e o cronômetro em tempo real.
 
 ## Decisão
-Decidiu-se pela utilização do **FastAPI** (Python 3.11) como framework de backend, combinado com o **SQLAlchemy 2.0 em modo assíncrono** (`async_sessionmaker`, `select`, `AsyncEngine`) e o banco de dados relacional **MySQL 8.0** orquestrado via Docker Compose.
+Adotamos FastAPI (Python 3.11) como framework de backend, SQLAlchemy 2.0 em modo assíncrono (`async_sessionmaker`, `select`, `AsyncEngine`) como ORM, e MySQL 8.0 como banco relacional, orquestrado via Docker Compose.
 
 ## Justificativa
-1. **Performance e Concorrência:** O modelo assíncrono do FastAPI com ASGI (Uvicorn) e SQLAlchemy Async permite lidar com alto volume de I/O não bloqueante (essencial para múltiplas conexões de cronômetros Kanban e chamadas ao modelo de IA).
-2. **Tipagem e Documentação Automática:** O ecossistema Pydantic v2 do FastAPI gera documentação interativa Swagger/OpenAPI nativamente e garante validação rigorosa dos payloads financeiros.
-3. **Persistência Relacional Estruturada:** O MySQL 8.0 oferece integridade referencial com ACID, permitindo gerenciar chaves estrangeiras (`ON DELETE SET NULL`), índices e consistência contábil.
-4. **Seed Idempotente:** Facilita o onboarding e avaliação acadêmica, populando o banco automaticamente apenas se vazio.
+1. O modelo assíncrono do FastAPI, com ASGI (Uvicorn) e SQLAlchemy Async, lida bem com I/O não bloqueante — importante com várias conexões de cronômetro do Kanban abertas ao mesmo tempo, e futuramente com chamadas ao modelo de IA.
+2. O Pydantic v2 do FastAPI já gera a documentação Swagger/OpenAPI e valida os payloads financeiros sem trabalho extra.
+3. O MySQL 8.0 garante integridade referencial com ACID: chaves estrangeiras (`ON DELETE SET NULL`), índices e consistência nos dados contábeis.
+4. Um seed idempotente facilita tanto o onboarding de quem vai rodar o projeto quanto a avaliação acadêmica, populando o banco automaticamente só quando ele está vazio.
 
 ## Consequências
-- **Positivas:** Persistência real dos dados, alta velocidade de resposta (< 300ms), isolamento em contêineres e facilidade de testes via Swagger.
-- **Negativas / Mitigações:** Necessidade de gerenciar o ciclo de vida de conexões assíncronas no SQLAlchemy (mitigado com `pool_pre_ping=True` e `pool_recycle=3600`).
+- Positivas: persistência real, isolamento em contêineres e testes facilitados via Swagger. A resposta assíncrona não mostrou gargalo perceptível nos testes manuais, mas a latência nunca foi medida formalmente (ver RNF01 em [requisitos.md](../requisitos.md)).
+- Negativas / mitigações: é preciso gerenciar o ciclo de vida das conexões assíncronas no SQLAlchemy — mitigado com `pool_pre_ping=True` e `pool_recycle` (ajustado depois para diferentes dialetos, ver [ADR 005](adr-005-suporte-postgresql-supabase.md)).

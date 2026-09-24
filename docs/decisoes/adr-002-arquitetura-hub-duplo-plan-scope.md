@@ -4,23 +4,24 @@
 Aprovado / Implementado
 
 ## Contexto
-Muitos donos de micro e pequenas empresas misturam gastos pessoais com empresariais. Para resolver essa dor sem criar duas plataformas separadas (o que aumentaria a complexidade de autenticação e manutenção), era necessário disponibilizar um ambiente financeiro corporativo (ERP) e um módulo de finanças pessoais no mesmo sistema, garantindo isolamento de dados e controle de planos.
+Muitos donos de micro e pequenas empresas misturam gastos pessoais com empresariais. Para resolver isso sem criar duas plataformas separadas — o que aumentaria a complexidade de autenticação e manutenção — era preciso ter um ambiente financeiro corporativo (ERP) e um módulo de finanças pessoais no mesmo sistema, com dados isolados e planos configuráveis.
 
 ## Decisão
-Implementou-se a arquitetura de **Hub Duplo** (Hub Empresarial e Hub Pessoal), governada por dois eixos de controle:
-1. **Escopo do Plano (`plan_scope`):** `pessoal`, `empresarial` ou `completo`.
-2. **Papel de Acesso (RBAC):** `ADMIN`, `GERENTE` ou `FUNCIONARIO`.
-3. **Alternador de Contexto no Header:** Usuários com plano `completo` podem chavear instantaneamente entre o workspace da empresa e o módulo pessoal sem deslogar.
+Implementamos a arquitetura de Hub Duplo (Hub Empresarial e Hub Pessoal), governada por dois eixos:
+1. Escopo do plano (`plan_scope`): `pessoal`, `empresarial` ou `completo`.
+2. Papel de acesso (RBAC): `ADMIN`, `GERENTE` ou `FUNCIONARIO`.
+3. Um alternador no cabeçalho: usuários com plano `completo` trocam entre o workspace da empresa e o módulo pessoal sem deslogar.
 
 ## Justificativa
-- **Experiência do Usuário (UX):** Elimina a fricção de múltiplos logins para o empreendedor que gerencia seu negócio e sua vida financeira simultaneamente.
-- **Isolamento de Dados:** As tabelas do Hub Pessoal (`personal_entries`, `personal_budgets`, `personal_goals`, etc.) utilizam `owner_id` referenciando o usuário, enquanto as tabelas corporativas vinculam-se a `company_id`.
-- **Monetização e Escalabilidade:** Permite comercializar planos distintos conforme o perfil do cliente final.
+- Elimina a fricção de múltiplos logins para quem gerencia o próprio negócio e a própria vida financeira ao mesmo tempo.
+- As tabelas do Hub Pessoal (`personal_entries`, `personal_budgets`, `personal_goals` etc.) usam `owner_id` referenciando o usuário, enquanto as tabelas corporativas se vinculam a `company_id`.
+- Permite comercializar planos diferentes conforme o perfil do cliente.
 
 ## Consequências
-- **Positivas:** Modelo de negócio flexível, experiência de usuário fluida e segregação lógica estrita entre dados PJ e PF.
-- **Atenção:** Necessidade de garantir que rotas de API filtrem estritamente os dados pelo `owner_id` do token JWT para evitar vazamento entre usuários.
+- Positivas: um modelo de negócio flexível e uma experiência de usuário fluida, sem precisar de duas contas.
+- Atenção: as rotas de API precisam filtrar os dados pelo `owner_id` do token JWT para não vazar dados entre usuários — ver a atualização abaixo, porque essa filtragem ainda não foi implementada.
 
 ## Atualização (2026-09-21)
-- O eixo de papéis passou a ser refinado por **módulos liberados por cargo** — ver [ADR 004](adr-004-permissoes-por-cargo-e-onboarding.md).
-- **Isolamento do Hub Pessoal ainda não cumprido:** as tabelas têm `owner_id`, mas `personal.py` usa um proprietário fixo (`usr-001`) em vez do usuário do token; hoje todos os usuários veem os mesmos dados pessoais. Pendência registrada como **MT-2** no [BACKLOG](../BACKLOG.md). O aviso de "Atenção" acima é, portanto, uma pendência aberta, não uma garantia já entregue.
+O eixo de papéis foi refinado com módulos liberados por cargo — ver [ADR 004](adr-004-permissoes-por-cargo-e-onboarding.md).
+
+O isolamento do Hub Pessoal, no entanto, ainda não está feito: as tabelas têm `owner_id`, mas `personal.py` usa um proprietário fixo (`usr-001`) em vez do usuário do token, então hoje todo mundo vê os mesmos dados pessoais. Isso está registrado como MT-2 no [BACKLOG](../BACKLOG.md). Em outras palavras, o alerta de "Atenção" logo acima descrevia um risco que, na prática, se concretizou — não é uma garantia que o sistema já cumpre.
