@@ -12,6 +12,7 @@ Esta pasta documenta o histórico de decisões técnicas, de arquitetura e de de
 | [ADR 002](adr-002-arquitetura-hub-duplo-plan-scope.md) | Arquitetura de Hub Duplo com Controle por Plan Scope e RBAC | Aprovado | 2026-08-18 |
 | [ADR 003](adr-003-design-system-obsidian-flow.md) | Design System Obsidian Flow e Stack Frontend (React 19 + Tailwind v4) | Aprovado | 2026-08-19 |
 | [ADR 004](adr-004-permissoes-por-cargo-e-onboarding.md) | Permissões por Cargo, Onboarding e Painel de Integrações | Aprovado | 2026-09-21 |
+| [ADR 005](adr-005-suporte-postgresql-supabase.md) | Suporte a PostgreSQL Gerenciado (Supabase) como Banco Padrão | Aprovado, com pendências (SEC-5, DB-5) | 2026-09-23 |
 
 ---
 
