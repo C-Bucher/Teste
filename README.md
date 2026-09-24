@@ -39,7 +39,7 @@ O **TechConnect 2.0** é uma plataforma integrada de gestão operacional e finan
 - **Módulo de IA (CFO Virtual):** assistente baseado em POPs (Procedimentos Operacionais Padrão) — hoje respondendo por palavras-chave, com integração a um modelo generativo (Google Gemini) prevista no backlog (IA-1).
 - **Controle de acesso por cargo configurável:** Admin, Gerente e Funcionário, com módulos liberados por cargo e bloqueio real no servidor (HTTP 403).
 - **Design System Obsidian Flow:** interface em Dark Mode / Glassmorphism (React 19 + Tailwind CSS v4 + Framer Motion).
-- **Backend assíncrono e persistente:** FastAPI + SQLAlchemy 2.0, banco relacional real (MySQL 8 no Docker, SQLite na execução manual) e orquestração via Docker Compose.
+- **Backend assíncrono e persistente:** FastAPI + SQLAlchemy 2.0, banco relacional real — PostgreSQL gerenciado via Supabase (padrão em `.env.example`), MySQL 8 via Docker ou SQLite como fallback local — com orquestração via Docker Compose para a opção MySQL.
 
 ---
 
@@ -60,7 +60,7 @@ O **TechConnect 2.0** é uma plataforma integrada de gestão operacional e finan
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
 | Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 (async via `asyncpg`), Uvicorn — 29 tabelas, seed idempotente |
-| Banco de dados | PostgreSQL 17 (Supabase via Connection Pooler IPv4) · MySQL 8.0 (Docker) · SQLite (fallback local) |
+| Banco de dados | PostgreSQL gerenciado (Supabase, via Connection Pooler) · MySQL 8.0 (Docker) · SQLite (fallback local) |
 | Infraestrutura | Docker & Docker Compose; segredos e credenciais via `.env` (ignorado pelo Git) |
 | Redis 7 | provisionado no Compose, **ainda não utilizado** pela aplicação (reservado para cache/filas) |
 
@@ -100,6 +100,7 @@ npm run dev
 Frontend disponível em `http://localhost:5173` e API em `http://localhost:8000`.
 
 ### Opção 2 — Docker Compose (MySQL)
+> **Importante:** `.env.example` traz a `DATABASE_URL` do Supabase **ativa** por padrão. Para usar o MySQL do Compose, comente a linha `DATABASE_URL=postgresql+asyncpg://...` e descomente `DATABASE_URL=mysql+aiomysql://techuser:...@db:3306/techconnect` no seu `.env` **antes** de subir os containers — senão o backend do container tenta conectar no Supabase, não no MySQL local (ver DB-5 no [BACKLOG](docs/BACKLOG.md)).
 ```bash
 docker-compose up -d
 docker ps
@@ -117,7 +118,7 @@ Na primeira subida o backend cria o schema no MySQL e popula os dados de demonst
 Para parar: `docker-compose down`.
 
 ### Opção 3 — Execução manual com SQLite (Local Fallback)
-> Se nenhuma `DATABASE_URL` for informada no `.env`, o backend utiliza automaticamente o **SQLite local** (`techconnect.db`).
+> Comente (ou remova) toda linha `DATABASE_URL=...` do `.env` — com a variável ausente, o backend usa automaticamente o **SQLite local** (`techconnect.db`). Copiar `.env.example` sem editar **não** ativa este fallback, pois ele já vem com a `DATABASE_URL` do Supabase preenchida.
 
 ---
 
@@ -147,6 +148,8 @@ Registradas abertamente para que a avaliação reflita o estado real do sistema 
 - **Sem gate por módulo** em Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal (SEC-3); as permissões *Dashboard* e *Projetos* controlam apenas o menu.
 - **IA por palavras-chave** (IA-1): não há modelo generativo real; sem sanitização de dados sensíveis para LGPD.
 - Sem 2FA, sem auditoria e sem suíte de testes automatizados (o `test_api.py` é um script manual de fumaça).
+- **Troca de banco não é automática** (DB-5): o `.env.example` ativa o Supabase (PostgreSQL) por padrão; usar o MySQL do Docker Compose ou o fallback SQLite exige editar manualmente a linha `DATABASE_URL` no `.env` antes de subir o sistema.
+- **Um commit anterior expôs credenciais reais** (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda **não foram rotacionados** no Supabase e permanecem visíveis no histórico do Git (SEC-5).
 - Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.
 
 ---
