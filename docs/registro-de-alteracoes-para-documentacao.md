@@ -56,7 +56,9 @@ O Hub Pessoal cresceu muito além do que a documentação original previa. Módu
 
 Mudança estrutural importante: originalmente o Hub Pessoal era uma página única com abas internas. Foi redesenhado para espelhar exatamente o layout do Hub Empresarial — cada módulo agora é uma rota própria na barra lateral (`/pessoal/:tab`), não uma aba dentro de uma página só.
 
-Onde impacta: Escopo e ERS precisam listar esses 10 módulos do Hub Pessoal como requisitos funcionais formais — hoje provavelmente só uma versão simplificada consta na documentação.
+Uma ressalva encontrada depois, na revisão final: apesar do nome, o Hub Pessoal não é privado por usuário. As rotas usam um proprietário fixo (`usr-001`) em vez do usuário autenticado, então hoje todo mundo que loga vê os mesmos dados pessoais. Isso está registrado como MT-2 no [BACKLOG](BACKLOG.md) e precisa aparecer como limitação conhecida, não como funcionalidade entregue.
+
+Onde impacta: Escopo e ERS precisam listar esses 10 módulos do Hub Pessoal como requisitos funcionais formais — hoje provavelmente só uma versão simplificada consta na documentação. A limitação MT-2 também precisa constar, para não descrever o Hub Pessoal como privado por engano.
 
 ---
 
