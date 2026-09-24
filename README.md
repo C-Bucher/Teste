@@ -72,14 +72,14 @@ O **TechConnect 2.0** é uma plataforma integrada de gestão operacional e finan
 ```bash
 cp .env.example .env
 ```
-Edite o arquivo `.env` com suas credenciais. Para conectar ao **Supabase**, defina a connection string do pooler:
+Edite o arquivo `.env` com suas credenciais (nunca use valores reais neste README ou em qualquer arquivo versionado — veja [`.env.example`](.env.example) para o formato). Para conectar ao **Supabase**, defina a connection string do pooler:
 ```env
-DATABASE_URL=postgresql+asyncpg://postgres.uduyqfctrdlrmsouwpgs:C3ub%40123%40321@aws-0-us-east-1.pooler.supabase.com:5432/postgres
-SUPABASE_URL=https://uduyqfctrdlrmsouwpgs.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkdXlxZmN0cmRscm1zb3V3cGdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxODczNjksImV4cCI6MjEwNTc2MzM2OX0.Qmwz9yQ63M1rFzVGjG4exknsC8uo8Rd43k2eDdtW850
-SECRET_KEY=9a4c8a14b35e29dc37fd819c968f764516d2b5ff883017a229a1b1473fa58a40
+DATABASE_URL=postgresql+asyncpg://postgres.<PROJECT_REF>:<SENHA_URL_ENCODED>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+SUPABASE_URL=https://<PROJECT_REF>.supabase.co
+SUPABASE_ANON_KEY=<sua-anon-key>
+SECRET_KEY=<gere-com-o-comando-abaixo>
 ```
-> *Nota:* A senha do banco no pooler requer URL-encoding para caracteres especiais (ex: `@` torna-se `%40`).
+> *Nota:* A senha do banco no pooler requer URL-encoding para caracteres especiais (ex: `@` torna-se `%40`). Gere `SECRET_KEY` com `python -c "import secrets; print(secrets.token_hex(32))"`.
 
 ### Opção 1 — Execução com Supabase (Recomendado)
 **Backend (FastAPI)**:
