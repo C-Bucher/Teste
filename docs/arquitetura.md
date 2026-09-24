@@ -15,9 +15,9 @@ graph TD
     User([Usuário / Gestor PME]) -->|HTTPS / REST| Frontend[Frontend SPA\nReact 19 + Vite + Tailwind v4]
     Frontend -->|JSON / Bearer JWT| Backend[Backend API\nFastAPI Python Async]
     
-    Backend -->|Async ORM / Port 3306| MySQL[(Banco de Dados\nMySQL 8.0 - 29 Tabelas)]
-    Backend -->|Key-Value / Port 6379| Redis[(Cache / Filas\nRedis 7)]
-    Backend -->|REST HTTPS / JSON| GeminiAPI[Google Gemini 2.5 Flash\nCFO Virtual IA]
+    Backend -->|Async ORM, via DATABASE_URL| DB[(Banco de Dados Relacional\n29 Tabelas — PostgreSQL/Supabase, MySQL 8.0 ou SQLite)]
+    Backend -->|Key-Value / Port 6379| Redis[(Cache / Filas\nRedis 7 - provisionado, não usado)]
+    Backend -->|REST HTTPS / JSON| GeminiAPI[Google Gemini 2.5 Flash\nCFO Virtual IA - desenho-alvo, não implementado]
 ```
 
 ---
@@ -49,11 +49,13 @@ graph TD
   - `system.py`: Status das integrações (`GET /system/integrations`).
   - `company.py`: Dados da empresa e conclusão do onboarding (`POST /company/onboarding/complete`).
 
-### 2.3 Banco de Dados & Persistência (MySQL 8.0)
-- Estrutura relacional normalizada com 29 tabelas gerenciadas pelo SQLAlchemy.
+### 2.3 Banco de Dados & Persistência
+- Estrutura relacional normalizada com 29 tabelas gerenciadas pelo SQLAlchemy 2.0 (async).
+- **Três dialetos suportados pela mesma base de código**, escolhidos por uma única variável, `DATABASE_URL` (`app/db/session.py`), sem nenhuma outra mudança de código: **PostgreSQL** (`postgresql+asyncpg://…`, hoje o padrão em `.env.example`, pensado para um banco gerenciado como o Supabase), **MySQL 8.0** (`mysql+aiomysql://…`, via Docker Compose) ou **SQLite** (`sqlite+aiosqlite:///./techconnect.db`, fallback quando `DATABASE_URL` não está definida). Ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md).
 - Mecanismo de integridade com chaves estrangeiras (`ON DELETE SET NULL` em relacionamentos não-críticos para evitar deleção em cascata acidental de lançamentos financeiros).
-- Pool assíncrono otimizado com `pool_pre_ping=True` e `pool_recycle=3600` para evitar conexões inativas ou expiradas no contêiner.
-- Rotina de **Seed Idempotente** (`app/db/seed.py`) que insere planos padrão, usuário administrador e dados iniciais sem duplicidade.
+- Pool assíncrono com `pool_pre_ping=True` sempre ativo; `pool_recycle=280` aplicado apenas fora do Postgres (o pooler do Supabase já gerencia o ciclo de vida das conexões) e `ssl=require` forçado quando o dialeto é `postgresql`.
+- Rotina de **Seed Idempotente** (`app/db/seed.py`) que insere planos padrão, usuário administrador e dados iniciais sem duplicidade, em qualquer um dos três bancos.
+- **Atenção:** trocar de um banco para outro exige editar manualmente a `DATABASE_URL` no `.env` — não há alternância automática entre a opção Docker (MySQL) e a opção gerenciada (Supabase), e usar o Compose sem editar essa linha faz o backend do container tentar conectar no Supabase em vez do MySQL local (item **DB-5** do [BACKLOG](BACKLOG.md)).
 
 ---
 
@@ -90,7 +92,7 @@ erDiagram
 
 O módulo de IA opera sob **Procedimentos Operacionais Padrão (POPs)** determinísticos antes e depois da chamada ao LLM:
 
-1. **Coleta e Agregação:** O backend extrai do MySQL o DRE do período selecionado e as 10 tarefas do Kanban com maior desvio de custo (*Cost-per-Task* vs Estimado).
+1. **Coleta e Agregação:** O backend extrai do banco relacional o DRE do período selecionado e as 10 tarefas do Kanban com maior desvio de custo (*Cost-per-Task* vs Estimado).
 2. **Sanitização (LGPD):** Os nomes de colaboradores são ofuscados para "Colaborador A", "Colaborador B", garantindo conformidade e proteção de dados sensíveis.
 3. **Construção do Prompt Estruturado:** O template do POP é preenchido com as métricas agregadas.
 4. **Chamada ao Gemini 2.5 Flash:** Comunicação via API REST com temperatura controlada e schema JSON estrito de retorno (`CFOInsightResponse`).
@@ -100,14 +102,16 @@ O módulo de IA opera sob **Procedimentos Operacionais Padrão (POPs)** determin
 
 ## 5. Infraestrutura e Implantação (Docker Compose)
 
-O sistema é 100% contêinerizado e orquestrado via `docker-compose.yml`:
+O `docker-compose.yml` orquestra 4 serviços locais:
 
 | Serviço | Imagem / Build | Porta Interna | Porta Exposta | Função |
 |---|---|---|---|---|
-| `db` | `mysql:8.0` | 3306 | 3307 (host) | Persistência Relacional |
+| `db` | `mysql:8.0` | 3306 | 3307 (host) | Persistência Relacional (opção Docker) |
 | `redis` | `redis:7-alpine` | 6379 | 6379 (host) | Provisionado; ainda não utilizado pela aplicação |
 | `backend` | `Dockerfile` (Python 3.11) | 8000 | 8000 | API FastAPI + SQLAlchemy |
 | `frontend` | `Dockerfile` (Node 20 / Nginx) | 5173 / 80 | 5173 | Single Page Application |
+
+O banco PostgreSQL gerenciado (Supabase) **não** é orquestrado pelo Compose — é um serviço externo, acessado via internet pela `DATABASE_URL`. Como o `backend` do Compose lê `DATABASE_URL=${DATABASE_URL}` diretamente do `.env` do host, subir o Compose sem trocar essa linha para o MySQL local faz o backend em Docker conectar no Supabase, não no `db` que o próprio Compose subiu (**DB-5**).
 
 ---
 
@@ -124,7 +128,7 @@ A autorização combina **papel** e **módulo** (decisão em [ADR 004](decisoes/
 
 **Limites conhecidos** (ver [BACKLOG](BACKLOG.md)): dados de negócio não são separados por empresa (MT-1); Hub Pessoal usa proprietário fixo em vez do usuário autenticado (MT-2); rotas de Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal sem gate por módulo (SEC-3).
 
-- **Gestão de Segredos:** Variáveis como `SECRET_KEY`, `DATABASE_URL` e `GEMINI_API_KEY` são injetadas estritamente via `.env` (ignorado no Git).
+- **Gestão de Segredos:** Variáveis como `SECRET_KEY`, `DATABASE_URL` e `GEMINI_API_KEY` devem ser injetadas estritamente via `.env` (ignorado no Git). **Incidente registrado:** o commit `913f78d` (ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md)) violou essa regra ao colar valores reais no `README.md`; corrigido para placeholders no commit seguinte, mas a rotação das credenciais no Supabase segue pendente (**SEC-5**).
 - **Proteção de Senhas:** Hashing unidirecional com Bcrypt e salting automático.
 - **Autorização em Três Eixos:** filtro por plano (`plan_scope`), papel (`ADMIN`, `GERENTE`, `FUNCIONARIO`) e módulo liberado ao cargo (seção 6.0).
 - **Segurança de Rede:** Serviços de banco e cache isolados na rede interna do Docker (`techconnect-net`), expondo apenas portas estritamente necessárias.
@@ -138,3 +142,4 @@ As justificativas técnicas detalhadas e os trade-offs considerados pela equipe 
 - [ADR 002: Arquitetura de Hub Duplo com Controle por Plan Scope e RBAC](decisoes/adr-002-arquitetura-hub-duplo-plan-scope.md)
 - [ADR 003: Design System Obsidian Flow e Stack Frontend (React 19 + Tailwind v4)](decisoes/adr-003-design-system-obsidian-flow.md)
 - [ADR 004: Permissões por Cargo, Onboarding e Painel de Integrações](decisoes/adr-004-permissoes-por-cargo-e-onboarding.md)
+- [ADR 005: Suporte a PostgreSQL Gerenciado (Supabase) como Banco Padrão](decisoes/adr-005-suporte-postgresql-supabase.md)
