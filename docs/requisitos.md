@@ -1,46 +1,46 @@
 # Especificação de Requisitos do Sistema — TechConnect 2.0
 
-Este documento formaliza todos os requisitos do projeto **TechConnect 2.0**, desenvolvido como solução do **Projeto Integrador (PI)** do curso de Tecnologia em Análise e Desenvolvimento de Sistemas (ADS) — CEUB.
+Este documento formaliza os requisitos do TechConnect 2.0, desenvolvido como solução do Projeto Integrador (PI) do curso de Tecnologia em Análise e Desenvolvimento de Sistemas (ADS) — CEUB.
 
 ---
 
-## 1. Visão do Produto
+## 1. Visão do produto
 
-O **TechConnect 2.0** é uma plataforma completa e inteligente de **Gestão Operacional e Financeira** voltada para Pequenas e Médias Empresas (PMEs), gestores e profissionais autônomos. A solução unifica a gestão operacional de projetos e equipes (Kanban com cálculo de tempo e custo real por tarefa) com o controle financeiro avançado (DRE, projeção de fluxo de caixa D+90 e cálculo de CTC) e um **CFO Virtual baseado em IA (Google Gemini)**. Adicionalmente, a plataforma oferece um **Hub Pessoal** integrado, permitindo ao usuário manter suas finanças e metas pessoais estritamente organizadas sem misturar os fluxos com a pessoa jurídica.
-
----
-
-## 2. Público-Alvo
-
-1. **Gestores e Donos de PMEs:** Proprietários que precisam de visão unificada do caixa, rentabilidade de projetos e tomada de decisão orientada por dados e IA.
-2. **Gerentes de Operações e Projetos:** Responsáveis pela alocação de equipe, acompanhamento de prazos e monitoramento de custos por tarefa (*Cost-per-Task*).
-3. **Colaboradores e Funcionários:** Usuários operacionais que visualizam suas tarefas atribuídas, cronometram suas atividades e acompanham métricas de execução.
-4. **Profissionais Autônomos e Empreendedores Individuais:** Usuários que necessitam alternar com agilidade entre o controle do seu negócio e sua gestão financeira pessoal.
+O TechConnect 2.0 junta a gestão operacional de projetos e equipes (Kanban com tempo e custo real por tarefa) com controle financeiro (DRE, projeção de fluxo de caixa D+90, cálculo de CTC) e um assistente de IA pensado para atuar como CFO Virtual usando o Google Gemini — hoje essa integração ainda não existe de fato, e o módulo responde por palavras-chave (ver seção 9). O público é PME, gestor e profissional autônomo. Além do Hub Empresarial, o sistema tem um Hub Pessoal para o usuário manter as próprias finanças organizadas sem misturar com as da empresa.
 
 ---
 
-## 3. Problema de Negócio
+## 2. Público-alvo
 
-No cenário das PMEs brasileiras, a operação diária e o controle financeiro costumam operar de maneira desconectada. Planilhas manuais ou sistemas legados fragmentados causam:
-- **Cegueira de Custo Operacional:** Impossibilidade de saber quanto custou de fato cada entrega, projeto ou demanda de cliente.
-- **Dificuldade no Cálculo do Custo Real da Equipe:** Desconhecimento do Custo Total ao Colaborador (CTC), somando salário base, benefícios e encargos trabalhistas (CLT/PJ).
-- **Decisões Financeiras Tardias:** Falta de relatórios preditivos (como fluxo de caixa projetado para 90 dias) e ausência de uma assessoria financeira contínua.
-- **Promiscuidade Financeira PJ/PF:** Mistura de despesas pessoais com as da empresa por falta de uma ferramenta que permita a gestão de ambos os mundos em uma interface única e coesa.
+1. Gestores e donos de PMEs, que precisam de visão unificada do caixa, da rentabilidade por projeto e de dados para decidir.
+2. Gerentes de operações e projetos, responsáveis pela alocação de equipe, prazos e custo por tarefa (*Cost-per-Task*).
+3. Colaboradores e funcionários, que acompanham as próprias tarefas, cronometram atividades e veem suas métricas de execução.
+4. Profissionais autônomos e empreendedores individuais, que alternam entre o controle do negócio e a própria gestão financeira.
+
+---
+
+## 3. Problema de negócio
+
+Nas PMEs brasileiras, a operação do dia a dia e o controle financeiro costumam andar separados. Planilhas manuais ou sistemas legados fragmentados deixam pelo menos quatro lacunas:
+- Ninguém sabe ao certo quanto custou uma entrega, um projeto ou um cliente.
+- O custo real da equipe (CTC — salário, benefícios e encargos, CLT ou PJ) não é calculado de forma automática.
+- Decisões financeiras chegam tarde, sem projeção de fluxo de caixa nem acompanhamento contínuo.
+- As finanças pessoais do dono se misturam com as da empresa, por falta de uma ferramenta que separe os dois mundos na mesma interface.
 
 ---
 
 ## 4. Objetivos
 
-### 4.1 Objetivo Geral
-Desenvolver e disponibilizar uma plataforma web de alta produtividade (Full Stack) que integre gestão operacional ágil (Kanban com rastreio de custo), controle financeiro corporativo robusto (DRE, D+90, CTC), inteligência financeira generativa (CFO Virtual IA) e módulo de finanças pessoais.
+### 4.1 Objetivo geral
+Desenvolver uma plataforma web que una gestão operacional (Kanban com custo por tarefa), controle financeiro (DRE, projeção D+90, CTC), um módulo de IA voltado a diagnóstico financeiro e um módulo de finanças pessoais.
 
-### 4.2 Objetivos Específicos
-- Implementar um quadro Kanban com cronômetro em tempo real que calcule dinamicamente o *Cost-per-Task* associado ao valor/hora do funcionário responsável.
-- Automatizar o cálculo de CTC (Custo Total ao Colaborador) e manter o histórico salarial com auditoria de alterações.
-- Gerar DRE gerencial consolidado e projeção preditiva de fluxo de caixa para 90 dias (D+90).
-- Estruturar agentes de IA baseados em Procedimentos Operacionais Padrão (POPs) para gerar diagnósticos financeiros executivos e orçamentos.
-- Disponibilizar um Hub Pessoal com controle de extratos, metas, divisão de despesas (*Split*) e cartões.
-- Garantir arquitetura desacoplada e orquestrada via contêineres Docker (Frontend React, Backend FastAPI, Banco MySQL e Cache Redis).
+### 4.2 Objetivos específicos
+- Kanban com cronômetro em tempo real, calculando o *Cost-per-Task* a partir do valor/hora do responsável.
+- Cálculo automático de CTC (Custo Total ao Colaborador), com histórico salarial e motivo de cada alteração.
+- DRE gerencial consolidado e projeção de fluxo de caixa para 90 dias (D+90).
+- Módulo de IA baseado em Procedimentos Operacionais Padrão (POPs), para diagnósticos financeiros e sugestão de orçamentos.
+- Hub Pessoal com extrato, metas, divisão de despesas (*Split*) e cartões.
+- Arquitetura desacoplada, com frontend React, backend FastAPI e banco relacional, orquestrada via Docker.
 
 ---
 
@@ -125,15 +125,15 @@ Legenda: ✅ **Atendido** · 🟡 **Parcial** (funciona com limitação registra
 | RF04–RF05 Kanban e Cost-per-Task | 🟡 | Implementados; rotas sem gate de módulo (SEC-3) e dados globais (MT-1). |
 | RF06 Clientes / RF08 Fornecedores / RF09 Lançamentos | 🟡 | CRUD funcional; dados globais (MT-1). |
 | RF07 Equipe e CTC | ✅ | CRUD, CTC, histórico salarial e desligamento; dados globais (MT-1). |
-| RF10–RF11 IA (CFO Virtual, orçamentos) | 🟡 | Respostas por palavras-chave; **sem** modelo generativo real (IA-1). |
+| RF10–RF11 IA (CFO Virtual, orçamentos) | 🟡 | Respostas por palavras-chave, sem modelo generativo real (IA-1). |
 | RF12 Exportação e auditoria | 🟡 | Arquivo real gerado e servido para download, com log registrado (EXP-1); porém o conteúdo é um CSV de exemplo, não os dados reais do relatório, e não há PDF. |
 | RF13 Notificações | 🟡 | Painel funciona com notificações do seed; não há geração automática de alertas. |
-| RF14–RF15 Hub Pessoal | 🟡 | Módulos funcionais, **mas sem isolamento por usuário** (MT-2). |
+| RF14–RF15 Hub Pessoal | 🟡 | Módulos funcionais, mas sem isolamento por usuário (MT-2). |
 | RF16 Hierarquia de cargos | ✅ | Verificado ponta a ponta com 3 papéis (matriz, 403, menu). |
 | RF17 Onboarding | ✅ | Verificado ponta a ponta; refinamentos em UX-1. |
 | RF18 Painel de integrações | ✅ | Banco e chave de IA; Redis não é usado pela aplicação. |
 | RF19 Criação de acessos | ✅ | Faltam regras de negócio (edição/desativação pela interface, proteção do último admin): AUTH-2. |
-| RNF01 Latência < 300 ms | 🟡 | Stack assíncrona; **latência não medida formalmente**. |
+| RNF01 Latência < 300 ms | 🟡 | Stack assíncrona; latência não medida formalmente. |
 | RNF02 Persistência relacional | ✅ | 29 tabelas; PostgreSQL (Supabase, padrão), MySQL 8 (Docker) e SQLite (fallback). Troca de banco exige editar `DATABASE_URL` manualmente (DB-5). Sem migrações versionadas (DB-3). |
 | RNF03 Segurança | 🟡 | Bcrypt, JWT com expiração, segredos em `.env`. Um commit chegou a expor credenciais reais em texto puro no README; corrigido para placeholders, mas os valores originais ainda não foram rotacionados (SEC-5). |
 | RNF04 Design System | ✅ | Obsidian Flow. |
