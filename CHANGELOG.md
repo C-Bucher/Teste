@@ -21,3 +21,10 @@ Registre aqui as mudanças relevantes por sprint ou marco avaliativo.
 - Repositório consolidado: código e histórico completo incorporados, README e `.gitignore` unificados, documentação atualizada com a matriz de atendimento dos requisitos.
 - Registradas como pendências: MT-1 (dados de negócio por empresa) e MT-2 (Hub Pessoal por usuário) — ver [BACKLOG](docs/BACKLOG.md).
 
+## 2026-09-23 - Suporte a PostgreSQL Gerenciado (Supabase)
+
+- `DATABASE_URL` passa a aceitar PostgreSQL (via `asyncpg`) além de MySQL e SQLite, com `.env.example` ativando o Supabase por padrão ([ADR 005](docs/decisoes/adr-005-suporte-postgresql-supabase.md)).
+- `load_dotenv()` adicionado ao backend: a execução manual (fora do Docker) agora lê o `.env` automaticamente.
+- **Correção de segurança:** um commit deste mesmo dia (`913f78d`) havia colado credenciais reais do Supabase e um `SECRET_KEY` real em texto puro no `README.md`; foram substituídas por placeholders (`3210242`). Os valores antigos ainda não foram rotacionados no Supabase — ver **SEC-5** no [BACKLOG](docs/BACKLOG.md).
+- Registrada como pendência: **DB-5** — a troca entre Supabase, MySQL (Docker) e SQLite exige editar manualmente a `DATABASE_URL` no `.env`.
+

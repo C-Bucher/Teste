@@ -146,6 +146,18 @@ Trabalho de 08/09 a 21/09 que fechou a lacuna de RBAC da seção 9 (removida daq
 
 ---
 
+## 11. Suporte a PostgreSQL gerenciado (Supabase) e um incidente de credencial (23/09)
+
+Commit `913f78d`, feito direto na `main` (sem `issue`/`branch`/PR), adicionou suporte a PostgreSQL via Supabase como banco padrão, ao lado de MySQL (Docker) e SQLite (fallback). Ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md).
+
+- **O que mudou de fato**: `DATABASE_URL` aceita `postgresql+asyncpg://…`; `.env.example` ativa o Supabase por padrão; `load_dotenv()` adicionado (resolve parte do **DB-1** — antes, a execução manual não lia o `.env` sozinha).
+- **Incidente:** o mesmo commit colou no `README.md`, em texto puro, a senha real do banco Supabase, a `SUPABASE_ANON_KEY` real e um `SECRET_KEY` real — não placeholders. Um commit seguinte (`3210242`) corrigiu o `README` para usar placeholders. **Os valores antigos continuam válidos e ficam visíveis no histórico do Git** (visível a toda a organização no GitHub, não só à equipe); a equipe decidiu, em 23/09, não rotacioná-los por ora. Registrado como **SEC-5** no [BACKLOG](BACKLOG.md) — a documentação formal não deve descrever a gestão de segredos do projeto como isenta de falhas enquanto esse item estiver aberto.
+- **Efeito colateral não intencional:** como o `docker-compose.yml` repassa `DATABASE_URL=${DATABASE_URL}` do `.env` do host para o container do backend, sem sobrescrevê-la, a opção "Docker Compose (MySQL)" só funciona se essa linha for trocada manualmente para o MySQL antes de subir os containers — do contrário, o backend em Docker tenta falar com o Supabase. Registrado como **DB-5**.
+
+**Onde impacta**: DAS (múltiplos backends relacionais atrás de uma única variável de configuração; nova dependência externa — Supabase); ERS (RNF02 já não pressupõe um único SGBD); Escopo/avaliação de segurança (incidente de credencial deve constar como limitação conhecida, não ser omitido).
+
+---
+
 ## Sugestão de como dividir a atualização entre Escopo / ERS / DAS
 
 - **Escopo**: seção 1 (modelo de planos/contas) é a mudança mais estrutural — precisa entrar como novo requisito de negócio. Seções 2 e 3 (lista de módulos) confirmam/expandem o que já estava previsto.
