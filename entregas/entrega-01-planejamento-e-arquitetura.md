@@ -1,45 +1,30 @@
 # Entrega 01 — Planejamento, Arquitetura e MVP Operacional
 
 ## 1. Identificação
-- **Título:** Entrega 01 — Planejamento, Arquitetura e MVP Operacional (TechConnect 2.0)
-- **Data de Submissão:** Agosto / 2026
-- **Curso / Turma:** Tecnologia em Análise e Desenvolvimento de Sistemas (ADS) — CEUB
-- **Disciplina:** Projeto Integrador (PI)
-- **Equipe:** Gabriel Salles, Abner Trindade e equipe TechConnect
+Entrega 01 — Planejamento, Arquitetura e MVP Operacional (TechConnect 2.0), submetida em agosto de 2026 na disciplina de Projeto Integrador (PI), curso de Tecnologia em Análise e Desenvolvimento de Sistemas (ADS) — CEUB. Equipe: Gabriel Salles, Abner Trindade e o restante da equipe TechConnect.
 
-## 2. Sprint Relacionada
-- Consolidada a partir dos resultados da [Sprint 00](../sprints/sprint-00-planejamento.md) e [Sprint 01](../sprints/sprint-01.md).
+## 2. Sprint relacionada
+Consolidada a partir dos resultados da [Sprint 00](../sprints/sprint-00-planejamento.md) e da [Sprint 01](../sprints/sprint-01.md).
 
-## 3. Escopo Entregue
-1. **Documentação Acadêmica e Arquitetural Completa:**
-   - Especificação de Requisitos Funcionais (RF01 a RF15) e Não-Funcionais (RNF01 a RNF08).
-   - Documento de Arquitetura de Software (DAS) com Modelo C4, Diagrama Entidade-Relacionamento e especificações dos POPs de IA.
-   - Registros de Decisões de Arquitetura (ADR 001, ADR 002 e ADR 003).
-2. **Solução de Software Implementada (MVP Funcional):**
-   - **Frontend:** SPA moderna em React 19 + TypeScript + Tailwind v4 + Obsidian Flow Design System.
-   - **Hub Empresarial:** Dashboard com DRE e D+90, Kanban com cronômetro e *Cost-per-Task*, Gestão de Equipe com CTC e histórico salarial, Gestão de Fornecedores, Lançamentos Financeiros e Exportação.
-   - **Hub Pessoal:** 10 módulos funcionais para controle de finanças e produtividade individual.
-   - **Backend Assíncrono:** API REST em FastAPI com SQLAlchemy 2.0 Async, autenticação JWT com Bcrypt.
-   - **Persistência Real:** Banco relacional MySQL 8.0 com ~28 tabelas e seed idempotente.
-   - **Infraestrutura:** Docker Compose com 4 serviços isolados (Web, API, DB, Cache).
+## 3. Escopo entregue
 
-## 4. Links Principais
-- **Repositório Institucional (CEUB):** [CAMPUSCEUB/ADS-DASHBOARD-PARA-GEST-O-OPERACIONAL](https://github.com/CAMPUSCEUB/ADS-DASHBOARD-PARA-GEST-O-OPERACIONAL)
-- **Repositório do Código-Fonte:** [gabrielsalles-bit/TechConnect2.0](https://github.com/gabrielsalles-bit/TechConnect2.0)
-- **Documentação de Requisitos:** [docs/requisitos.md](../docs/requisitos.md)
-- **Documento de Arquitetura:** [docs/arquitetura.md](../docs/arquitetura.md)
+**Documentação:** especificação de requisitos funcionais (RF01 a RF15) e não funcionais (RNF01 a RNF08), o Documento de Arquitetura de Software (DAS) com modelo C4, diagrama entidade-relacionamento e especificação dos POPs de IA, e os registros de decisão ADR 001, ADR 002 e ADR 003.
 
-## 5. Critérios Atendidos
-- [x] Rastreabilidade entre problemas identificados, requisitos e código implementado.
+**MVP funcional:** uma SPA em React 19, TypeScript, Tailwind v4 e o design system Obsidian Flow. No Hub Empresarial, dashboard com DRE e projeção D+90, Kanban com cronômetro e *Cost-per-Task*, gestão de equipe com CTC e histórico salarial, gestão de fornecedores, lançamentos financeiros e exportação. No Hub Pessoal, os 10 módulos de controle financeiro e produtividade pessoal. No backend, uma API REST assíncrona em FastAPI com SQLAlchemy 2.0 e autenticação JWT com Bcrypt, persistindo em MySQL 8.0 (cerca de 28 tabelas nesta entrega) com seed idempotente, tudo orquestrado por Docker Compose em 4 serviços isolados (frontend, API, banco e cache).
+
+## 4. Links principais
+- Repositório institucional (CEUB): [CAMPUSCEUB/ADS-DASHBOARD-PARA-GEST-O-OPERACIONAL](https://github.com/CAMPUSCEUB/ADS-DASHBOARD-PARA-GEST-O-OPERACIONAL) — código e documentação vivem aqui.
+- Documentação de requisitos: [docs/requisitos.md](../docs/requisitos.md)
+- Documento de arquitetura: [docs/arquitetura.md](../docs/arquitetura.md)
+
+## 5. Critérios atendidos
+- [x] Rastreabilidade entre os problemas identificados, os requisitos e o código implementado.
 - [x] Arquitetura de software formalizada em diagramas e ADRs.
 - [x] Repositório estruturado segundo os templates institucionais do CEUB.
 - [x] Código-fonte versionado, documentado e pronto para execução via Docker.
 
-## 6. Validação e Testes Realizados
-- **Testes de API:** Executados e validados via Swagger OpenAPI (`/docs`).
-- **Testes de Integração com Banco:** Validação de criação automática de tabelas, inserção de seeds idempotentes e relacionamentos com integridade (`ON DELETE SET NULL`).
-- **Testes de Interface:** Validação de fluxo de ponta a ponta (login, navegação por papéis, criação de cards, cronômetro, alternância PJ/PF).
+## 6. Validação e testes realizados
+Testes de API executados e validados via Swagger OpenAPI (`/docs`); testes de integração com o banco, cobrindo a criação automática de tabelas, a inserção do seed idempotente e a integridade dos relacionamentos (`ON DELETE SET NULL`); e um teste manual de ponta a ponta na interface, cobrindo login, navegação por papel, criação de cards, cronômetro e alternância entre PJ e PF.
 
-## 7. Próximos Passos
-- Refinar a integração com a API Gemini para os POPs de IA generativa em produção.
-- Implementação de granularidade de permissões de RBAC diretamente em cada endpoint da API.
+## 7. Próximos passos
+Integrar de fato a API do Gemini nos POPs de IA (hoje ainda respondem por palavras-chave) e detalhar as permissões de RBAC por endpoint — o que acabou sendo entregue, com limites próprios, na Sprint 02 (ver [ADR 004](../docs/decisoes/adr-004-permissoes-por-cargo-e-onboarding.md)).
