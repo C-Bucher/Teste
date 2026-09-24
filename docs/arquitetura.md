@@ -1,12 +1,12 @@
 # Documento de Arquitetura de Software (DAS) — TechConnect 2.0
 
-Este documento apresenta a especificação arquitetural do **TechConnect 2.0**, descrevendo as decisões de design, modelos de integração, fluxo de dados, segurança e visão de componentes de software do sistema.
+Este documento descreve a arquitetura do TechConnect 2.0: as decisões de design, os modelos de integração, o fluxo de dados, a segurança e os componentes de software do sistema.
 
 ---
 
-## 1. Contexto Técnico e Visão Geral
+## 1. Contexto técnico e visão geral
 
-O **TechConnect 2.0** adota uma arquitetura em camadas desacoplada (Single Page Application + API REST Assíncrona + Banco Relacional + Cache), projetada para oferecer altíssima performance, escalabilidade horizontal e suporte a múltiplos módulos operacionais e de inteligência artificial.
+O TechConnect 2.0 usa uma arquitetura em camadas desacopladas — SPA no frontend, API REST assíncrona no backend, banco relacional e cache — o que permite escalar cada camada de forma independente e dá espaço para os módulos operacionais e de IA do sistema.
 
 ### 1.1 Diagrama de Contexto (C4 - Nível 1 & 2)
 
@@ -22,40 +22,39 @@ graph TD
 
 ---
 
-## 2. Componentes da Solução
+## 2. Componentes da solução
 
-### 2.1 Frontend (SPA Web)
-- **Framework & Runtime:** React 19 com TypeScript e bundler Vite.
-- **Roteamento:** React Router v7 com lazy loading e rotas aninhadas para os hubs (`/`, `/dashboard`, `/kanban`, `/financeiro`, `/equipe`, `/fornecedores`, `/ia`, `/pessoal/:tab`).
-- **Design System:** *Obsidian Flow* (Glassmorphism, Dark Theme nativo, Framer Motion para micro-interações, tipografia Inter e Outfit).
-- **Gerenciamento de Estado & Requisições:** Axios com interceptors para injeção automática de token JWT e tratamento centralizado de erros de autorização.
-- **Visualização de Dados:** Recharts para gráficos de DRE, fluxo de caixa projetado D+90, distribuição de despesas e metas financeiras.
+### 2.1 Frontend (SPA)
 
-### 2.2 Backend (API RESTful Assíncrona)
-- **Framework:** FastAPI (Python 3.11+) com validação estrita via esquemas Pydantic v2.
-- **Camada ORM:** SQLAlchemy 2.0 em modo assíncrono (`async_sessionmaker`, `select`, `update`, `delete`).
-- **Autenticação & Segurança:** Autenticação stateless via JSON Web Token (JWT) com algoritmo HS256 e hash de senhas Bcrypt (Passlib).
-- **Roteamento Modular:** Arquitetura dividida em routers de domínio sob `app/api/v1/endpoints/`:
-  - `auth.py`: Login, registro, token refresh e dados do usuário atual.
-  - `financial.py`: Lançamentos financeiros, DRE consolidado e fluxo D+90.
-  - `kanban.py`: Projetos, colunas, cards, comentários, cronômetro e cálculo de *Cost-per-Task*.
-  - `employees.py`: Colaboradores, cálculo de CTC e histórico salarial.
-  - `suppliers.py`: Gestão de fornecedores com integridade referencial.
-  - `clients.py`: Gestão de clientes e vínculo a projetos.
-  - `ai.py`: Execução dos POPs de inteligência artificial (CFO Virtual, Conciliação, Orçamentos).
-  - `personal.py`: Rotas de persistência de todos os 10 módulos do Hub Pessoal.
-  - `exports.py`: Geração de relatórios e trilha de auditoria.
-  - `permissions.py`: Matriz de permissões por cargo (`GET/PUT /permissions/matrix`) e módulos do usuário logado (`GET /permissions/mine`).
-  - `system.py`: Status das integrações (`GET /system/integrations`).
-  - `company.py`: Dados da empresa e conclusão do onboarding (`POST /company/onboarding/complete`).
+O frontend é React 19 com TypeScript, empacotado pelo Vite. O roteamento usa React Router v7, com lazy loading e rotas aninhadas para cada hub (`/`, `/dashboard`, `/kanban`, `/financeiro`, `/equipe`, `/fornecedores`, `/ia`, `/pessoal/:tab`). A interface segue o design system Obsidian Flow — glassmorphism, dark theme nativo, Framer Motion nas micro-interações, tipografia Inter e Outfit.
 
-### 2.3 Banco de Dados & Persistência
-- Estrutura relacional normalizada com 29 tabelas gerenciadas pelo SQLAlchemy 2.0 (async).
-- **Três dialetos suportados pela mesma base de código**, escolhidos por uma única variável, `DATABASE_URL` (`app/db/session.py`), sem nenhuma outra mudança de código: **PostgreSQL** (`postgresql+asyncpg://…`, hoje o padrão em `.env.example`, pensado para um banco gerenciado como o Supabase), **MySQL 8.0** (`mysql+aiomysql://…`, via Docker Compose) ou **SQLite** (`sqlite+aiosqlite:///./techconnect.db`, fallback quando `DATABASE_URL` não está definida). Ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md).
-- Mecanismo de integridade com chaves estrangeiras (`ON DELETE SET NULL` em relacionamentos não-críticos para evitar deleção em cascata acidental de lançamentos financeiros).
-- Pool assíncrono com `pool_pre_ping=True` sempre ativo; `pool_recycle=280` aplicado apenas fora do Postgres (o pooler do Supabase já gerencia o ciclo de vida das conexões) e `ssl=require` forçado quando o dialeto é `postgresql`.
-- Rotina de **Seed Idempotente** (`app/db/seed.py`) que insere planos padrão, usuário administrador e dados iniciais sem duplicidade, em qualquer um dos três bancos.
-- **Atenção:** trocar de um banco para outro exige editar manualmente a `DATABASE_URL` no `.env` — não há alternância automática entre a opção Docker (MySQL) e a opção gerenciada (Supabase), e usar o Compose sem editar essa linha faz o backend do container tentar conectar no Supabase em vez do MySQL local (item **DB-5** do [BACKLOG](BACKLOG.md)).
+As requisições passam por interceptors do Axios, que injetam o token JWT automaticamente e tratam erros de autorização num só lugar. Os gráficos (DRE, fluxo de caixa D+90, despesas por categoria, metas) são feitos com Recharts.
+
+### 2.2 Backend (API assíncrona)
+
+O backend é FastAPI (Python 3.11+), com validação via Pydantic v2, sobre SQLAlchemy 2.0 em modo assíncrono (`async_sessionmaker`, `select`, `update`, `delete`). A autenticação é stateless, via JWT com HS256, e as senhas usam hash Bcrypt (Passlib).
+
+As rotas ficam divididas por domínio em `app/api/v1/endpoints/`:
+- `auth.py` — login, registro, refresh de token e dados do usuário atual.
+- `financial.py` — lançamentos financeiros, DRE consolidado e fluxo D+90.
+- `kanban.py` — projetos, colunas, cards, comentários, cronômetro e cálculo de *Cost-per-Task*.
+- `employees.py` — colaboradores, cálculo de CTC e histórico salarial.
+- `suppliers.py` — fornecedores, com integridade referencial.
+- `clients.py` — clientes e vínculo a projetos.
+- `ai.py` — execução dos POPs de IA (CFO Virtual, Conciliação, Orçamentos).
+- `personal.py` — persistência dos 10 módulos do Hub Pessoal.
+- `exports.py` — geração de relatórios e trilha de auditoria.
+- `permissions.py` — matriz de permissões por cargo (`GET/PUT /permissions/matrix`) e módulos do usuário logado (`GET /permissions/mine`).
+- `system.py` — status das integrações (`GET /system/integrations`).
+- `company.py` — dados da empresa e conclusão do onboarding (`POST /company/onboarding/complete`).
+
+### 2.3 Banco de dados e persistência
+
+A estrutura relacional tem 29 tabelas gerenciadas pelo SQLAlchemy 2.0 assíncrono. O mesmo código aceita três dialetos diferentes por trás de uma única variável, `DATABASE_URL` (`app/db/session.py`): PostgreSQL (`postgresql+asyncpg://…`, hoje o padrão em `.env.example`, pensado para um banco gerenciado como o Supabase), MySQL 8.0 (`mysql+aiomysql://…`, via Docker Compose) ou SQLite (`sqlite+aiosqlite:///./techconnect.db`, usado como fallback quando `DATABASE_URL` não está definida) — ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md).
+
+As chaves estrangeiras usam `ON DELETE SET NULL` nos relacionamentos não críticos, para evitar que uma exclusão em cascata apague lançamentos financeiros sem querer. O pool assíncrono mantém `pool_pre_ping=True` sempre ativo; `pool_recycle=280` só se aplica fora do Postgres, já que o pooler do Supabase cuida disso sozinho, e a conexão força `ssl=require` quando o dialeto é `postgresql`. O seed (`app/db/seed.py`) é idempotente e roda em qualquer um dos três bancos, inserindo planos padrão, o usuário administrador e os dados iniciais sem duplicar nada.
+
+Um ponto de atenção: trocar de banco exige editar manualmente a `DATABASE_URL` no `.env` — não existe alternância automática entre a opção Docker (MySQL) e a opção gerenciada (Supabase). Subir o Compose sem editar essa linha faz o backend do container tentar conectar no Supabase em vez do MySQL local (item DB-5 do [BACKLOG](BACKLOG.md)).
 
 ---
 
@@ -86,17 +85,15 @@ erDiagram
 
 ---
 
-## 4. Arquitetura do Módulo de IA (CFO Virtual & POPs)
+## 4. Arquitetura do módulo de IA (CFO Virtual e POPs)
 
-> **Estado atual:** a integração com o Gemini e a sanitização LGPD abaixo são o **desenho-alvo** (IA-1, SEC-2). Hoje o módulo responde por palavras-chave, sem chamada externa.
+A integração com o Gemini e a sanitização LGPD descritas abaixo são o desenho-alvo do módulo (itens IA-1 e SEC-2 do backlog); hoje ele responde por palavras-chave, sem nenhuma chamada externa. O desenho é o seguinte, uma vez implementado:
 
-O módulo de IA opera sob **Procedimentos Operacionais Padrão (POPs)** determinísticos antes e depois da chamada ao LLM:
-
-1. **Coleta e Agregação:** O backend extrai do banco relacional o DRE do período selecionado e as 10 tarefas do Kanban com maior desvio de custo (*Cost-per-Task* vs Estimado).
-2. **Sanitização (LGPD):** Os nomes de colaboradores são ofuscados para "Colaborador A", "Colaborador B", garantindo conformidade e proteção de dados sensíveis.
-3. **Construção do Prompt Estruturado:** O template do POP é preenchido com as métricas agregadas.
-4. **Chamada ao Gemini 2.5 Flash:** Comunicação via API REST com temperatura controlada e schema JSON estrito de retorno (`CFOInsightResponse`).
-5. **Fallback Gracioso:** Caso a API atinja limites ou fique indisponível, o sistema registra o log e apresenta análise baseada em regras determinísticas locais sem interromper o ERP.
+1. O backend extrai do banco relacional o DRE do período selecionado e as 10 tarefas do Kanban com maior desvio de custo (*Cost-per-Task* frente ao estimado).
+2. Os nomes de colaboradores são trocados por "Colaborador A", "Colaborador B" etc., para não expor dado pessoal ao modelo (sanitização LGPD).
+3. O template do POP é preenchido com essas métricas agregadas.
+4. A chamada ao Gemini 2.5 Flash acontece via REST, com temperatura controlada e um schema JSON fixo de retorno (`CFOInsightResponse`).
+5. Se a API do Gemini atingir um limite de uso ou ficar indisponível, o sistema registra o log e cai para uma análise baseada em regras locais, sem travar o resto do ERP.
 
 ---
 
@@ -111,27 +108,23 @@ O `docker-compose.yml` orquestra 4 serviços locais:
 | `backend` | `Dockerfile` (Python 3.11) | 8000 | 8000 | API FastAPI + SQLAlchemy |
 | `frontend` | `Dockerfile` (Node 20 / Nginx) | 5173 / 80 | 5173 | Single Page Application |
 
-O banco PostgreSQL gerenciado (Supabase) **não** é orquestrado pelo Compose — é um serviço externo, acessado via internet pela `DATABASE_URL`. Como o `backend` do Compose lê `DATABASE_URL=${DATABASE_URL}` diretamente do `.env` do host, subir o Compose sem trocar essa linha para o MySQL local faz o backend em Docker conectar no Supabase, não no `db` que o próprio Compose subiu (**DB-5**).
+O banco PostgreSQL gerenciado (Supabase) não é orquestrado pelo Compose — é um serviço externo, acessado via internet pela `DATABASE_URL`. Como o `backend` do Compose lê `DATABASE_URL=${DATABASE_URL}` diretamente do `.env` do host, subir o Compose sem trocar essa linha para o MySQL local faz o backend em Docker conectar no Supabase, não no `db` que o próprio Compose subiu (item DB-5).
 
 ---
 
-## 6. Segurança e Conformidade
+## 6. Segurança e conformidade
 
-### 6.0 Modelo de Autorização por Módulo
-A autorização combina **papel** e **módulo** (decisão em [ADR 004](decisoes/adr-004-permissoes-por-cargo-e-onboarding.md)):
+### 6.0 Modelo de autorização por módulo
 
-- **Módulos:** `dashboard`, `kanban`, `equipe`, `financeiro`, `fornecedores`, `configuracoes`, `exportacao`, `ia`.
-- **Fonte única:** `get_allowed_modules(user, db)` em `app/core/permissions.py`. `ADMIN` recebe todos os módulos; para os demais, valem as linhas de `role_permissions` (empresa × cargo × módulo) e, se a empresa ainda não personalizou (`permissions_customized = false`), o padrão do sistema (Gerente: tudo exceto `configuracoes`; Funcionário: `dashboard`, `kanban`); empresa personalizada sem linhas para o cargo = nenhum módulo.
-- **Aplicação no servidor:** dependência `require_module(chave)` — em nível de router para `employees`, `suppliers`, `financial`, `exports` e `ai` (em `app/api/v1/api.py`) e por endpoint nas rotas que alteram a empresa. Sem permissão → HTTP 403. `/search` filtra resultados por módulo.
-- **Aplicação no cliente:** hook `usePermissions` alimenta o menu (`Layout`) e as páginas, que redirecionam quem não tem o módulo. O cliente apenas reflete o servidor; nunca é a barreira.
-- **Usuários:** `is_active` é exigido em toda requisição; `GET/PUT /auth/users` são restritos ao Admin da mesma empresa, com papéis permitidos `GERENTE`/`FUNCIONARIO` e colunas protegidas (`password_hash`, `company_id`, `id`).
+A autorização combina papel e módulo, decisão registrada na [ADR 004](decisoes/adr-004-permissoes-por-cargo-e-onboarding.md). Os módulos são `dashboard`, `kanban`, `equipe`, `financeiro`, `fornecedores`, `configuracoes`, `exportacao` e `ia`.
 
-**Limites conhecidos** (ver [BACKLOG](BACKLOG.md)): dados de negócio não são separados por empresa (MT-1); Hub Pessoal usa proprietário fixo em vez do usuário autenticado (MT-2); rotas de Kanban, clientes, notificações, planos, pagamentos e Hub Pessoal sem gate por módulo (SEC-3).
+A fonte única de decisão é `get_allowed_modules(user, db)`, em `app/core/permissions.py`. O Admin recebe todos os módulos; para os demais cargos, valem as linhas de `role_permissions` (empresa × cargo × módulo) e, se a empresa ainda não tiver personalizado essa matriz (`permissions_customized = false`), o padrão do sistema — Gerente com tudo exceto `configuracoes`, Funcionário com `dashboard` e `kanban`. Uma empresa que já personalizou e não deixou nenhuma linha para um cargo simplesmente não libera módulo nenhum para ele.
 
-- **Gestão de Segredos:** Variáveis como `SECRET_KEY`, `DATABASE_URL` e `GEMINI_API_KEY` devem ser injetadas estritamente via `.env` (ignorado no Git). **Incidente registrado:** o commit `913f78d` (ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md)) violou essa regra ao colar valores reais no `README.md`; corrigido para placeholders no commit seguinte, mas a rotação das credenciais no Supabase segue pendente (**SEC-5**).
-- **Proteção de Senhas:** Hashing unidirecional com Bcrypt e salting automático.
-- **Autorização em Três Eixos:** filtro por plano (`plan_scope`), papel (`ADMIN`, `GERENTE`, `FUNCIONARIO`) e módulo liberado ao cargo (seção 6.0).
-- **Segurança de Rede:** Serviços de banco e cache isolados na rede interna do Docker (`techconnect-net`), expondo apenas portas estritamente necessárias.
+No servidor, essa regra é aplicada pela dependência `require_module(chave)`: em nível de router para `employees`, `suppliers`, `financial`, `exports` e `ai` (em `app/api/v1/api.py`), e por endpoint nas rotas que alteram dados da empresa. Sem permissão, a resposta é HTTP 403, e a busca (`/search`) também filtra resultados por módulo. No cliente, o hook `usePermissions` alimenta o menu (`Layout`) e as páginas, que redirecionam quem não tem acesso — mas o cliente só reflete o que o servidor decide, nunca é a barreira em si. Toda requisição exige `is_active`, e `GET/PUT /auth/users` ficam restritos ao Admin da mesma empresa, com papéis permitidos limitados a `GERENTE`/`FUNCIONARIO` e colunas sensíveis protegidas (`password_hash`, `company_id`, `id`).
+
+Os limites conhecidos desse modelo, detalhados no [BACKLOG](BACKLOG.md): os dados de negócio não são separados por empresa (MT-1), o Hub Pessoal usa um proprietário fixo em vez do usuário autenticado (MT-2), e Kanban, clientes, notificações, planos, pagamentos e o próprio Hub Pessoal ainda não têm gate por módulo (SEC-3).
+
+Segredos como `SECRET_KEY`, `DATABASE_URL` e `GEMINI_API_KEY` devem ser injetados via `.env`, fora do Git. Essa regra foi violada uma vez: o commit `913f78d` (ver [ADR 005](decisoes/adr-005-suporte-postgresql-supabase.md)) colou valores reais no `README.md`; um commit seguinte trocou tudo por placeholders, mas a rotação das credenciais no Supabase segue pendente (SEC-5). Fora esse incidente, as senhas usam hash Bcrypt com salting automático, a autorização combina plano (`plan_scope`), papel e módulo (seção 6.0), e os serviços de banco e cache ficam isolados na rede interna do Docker (`techconnect-net`), expondo só as portas necessárias.
 
 ---
 
