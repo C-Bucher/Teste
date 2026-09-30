@@ -7,7 +7,8 @@ import uuid
 import pytest
 
 _DB_DIR = tempfile.mkdtemp(prefix="techconnect-tests-")
-os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{_DB_DIR}/test.db"
+# TEST_DATABASE_URL runs the suite against a real server (e.g. a throwaway Postgres/MySQL container).
+os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite+aiosqlite:///{_DB_DIR}/test.db"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-only-for-pytest-0123456789")
 os.environ["APP_ENV"] = "test"
 

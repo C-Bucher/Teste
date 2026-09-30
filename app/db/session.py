@@ -20,7 +20,9 @@ POST_BASELINE_TABLES = {"audit_logs"}
 
 engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 if "postgresql" in DATABASE_URL:
-    engine_kwargs["connect_args"] = {"ssl": "require"}
+    # Supabase requires TLS; a local Postgres container usually has none (DATABASE_SSL=disable).
+    if os.getenv("DATABASE_SSL", "require") != "disable":
+        engine_kwargs["connect_args"] = {"ssl": "require"}
 else:
     engine_kwargs["pool_recycle"] = 280
 
