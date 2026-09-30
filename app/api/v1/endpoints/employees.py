@@ -51,6 +51,8 @@ async def get_emps(skip: int = 0, limit: int = 100, active: Optional[bool] = Non
 
 @router.post("/")
 async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not str(d.get("full_name") or "").strip() or not str(d.get("email") or "").strip():
+        raise HTTPException(400, "Nome e e-mail do colaborador são obrigatórios")
     base = d.get("base_salary", 0)
     ctc = base * 1.75 if d.get("contract_type") == "CLT" else base * 1.1
     hr = round(ctc / 176, 2)

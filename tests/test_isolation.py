@@ -133,3 +133,10 @@ async def test_notifications_are_isolated(client, company_a, company_b):
     assert not (ids_a & ids_b)
     for nid in ids_a:
         assert (await client.post(f"/notifications/{nid}/read", headers=company_b["headers"])).status_code == 404
+
+
+async def test_incomplete_payloads_are_400_not_500(client, company_a):
+    r = await client.post("/employees/", headers=company_a["headers"], json={"full_name": "Sem Email"})
+    assert r.status_code == 400
+    r = await client.post("/suppliers/", headers=company_a["headers"], json={})
+    assert r.status_code == 400

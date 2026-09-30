@@ -91,7 +91,7 @@ class EmployeeModel(Base):
     __tablename__ = "employees"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     full_name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False)
     role = Column(String(100), nullable=False)
@@ -127,7 +127,7 @@ class SupplierModel(Base):
     __tablename__ = "suppliers"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     name = Column(String(255), nullable=False)
     cnpj_cpf = Column(String(20), nullable=True)
     category = Column(String(100), nullable=True)
@@ -139,7 +139,7 @@ class FinancialEntryModel(Base):
     __tablename__ = "financial_entries"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     type = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
     description = Column(String(255), nullable=True)
@@ -155,7 +155,7 @@ class ClientModel(Base):
     __tablename__ = "clients"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -170,7 +170,7 @@ class ProjectModel(Base):
     __tablename__ = "projects"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     client_id = Column(String(50), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
@@ -218,7 +218,7 @@ class NotificationModel(Base):
     __tablename__ = "notifications"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     title = Column(String(255), nullable=False)
     message = Column(String(255), nullable=True)
     type = Column(String(20), default="INFO")
@@ -231,7 +231,7 @@ class CostCenterModel(Base):
     __tablename__ = "cost_centers"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     name = Column(String(100), nullable=False)
     code = Column(String(20), nullable=True)
 
@@ -240,7 +240,7 @@ class CategoryModel(Base):
     __tablename__ = "categories"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     name = Column(String(100), nullable=False)
     type = Column(String(20), nullable=True)
 
@@ -249,7 +249,7 @@ class PersonalEntryModel(Base):
     __tablename__ = "personal_entries"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     type = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
     description = Column(String(255), nullable=True)
@@ -261,7 +261,7 @@ class PersonalCategoryModel(Base):
     __tablename__ = "personal_categories"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(100), nullable=False)
     type = Column(String(20), nullable=True)
 
@@ -270,7 +270,7 @@ class ExportLogModel(Base):
     __tablename__ = "export_logs"
 
     id = Column(String(50), primary_key=True)
-    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False, default="cmp-001")
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     type = Column(String(50), nullable=True)
     format = Column(String(20), nullable=True)
     status = Column(String(20), default="PRONTO")
@@ -282,7 +282,7 @@ class PersonalAccountModel(Base):
     __tablename__ = "personal_accounts"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     type = Column(String(20), nullable=True)
     balance = Column(Float, default=0.0)
@@ -295,7 +295,7 @@ class PersonalBudgetModel(Base):
     __tablename__ = "personal_budgets"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     category = Column(String(100), nullable=True)
     limit_amount = Column(Float, nullable=True)
     spent_amount = Column(Float, default=0.0)
@@ -305,7 +305,7 @@ class PersonalGoalModel(Base):
     __tablename__ = "personal_goals"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     target_amount = Column(Float, nullable=True)
     current_amount = Column(Float, default=0.0)
@@ -316,7 +316,7 @@ class PersonalDebtModel(Base):
     __tablename__ = "personal_debts"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     total_amount = Column(Float, nullable=True)
     remaining_amount = Column(Float, nullable=True)
@@ -329,7 +329,7 @@ class PersonalSubscriptionModel(Base):
     __tablename__ = "personal_subscriptions"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     amount = Column(Float, nullable=True)
     billing_day = Column(Integer, nullable=True)
@@ -341,7 +341,7 @@ class PersonalSplitModel(Base):
     __tablename__ = "personal_splits"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     description = Column(String(255), nullable=True)
     total_amount = Column(Float, nullable=False)
     participants = Column(JSON, nullable=False, default=list)
@@ -351,7 +351,7 @@ class PersonalTimeboxModel(Base):
     __tablename__ = "personal_timeboxes"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     title = Column(String(255), nullable=True)
     start_time = Column(String(20), nullable=True)
     end_time = Column(String(20), nullable=True)
@@ -361,7 +361,7 @@ class PersonalOkrModel(Base):
     __tablename__ = "personal_okrs"
 
     id = Column(String(50), primary_key=True)
-    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False, default="usr-001")
+    owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     objective = Column(String(255), nullable=True)
     key_results = Column(JSON, nullable=False, default=list)
 

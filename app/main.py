@@ -7,6 +7,9 @@ from app.db.session import init_db
 from app.db.seed import seed_if_empty
 from app.core.config import CORS_ORIGINS
 from app.core.audit import client_ip
+import logging
+from sqlalchemy.exc import IntegrityError
+from starlette.responses import JSONResponse as _JSONResponse
 
 app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 
@@ -17,6 +20,13 @@ async def on_startup():
 
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
+
+@app.exception_handler(IntegrityError)
+async def integrity_error(request, exc: IntegrityError):
+    # Endpoints take free-form dicts; a missing required field or duplicate must be a 400, not a 500.
+    logging.getLogger("techconnect").warning("IntegrityError em %s: %s", request.url.path, exc.orig)
+    return _JSONResponse(status_code=400, content={"detail": "Dados inválidos ou incompletos: verifique os campos obrigatórios"})
+
 
 @app.middleware("http")
 async def remember_client_ip(request, call_next):
