@@ -1,12 +1,21 @@
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
+from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.db.models import Base
 from app.db.migrations import run_compatibility_migrations
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./techconnect.db")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Absolute path so the SQLite file does not depend on the directory uvicorn was started from (DB-1).
+DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite+aiosqlite:///{(PROJECT_ROOT / 'techconnect.db').as_posix()}"
+
+BASELINE_REVISION = "0001"
+# Tables introduced after the baseline; a pre-Alembic database must not get them from create_all.
+POST_BASELINE_TABLES = {"audit_logs"}
 
 engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 if "postgresql" in DATABASE_URL:
@@ -23,7 +32,28 @@ async def get_db():
         yield session
 
 
+def _alembic_config(connection):
+    from alembic.config import Config
+
+    cfg = Config(str(PROJECT_ROOT / "alembic.ini"))
+    cfg.attributes["connection"] = connection
+    return cfg
+
+
+def _migrate(connection) -> None:
+    from alembic import command
+
+    tables = set(inspect(connection).get_table_names())
+    cfg = _alembic_config(connection)
+    if tables and "alembic_version" not in tables:
+        # Database created by the old create_all path: bring it to the baseline, then version it.
+        baseline_tables = [t for t in Base.metadata.sorted_tables if t.name not in POST_BASELINE_TABLES]
+        Base.metadata.create_all(connection, tables=baseline_tables)
+        run_compatibility_migrations(connection)
+        command.stamp(cfg, BASELINE_REVISION)
+    command.upgrade(cfg, "head")
+
+
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(run_compatibility_migrations)
+        await conn.run_sync(_migrate)
