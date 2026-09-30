@@ -6,6 +6,7 @@ from app.api.v1.api import api_router
 from app.db.session import init_db
 from app.db.seed import seed_if_empty
 from app.core.config import CORS_ORIGINS
+from app.core.audit import client_ip
 
 app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 
@@ -16,6 +17,12 @@ async def on_startup():
 
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"])
+
+@app.middleware("http")
+async def remember_client_ip(request, call_next):
+    forwarded = request.headers.get("x-forwarded-for")
+    client_ip.set(forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None))
+    return await call_next(request)
 
 app.include_router(api_router, prefix="/api/v1")
 

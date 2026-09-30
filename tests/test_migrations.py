@@ -32,11 +32,15 @@ def test_empty_database_is_built_by_migrations_and_matches_models():
 
 
 def test_pre_alembic_database_is_stamped_and_upgraded():
+    from alembic import command
+
     engine = _fresh_sqlite()
-    legacy_tables = [t for t in Base.metadata.sorted_tables if t.name not in db_session.POST_BASELINE_TABLES]
     with engine.begin() as conn:
-        # old create_all path, missing a column that the compatibility migration adds
-        Base.metadata.create_all(conn, tables=legacy_tables)
+        # A database from the old create_all days: baseline schema, no version table,
+        # and one table that older copies did not have yet.
+        command.upgrade(db_session._alembic_config(conn), db_session.BASELINE_REVISION)
+        conn.execute(text("drop table alembic_version"))
+        conn.execute(text("drop table work_calendars"))
         conn.execute(text("insert into companies (id, name) values ('cmp-001', 'Demo')"))
     with engine.begin() as conn:
         db_session._migrate(conn)

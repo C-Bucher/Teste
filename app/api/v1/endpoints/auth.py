@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -5,9 +7,10 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, func
 
-from app.core.security import create_token, decode_token, get_current_user, bearer
+from app.core.security import get_current_user, bearer, token_pair, user_from_token
+from app.core import audit
 from app.core.passwords import validate_password, hash_password, check_password
 from app.db.session import get_db
 from app.db.models import UserModel, CompanyModel
@@ -17,6 +20,14 @@ from app.api.v1.endpoints.plans import PLANS_DB
 router = APIRouter()
 
 _USER_COLUMNS = {c.name for c in UserModel.__table__.columns}
+_PRIVATE_USER_FIELDS = {"password_hash", "failed_login_count", "locked_until"}
+
+MAX_FAILED_LOGINS = 5
+LOCKOUT_MINUTES = 15
+
+
+def _public(user: dict) -> dict:
+    return {k: v for k, v in user.items() if k not in _PRIVATE_USER_FIELDS}
 
 class LoginReq(BaseModel):
     email:str; password:str; mfa_code:Optional[str]=None
@@ -66,6 +77,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
         mfa_enabled=False
     )
     db.add(new_user)
+    audit.record(db, "CADASTRO", company_id=company_id, user_id=user_id, entity="company", entity_id=company_id, details={"plano": b.selected_plan})
     await db.commit()
     await db.refresh(new_user)
 
@@ -75,29 +87,40 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     user_dict["company_name"] = b.company_name
     user_dict["selected_plan"] = b.selected_plan
 
-    tok = create_token(user_dict)
-    return {
-        "access_token": tok,
-        "refresh_token": tok,
-        "token_type": "bearer",
-        "user": {k: v for k, v in user_dict.items() if k != "password_hash"}
-    }
+    return {**token_pair(user_dict), "user": _public(user_dict)}
 
 @router.post("/login")
 async def login(b: LoginReq, db: AsyncSession = Depends(get_db)):
     email = b.email.strip().lower()
     u = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
-    if not u or not check_password(b.password, u.password_hash):
+    if not u:
+        raise HTTPException(401, "Credenciais invalidas")
+    now = datetime.utcnow()
+    if u.locked_until and datetime.fromisoformat(u.locked_until) > now:
+        audit.record(db, "LOGIN_BLOQUEADO", company_id=u.company_id, user_id=u.id)
+        await db.commit()
+        raise HTTPException(429, f"Muitas tentativas incorretas. Tente novamente em até {LOCKOUT_MINUTES} minutos")
+    if not check_password(b.password, u.password_hash):
+        u.failed_login_count = (u.failed_login_count or 0) + 1
+        locked = u.failed_login_count >= MAX_FAILED_LOGINS
+        if locked:
+            u.locked_until = (now + timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
+            u.failed_login_count = 0
+        audit.record(db, "LOGIN_FALHA", company_id=u.company_id, user_id=u.id, details={"bloqueou": locked})
+        await db.commit()
         raise HTTPException(401, "Credenciais invalidas")
     if u.is_active is False:
         raise HTTPException(401, "Usuario inativo")
+    u.failed_login_count = 0
+    u.locked_until = None
+    audit.record(db, "LOGIN", company_id=u.company_id, user_id=u.id)
+    await db.commit()
     user_dict = model_to_dict(u)
-    tok = create_token(user_dict)
-    return {"access_token": tok, "refresh_token": tok, "token_type": "bearer", "user": {k: v for k, v in user_dict.items() if k != "password_hash"}}
+    return {**token_pair(user_dict), "user": _public(user_dict)}
 
 @router.get("/me")
 async def me(u=Depends(get_current_user)):
-    return {k:v for k,v in u.items() if k!="password_hash"}
+    return _public(u)
 
 @router.post("/logout")
 async def logout(u=Depends(get_current_user)): return {"message":"Logout realizado"}
@@ -109,20 +132,15 @@ class RefreshReq(BaseModel):
 async def refresh(b: RefreshReq = RefreshReq(), creds: HTTPAuthorizationCredentials = Depends(bearer), db: AsyncSession = Depends(get_db)):
     token = b.refresh_token or (creds.credentials if creds else None)
     if not token: raise HTTPException(401, "Token ausente")
-    p = decode_token(token)
-    u = (await db.execute(
-        select(UserModel).where(or_(UserModel.email == p.get("email", "").lower(), UserModel.id == p.get("sub")))
-    )).scalars().first()
-    if not u: raise HTTPException(401, "Usuario nao encontrado")
-    tok = create_token(model_to_dict(u))
-    return {"access_token": tok, "refresh_token": tok, "token_type": "bearer"}
+    u = await user_from_token(token, "refresh", db)
+    return token_pair(model_to_dict(u))
 
 @router.get("/users")
 async def get_auth_users(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if u["role"] != "ADMIN":
         raise HTTPException(403, "Somente administradores podem listar os acessos")
     users = (await db.execute(select(UserModel).where(UserModel.company_id == u["company_id"]))).scalars().all()
-    return [{k: v for k, v in model_to_dict(x).items() if k != "password_hash"} for x in users]
+    return [_public(model_to_dict(x)) for x in users]
 
 @router.post("/users")
 async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -152,11 +170,12 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
         mfa_enabled=False,
     )
     db.add(new_user)
+    audit.record_by(db, u, "USUARIO_CRIADO", entity="user", entity_id=new_id, details={"email": email, "cargo": b.role})
     await db.commit()
     await db.refresh(new_user)
-    return {k: v for k, v in model_to_dict(new_user).items() if k != "password_hash"}
+    return _public(model_to_dict(new_user))
 
-_UPD_USER_BLOCKED_COLUMNS = {"password_hash", "company_id", "id"}
+_UPD_USER_BLOCKED_COLUMNS = {"password_hash", "company_id", "id", "failed_login_count", "locked_until"}
 
 @router.put("/users/{uid}")
 async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -188,9 +207,11 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
     for k, v in d.items():
         if k in _USER_COLUMNS and k not in _UPD_USER_BLOCKED_COLUMNS:
             setattr(usr, k, v.strip().lower() if k == "email" and isinstance(v, str) else v)
+    changes = {k: v for k, v in d.items() if k in _USER_COLUMNS and k not in _UPD_USER_BLOCKED_COLUMNS}
+    audit.record_by(db, u, "USUARIO_ALTERADO", entity="user", entity_id=uid, details=changes)
     await db.commit()
     await db.refresh(usr)
-    return {k: v for k, v in model_to_dict(usr).items() if k != "password_hash"}
+    return _public(model_to_dict(usr))
 
 
 class ChangePasswordReq(BaseModel):
@@ -204,5 +225,7 @@ async def change_password(b: ChangePasswordReq, u=Depends(get_current_user), db:
         raise HTTPException(400, "Senha atual incorreta")
     validate_password(b.new_password)
     usr.password_hash = hash_password(b.new_password)
+    audit.record_by(db, u, "SENHA_ALTERADA", entity="user", entity_id=usr.id)
     await db.commit()
-    return {"message": "Senha alterada"}
+    # Old tokens die with the old password; hand back a fresh pair so this session continues.
+    return {"message": "Senha alterada", **token_pair(model_to_dict(usr))}

@@ -14,10 +14,13 @@ async def test_revoked_module_takes_effect_immediately(client, company_a):
     gerente = await create_member(client, company_a, "GERENTE")
     assert (await client.get("/suppliers/", headers=gerente["headers"])).status_code == 200
 
-    matrix = {"GERENTE": ["dashboard", "kanban"], "FUNCIONARIO": ["dashboard", "kanban"]}
-    r = await client.put("/permissions/matrix", headers=company_a["headers"], json={"matrix": matrix})
+    r = await client.put("/permissions/matrix", headers=company_a["headers"], json={"GERENTE": ["dashboard", "kanban"], "FUNCIONARIO": ["dashboard"]})
     assert r.status_code == 200, r.text
     assert (await client.get("/suppliers/", headers=gerente["headers"])).status_code == 403
+    assert (await client.get("/kanban/projects", headers=gerente["headers"])).status_code == 200
+
+    r = await client.put("/permissions/matrix", headers=company_a["headers"], json={"GERENTE": ["dashboard", "kanban", "fornecedores"], "FUNCIONARIO": ["dashboard"]})
+    assert (await client.get("/suppliers/", headers=gerente["headers"])).status_code == 200
 
 
 async def test_personal_plan_cannot_reach_business_modules(client):

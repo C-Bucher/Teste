@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AICfoDrawer from './AICfoDrawer';
-import api from '../api';
+import api, { clearSession } from '../api';
 import { useToast } from '../context/ToastContext';
 import { usePermissions, clearPermissionsCache } from '../hooks/usePermissions';
 
@@ -109,9 +109,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('company');
+    clearSession();
     clearPermissionsCache();
     navigate('/');
   };

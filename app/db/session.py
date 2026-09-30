@@ -15,6 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite+aiosqlite:///{(PROJECT_ROOT
 
 BASELINE_REVISION = "0001"
 # Tables introduced after the baseline; a pre-Alembic database must not get them from create_all.
+# Pre-Alembic databases always have `users`, so post-baseline columns on it are added by their revision.
 POST_BASELINE_TABLES = {"audit_logs"}
 
 engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}

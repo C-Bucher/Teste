@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
-import api from '../api';
+import api, { saveSession } from '../api';
 import { clearPermissionsCache } from '../hooks/usePermissions';
 
 export default function Register() {
@@ -57,7 +57,7 @@ export default function Register() {
         selected_plan: selectedPlan
       });
 
-      localStorage.setItem('token', response.data.access_token);
+      saveSession(response.data);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
       try {

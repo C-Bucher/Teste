@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import api from '../api';
+import api, { saveSession } from '../api';
 import { clearPermissionsCache } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ChevronRight, Loader2, User, Shield, Briefcase } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function Login() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      localStorage.setItem('token', response.data.access_token);
+      saveSession(response.data);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       try {
         const companyRes = await api.get('/company/');

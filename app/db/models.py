@@ -35,6 +35,8 @@ class UserModel(Base):
     is_active = Column(Boolean, default=True)
     mfa_enabled = Column(Boolean, default=False)
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
+    failed_login_count = Column(Integer, nullable=False, default=0, server_default="0")
+    locked_until = Column(String(50), nullable=True)
 
     company = relationship("CompanyModel", back_populates="users")
 
@@ -397,3 +399,17 @@ class ActiveTimerModel(Base):
     employee_id = Column(String(50), nullable=True)
     timer_id = Column(String(50), nullable=False)
     started_at = Column(String(50), nullable=False)
+
+
+class AuditLogModel(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id = Column(String(50), nullable=True)          # no FK: the trail must outlive deleted users
+    action = Column(String(50), nullable=False)
+    entity = Column(String(50), nullable=True)
+    entity_id = Column(String(50), nullable=True)
+    details = Column(Text, nullable=True)                # JSON-encoded
+    ip = Column(String(64), nullable=True)
+    created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat(), index=True)

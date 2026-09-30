@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import get_current_user
+from app.core import audit
 from app.core.permissions import require_module
 from app.db.session import get_db
 from app.db.models import FinancialEntryModel
@@ -72,6 +73,7 @@ async def create_entry(d: dict, u=Depends(get_current_user), db: AsyncSession = 
     model_kwargs = {k: v for k, v in en_dict.items() if k in _FIN_COLUMNS}
     en = FinancialEntryModel(**model_kwargs)
     db.add(en)
+    audit.record_by(db, u, "LANCAMENTO_CRIADO", entity="financial_entry", entity_id=en.id, details={"tipo": en.type, "valor": en.amount, "descricao": en.description})
     await db.commit()
     await db.refresh(en)
     return model_to_dict(en)
@@ -90,9 +92,10 @@ async def upd_entry(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSes
     e = await db.get(FinancialEntryModel, eid)
     if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
-    for k, v in d.items():
-        if k in _FIN_COLUMNS and k not in {"id", "company_id"}:
-            setattr(e, k, v)
+    changes = {k: v for k, v in d.items() if k in _FIN_COLUMNS and k not in {"id", "company_id"}}
+    for k, v in changes.items():
+        setattr(e, k, v)
+    audit.record_by(db, u, "LANCAMENTO_ALTERADO", entity="financial_entry", entity_id=eid, details=changes)
     await db.commit()
     await db.refresh(e)
     return model_to_dict(e)
@@ -105,6 +108,7 @@ async def pay_entry(eid: str, u=Depends(get_current_user), db: AsyncSession = De
         raise HTTPException(404)
     e.status = "PAGO"
     e.payment_date = date.today().isoformat()
+    audit.record_by(db, u, "LANCAMENTO_PAGO", entity="financial_entry", entity_id=eid, details={"valor": e.amount})
     await db.commit()
     await db.refresh(e)
     return model_to_dict(e)

@@ -15,6 +15,7 @@ import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
 import { usePermissions } from './hooks/usePermissions';
+import { clearSession } from './api';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
@@ -27,9 +28,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
     user = JSON.parse(localStorage.getItem('user') || '{}');
     company = JSON.parse(localStorage.getItem('company') || '{}');
   } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('company');
+    clearSession();
     return <Navigate to="/" replace />;
   }
   if (user.role === 'ADMIN' && company.onboarding_completed === false && location.pathname !== '/onboarding') {
