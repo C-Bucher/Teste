@@ -56,21 +56,20 @@ def _subscription_dict(subscription: SubscriptionModel, plan_name: str, company_
 
 
 async def _ensure_plan(db: AsyncSession, plan_data: dict) -> PlanModel:
+    """Upserts the catalog entry so a stored row never keeps an outdated price."""
     plan = await db.get(PlanModel, plan_data["id"])
-    limits = plan_data.get("limits", {})
     if plan is None:
-        plan = PlanModel(
-            id=plan_data["id"],
-            name=plan_data["name"],
-            tagline=plan_data.get("tagline"),
-            price_monthly=plan_data["price_monthly"],
-            price_yearly=plan_data["price_yearly"],
-            max_employees=limits.get("max_employees", 0),
-            max_projects=limits.get("max_projects", 0),
-            ai_cfo_unlimited=limits.get("ai_queries") == -1,
-        )
+        plan = PlanModel(id=plan_data["id"])
         db.add(plan)
-        await db.flush()
+    limits = plan_data.get("limits", {})
+    plan.name = plan_data["name"]
+    plan.tagline = plan_data.get("tagline")
+    plan.price_monthly = plan_data["price_monthly"]
+    plan.price_yearly = plan_data["price_yearly"]
+    plan.max_employees = limits.get("max_employees", 0)
+    plan.max_projects = limits.get("max_projects", 0)
+    plan.ai_cfo_unlimited = limits.get("ai_queries") == -1
+    await db.flush()
     return plan
 
 
