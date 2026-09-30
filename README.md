@@ -92,7 +92,7 @@ venv\Scripts\activate          # Windows  |  Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
-Na primeira inicialização com o Supabase, o backend cria automaticamente as 32 tabelas relacionais e executa a carga de dados inicial (seed idempotente). Bases anteriores recebem as colunas aditivas de compatibilidade durante o startup.
+Na inicialização, o backend aplica as migrações versionadas do Alembic (`alembic upgrade head`) e executa a carga de dados inicial (seed idempotente) se o banco estiver vazio. Uma base criada antes do Alembic é reconhecida automaticamente: recebe as colunas de compatibilidade, é marcada na revisão base e então atualizada. Para criar uma nova migração depois de alterar `app/db/models.py`, rode `alembic revision --autogenerate -m "descricao"`.
 
 Frontend (React + Vite), em outro terminal:
 
@@ -106,7 +106,7 @@ Frontend em `http://localhost:5173`, API em `http://localhost:8000`.
 
 ### Opção 2 — Docker Compose (MySQL)
 
-O `.env.example` vem com a `DATABASE_URL` do Supabase ativa por padrão. Para usar o MySQL do Compose é preciso comentar essa linha e descomentar a do MySQL (`mysql+aiomysql://techuser:...@db:3306/techconnect`) no `.env` antes de subir os containers. Do contrário, o backend, mesmo rodando em Docker, tenta conectar no Supabase em vez do MySQL local que o próprio Compose acabou de subir — esse comportamento está registrado como item DB-5 no [BACKLOG](docs/BACKLOG.md).
+Dentro do Compose, o backend usa automaticamente o MySQL do próprio Compose, montado a partir de `MYSQL_USER`, `MYSQL_PASSWORD` e `MYSQL_DATABASE`, independentemente da `DATABASE_URL` do `.env`, que continua valendo para a execução manual. Para apontar o backend em Docker para o Supabase, defina `COMPOSE_DATABASE_URL` no `.env`.
 
 ```bash
 docker-compose up -d
@@ -127,7 +127,16 @@ Para parar: `docker-compose down`.
 
 ### Opção 3 — Execução manual com SQLite
 
-Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o backend cai automaticamente no SQLite local (`techconnect.db`). Só copiar o `.env.example` sem editar não ativa esse fallback, porque ele já vem com a `DATABASE_URL` do Supabase preenchida.
+Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o backend cai automaticamente no SQLite local (`techconnect.db`, sempre na raiz do projeto, independentemente da pasta de onde o `uvicorn` foi iniciado). Só copiar o `.env.example` sem editar não ativa esse fallback, porque ele já vem com a `DATABASE_URL` do Supabase preenchida.
+
+### Testes automatizados
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+A suíte sobe a API em memória sobre um SQLite temporário e cobre isolamento entre empresas e entre usuários, gates por módulo e por plano, regras de acesso, política de senha, bloqueio de login, tokens, auditoria e migrações. Para rodá-la contra um banco real, aponte `TEST_DATABASE_URL` para um banco **descartável**, por exemplo um PostgreSQL local em Docker com `DATABASE_SSL=disable`; a suíte grava dados nele.
 
 ---
 
@@ -141,6 +150,8 @@ Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o ba
 
 ### Permissões por papel
 
+As senhas precisam ter pelo menos 8 caracteres, com letras e números. Depois de 5 senhas erradas seguidas, a conta fica bloqueada por 15 minutos. A sessão dura 60 minutos e é renovada automaticamente por até 7 dias; trocar a senha encerra as sessões antigas.
+
 O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logins, edita a matriz de permissões e vê o status das integrações. Por padrão, o Gerente acessa Dashboard, Projetos, Equipe, Financeiro, Fornecedores, Exportação e IA Empresarial, mas não Configurações; o Funcionário acessa só Dashboard e Projetos. Esse padrão vale até o Admin salvar uma matriz própria em Configurações → Hierarquia de Cargos. A partir daí, a matriz salva prevalece, mesmo que deixe algum cargo sem nenhum módulo.
 
 ---
@@ -149,13 +160,12 @@ O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logi
 
 Estão registradas aqui de propósito, para que a avaliação parta do estado real do sistema. Os detalhes e a prioridade de cada uma estão em [docs/BACKLOG.md](docs/BACKLOG.md).
 
-- Migrações ainda não são versionadas com Alembic: há uma rotina aditiva e idempotente para compatibilidade com bases anteriores, mas mudanças destrutivas de schema continuam exigindo planejamento manual (DB-3).
 - A IA generativa ainda não está integrada: CFO, conciliação e propostas continuam demonstrativos baseados em regras; a API identifica corretamente o modelo como `rule-based-demo` e não declara consumo fictício de tokens (IA-1).
 - O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
 - MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
 - Uploads permanecem locais no volume `uploads`; não há storage externo nem antivírus.
-- Sem auditoria de alterações e sem suíte de testes automatizados (o `test_api.py` é um script manual de fumaça).
-- A troca de banco não é automática (DB-5): o `.env.example` ativa o Supabase (PostgreSQL) por padrão; usar o MySQL do Docker Compose ou o fallback SQLite exige editar manualmente a linha `DATABASE_URL` no `.env` antes de subir o sistema.
+- A trilha de auditoria (`GET /api/v1/audit/`, só Admin) já registra logins, acessos, permissões, troca de senha e lançamentos financeiros, mas ainda não tem tela, e os direitos do titular da LGPD (exportar e excluir os próprios dados) ainda não existem (SEC-2).
+- Os testes automatizados cobrem o backend; o frontend ainda não tem testes.
 - Um commit anterior expôs credenciais reais (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda não foram rotacionados no Supabase e permanecem visíveis no histórico do Git (SEC-5).
 - Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.
 

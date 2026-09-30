@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## 2026-09-30 - Endurecimento de segurança e confiabilidade
+
+- Suíte de testes automatizados (`pytest`, 34 testes) cobrindo o isolamento entre empresas e entre usuários, gates por módulo e por plano, regras de acesso, autenticação, auditoria e migrações. Passa em SQLite, PostgreSQL e MySQL (QA-1).
+- Migrações versionadas com Alembic, com revisão base igual ao schema anterior; bases criadas antes do Alembic são reconhecidas e atualizadas automaticamente (DB-3, [ADR 007](docs/decisoes/adr-007-endurecimento-autenticacao-migracoes-auditoria.md)).
+- Autenticação: sem `SECRET_KEY` padrão conhecida; política de senha (8+ caracteres, letras e números); troca de senha; bloqueio de 15 minutos após 5 senhas erradas; access token de 60 minutos e refresh token de 7 dias, ambos invalidados ao trocar a senha; o frontend renova a sessão sozinho (SEC-4).
+- Trilha de auditoria em `audit_logs`, com `GET /audit/` restrito ao Admin da própria empresa (SEC-2, parte 1).
+- Docker Compose usa o próprio MySQL por padrão (`COMPOSE_DATABASE_URL` para o Supabase) e o SQLite usa caminho absoluto (DB-5, DB-1).
+- Corrigido: o cadastro gravava o registro de auditoria antes da empresa, o que o PostgreSQL e o MySQL recusavam por chave estrangeira.
+
 ## 2026-09-23 - Isolamento, autorização e persistência operacional
 
 - Dados empresariais passaram a ser isolados por `company_id` em modelos, CRUDs, busca, notificações e exportações.

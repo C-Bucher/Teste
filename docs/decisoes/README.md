@@ -14,6 +14,7 @@ Esta pasta reúne as decisões técnicas, de arquitetura e de design tomadas ao 
 | [ADR 004](adr-004-permissoes-por-cargo-e-onboarding.md) | Permissões por Cargo, Onboarding e Painel de Integrações | Aprovado | 2026-09-21 |
 | [ADR 005](adr-005-suporte-postgresql-supabase.md) | Suporte a PostgreSQL Gerenciado (Supabase) como Banco Padrão | Aprovado, com pendências (SEC-5, DB-5) | 2026-09-23 |
 | [ADR 006](adr-006-isolamento-e-persistencia-operacional.md) | Isolamento de Dados e Persistência Operacional | Aceito | 2026-09-23 |
+| [ADR 007](adr-007-endurecimento-autenticacao-migracoes-auditoria.md) | Endurecimento de Autenticação, Migrações Versionadas e Auditoria | Aceito | 2026-09-30 |
 
 ---
 
