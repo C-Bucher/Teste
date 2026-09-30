@@ -158,6 +158,7 @@ export default function SystemAccessSection() {
                   <label className="block text-label-md text-on-surface-variant mb-1">Senha</label>
                   <input required type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
                     className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  <p className="text-label-sm text-on-surface-variant mt-1">Mínimo de 8 caracteres, com letras e números.</p>
                 </div>
                 <div>
                   <label className="block text-label-md text-on-surface-variant mb-1">Cargo</label>

@@ -2,13 +2,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
-import bcrypt
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 
 from app.core.security import create_token, decode_token, get_current_user, bearer
+from app.core.passwords import validate_password, hash_password, check_password
 from app.db.session import get_db
 from app.db.models import UserModel, CompanyModel
 from app.db.utils import model_to_dict
@@ -42,8 +42,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
-    if len(b.password) < 8:
-        raise HTTPException(400, "A senha deve ter pelo menos 8 caracteres")
+    validate_password(b.password)
     plan = next((p for p in PLANS_DB if p["id"] == b.selected_plan), None)
     if not plan:
         raise HTTPException(400, "Plano inválido")
@@ -51,7 +50,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     db.add(CompanyModel(id=company_id, name=b.company_name or "Minha Empresa", cnpj=b.cnpj_cpf))
 
     user_id = f"usr-{uuid.uuid4().hex[:12]}"
-    pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
+    pwd_hash = hash_password(b.password)
 
     plan_scope = plan["scope"]
 
@@ -88,7 +87,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
 async def login(b: LoginReq, db: AsyncSession = Depends(get_db)):
     email = b.email.strip().lower()
     u = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
-    if not u or not bcrypt.checkpw(b.password.encode(), u.password_hash.encode()):
+    if not u or not check_password(b.password, u.password_hash):
         raise HTTPException(401, "Credenciais invalidas")
     if u.is_active is False:
         raise HTTPException(401, "Usuario inativo")
@@ -131,8 +130,7 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
         raise HTTPException(403, "Somente administradores podem criar novos acessos")
     if b.role not in ("GERENTE", "FUNCIONARIO"):
         raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
-    if len(b.password) < 8:
-        raise HTTPException(400, "A senha deve ter pelo menos 8 caracteres")
+    validate_password(b.password)
 
     email = b.email.strip().lower()
     existing = (await db.execute(select(UserModel).where(UserModel.email == email))).scalar_one_or_none()
@@ -140,7 +138,7 @@ async def create_user(b: CreateUserReq, u=Depends(get_current_user), db: AsyncSe
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
     new_id = f"usr-{uuid.uuid4().hex[:12]}"
-    pwd_hash = bcrypt.hashpw(b.password.encode(), bcrypt.gensalt()).decode()
+    pwd_hash = hash_password(b.password)
 
     new_user = UserModel(
         id=new_id,
@@ -193,3 +191,18 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
     await db.commit()
     await db.refresh(usr)
     return {k: v for k, v in model_to_dict(usr).items() if k != "password_hash"}
+
+
+class ChangePasswordReq(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+async def change_password(b: ChangePasswordReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    usr = await db.get(UserModel, u["id"])
+    if not check_password(b.current_password, usr.password_hash):
+        raise HTTPException(400, "Senha atual incorreta")
+    validate_password(b.new_password)
+    usr.password_hash = hash_password(b.new_password)
+    await db.commit()
+    return {"message": "Senha alterada"}

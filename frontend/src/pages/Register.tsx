@@ -183,6 +183,7 @@ export default function Register() {
                     placeholder="••••••••"
                   />
                 </div>
+                <p className="text-xs text-slate-500 mt-1">Mínimo de 8 caracteres, com letras e números.</p>
               </div>
 
               <button
