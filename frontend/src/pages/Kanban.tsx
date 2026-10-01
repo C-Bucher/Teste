@@ -4,9 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function Kanban() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -226,6 +228,25 @@ export default function Kanban() {
       fetchBoard(selectedProjectId!);
     } catch (err) {
       console.error('Erro ao controlar timer', err);
+    }
+  };
+
+  const handleDeleteCard = async () => {
+    if (!detailCard) return;
+    const ok = await confirm({
+      title: 'Excluir tarefa',
+      message: `Excluir "${detailCard.title}"? Os comentários e o tempo registrado nela também serão apagados.`,
+      confirmLabel: 'Excluir',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/kanban/cards/${detailCard.id}`);
+      setDetailCard(null);
+      fetchBoard(selectedProjectId!);
+      toast.success('Tarefa excluída.');
+    } catch {
+      toast.error('Erro ao excluir tarefa.');
     }
   };
 
@@ -637,12 +658,21 @@ export default function Kanban() {
                   <h3 className="font-headline-sm text-headline-sm text-on-surface">{detailCard.title}</h3>
                   <p className="text-[11px] text-on-surface-variant uppercase tracking-wider mt-1">{detailCard.priority}</p>
                 </div>
-                <button
-                  onClick={() => setDetailCard(null)}
-                  className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors"
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
+                <div className="flex items-center gap-xs">
+                  <button
+                    onClick={handleDeleteCard}
+                    title="Excluir tarefa"
+                    className="p-2 text-on-surface-variant hover:text-error rounded-lg hover:bg-error/10 transition-colors"
+                  >
+                    <span className="material-symbols-outlined">delete</span>
+                  </button>
+                  <button
+                    onClick={() => setDetailCard(null)}
+                    className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-highest transition-colors"
+                  >
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
               </div>
 
               {/* Body */}
