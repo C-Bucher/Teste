@@ -163,8 +163,8 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 - A IA generativa ainda não está integrada: CFO, conciliação e propostas continuam demonstrativos baseados em regras; a API identifica corretamente o modelo como `rule-based-demo` e não declara consumo fictício de tokens (IA-1).
 - O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
 - MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
-- Uploads permanecem locais no volume `uploads`; não há storage externo nem antivírus.
-- A trilha de auditoria (`GET /api/v1/audit/`, só Admin) já registra logins, acessos, permissões, troca de senha e lançamentos financeiros, mas ainda não tem tela, e os direitos do titular da LGPD (exportar e excluir os próprios dados) ainda não existem (SEC-2).
+- Anexos de lançamentos e exportações ficam em `storage/` (privado, servido só com login e só para a empresa dona), no disco do servidor: em produção com mais de uma instância, será preciso um armazenamento compartilhado (ex.: Supabase Storage/S3). Não há antivírus nos uploads.
+- Auditoria (Configurações → Auditoria) e direitos do titular (Minha Conta) estão implementados; termo de uso, política de privacidade e política de retenção ainda precisam de revisão jurídica (SEC-2).
 - Os testes automatizados cobrem o backend; o frontend ainda não tem testes.
 - Um commit anterior expôs credenciais reais (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda não foram rotacionados no Supabase e permanecem visíveis no histórico do Git (SEC-5).
 - Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.

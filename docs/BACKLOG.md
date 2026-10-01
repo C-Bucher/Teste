@@ -2,7 +2,9 @@
 
 > Backlog oficial do projeto, consolidado a partir dos planos de execução já concluídos ([docs/planejamento/plans/](planejamento/plans/)), dos registros de andamento e revisão de cada fase (arquivos de trabalho locais, não versionados) e do [registro de alterações](registro-de-alteracoes-para-documentacao.md). Cada item foi conferido contra o código em 2026-09-21, com um checkpoint adicional em 2026-09-23 para a integração com Supabase.
 >
-> **Última atualização (2026-09-30):** etapa de endurecimento (branch `fix/endurecimento-seguranca`): suíte de testes automatizados, Alembic, SEC-4, trilha de auditoria e Compose sem troca manual de banco. Ver ADR-007 e a [spec](planejamento/specs/2026-09-30-endurecimento-seguranca-design.md).
+> **Última atualização (2026-09-30, etapa 2):** branch `feature/planos-e-abas`: quatro planos com os preços aprovados, anexos de lançamento, exportações privadas, CTC configurável, exclusão de cartão, Minha Conta (troca de senha e direitos LGPD), auditoria na interface, gestão completa de acessos e correções de interface.
+>
+> **Etapa 1 (2026-09-30):** etapa de endurecimento (branch `fix/endurecimento-seguranca`): suíte de testes automatizados, Alembic, SEC-4, trilha de auditoria e Compose sem troca manual de banco. Ver ADR-007 e a [spec](planejamento/specs/2026-09-30-endurecimento-seguranca-design.md).
 >
 > **Atualização anterior (2026-09-23):** correção de isolamento multiempresa e pessoal, persistência de assinatura, timers e configurações, reforço dos gates de acesso e correções de cálculos e exportação. Detalhes no ADR-006 e no changelog.
 >
@@ -25,7 +27,7 @@
 | DB-1 | Alinhar banco + persistência confiável | Resolvido: `.env` carregado fora do Docker (`913f78d`) e SQLite padrão com caminho absoluto na raiz do projeto. | ✅ | 2026-09-23 e 2026-09-30 |
 | DB-2 | Persistir assinatura/pagamento + registro | Assinaturas e faturas agora usam `SubscriptionModel`/`InvoiceModel`, são filtradas pela empresa e sobrevivem a reinícios. O catálogo estático é sincronizado em `PlanModel` no checkout. O gateway financeiro continua simulado. | ✅ | correção 2026-09-23 |
 | DB-5 | Troca de banco não é automática entre Supabase/MySQL/SQLite | Resolvido: no Compose, o backend usa o MySQL do próprio Compose por padrão; para o Supabase, define-se `COMPOSE_DATABASE_URL`. A `DATABASE_URL` do `.env` vale para a execução manual. | ✅ | etapa 2026-09-30 |
-| SEC-2 | Auditoria e conformidade LGPD | Parte 1 resolvida: tabela `audit_logs` e `GET /audit/` (só Admin, por empresa) registram cadastro, login, falha e bloqueio de login, criação e alteração de acessos, matriz de permissões, troca de senha e lançamentos financeiros (criação, alteração e pagamento), com IP. Falta: tela de consulta; direitos do titular (exportar e excluir os próprios dados); termo de consentimento; política de retenção. | 🔷 | etapa 2026-09-30; ADR-007 |
+| SEC-2 | Auditoria e conformidade LGPD | Resolvido para o escopo do produto: `audit_logs` com tela em Configurações → Auditoria (filtro por ação, paginação); direitos do titular em Minha Conta: exportar os próprios dados (JSON) e excluir a conta (o único usuário leva junto todos os dados da empresa; com equipe, só os dados pessoais). Falta, fora do código: termo de uso e política de privacidade revisados por jurídico, e política de retenção. | 🔷 | etapas 2026-09-30 |
 
 ---
 
@@ -36,7 +38,7 @@
 | IA-1 | Integração real de IA generativa | CFO Virtual, CFO Pessoal, Conciliação e Gerador de Orçamentos respondem por palavra-chave em `ai.py`. A `GEMINI_API_KEY` já está configurada na infra, mas não é usada. Histórico do CFO (`GET /ai/history`) sempre retorna vazio, e a resposta de `/ai/chat` informa um modelo (`gemini-2.5-flash`) e um consumo de tokens fixos que não correspondem a nenhuma chamada real. | 🔲 | registro §9, `ai.py` |
 | AUTH-1 | Autenticação de dois fatores (2FA) | O campo `mfa_enabled` existe no `UserModel` e o login aceita `mfa_code`, mas não há fluxo de ativação nem verificação real. | 🔲 | registro §9 |
 | EXP-1 | Exportação de relatórios | Resolvido: `exports.py` consulta os dados reais da empresa e gera CSV ou JSON válido; o download verifica a propriedade do log. PDF/XLSX foram removidos da interface até existirem geradores próprios. | ✅ | correção 2026-09-23 |
-| CFG-1 | Configurações que não persistem | Calendário de trabalho e preferências de notificação agora possuem tabelas e persistência. Parâmetros de CTC continuam estáticos e deverão ganhar modelo próprio se forem editáveis. | 🔷 | correção 2026-09-23 |
+| CFG-1 | Configurações que não persistem | Resolvido: calendário e preferências persistem (2026-09-23); parâmetros de CTC por empresa (`ctc_params`) editáveis em Configurações → Custo de Pessoal, usados no cálculo real e com recálculo automático dos colaboradores ativos (registrado no histórico salarial). | ✅ | etapa 2026-09-30 |
 
 ---
 
@@ -45,11 +47,11 @@
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
 | EQ-1 | Botões do menu "kebab" na Gestão de Equipe | ~~Menu de ações (⋮) sem handler ligado.~~ Resolvido: o menu `more_vert` na visão em cartões já dispara `handleViewHistory`/`handleEdit`/`handleTerminate`; a visão em lista também tem os três botões ligados. | ✅ | Verificado 2026-09-10 em `GestaoEquipe.tsx` |
-| KAN-1 | Excluir cartão no Kanban | O endpoint `DELETE /kanban/cards/{cid}` já existe e funciona (`kanban.py`), mas ainda não há botão/ação na UI que o chame — `Kanban.tsx` não tem nenhuma chamada `api.delete` para cartões. | 🔲 | Verificado 2026-09-10 |
+| KAN-1 | Excluir cartão no Kanban | Resolvido: botão de excluir no modal da tarefa, com confirmação. | ✅ | etapa 2026-09-30 |
 | FIN-1 | DRE — composição por categoria | ~~Trechos hardcoded.~~ Resolvido: `GET /financial/dre` agora agrega receitas e despesas por categoria a partir dos lançamentos reais do banco (`receitas_map`/`despesas_map` em `financial.py`), sem valores fixos. | ✅ | Verificado 2026-09-10 em `financial.py` |
 | NAV-1 | Guarda de rota do Hub Pessoal | Corrigido: guards de escopo são aplicados na rota e no backend; slugs inválidos redirecionam para a visão geral. | ✅ | correção 2026-09-23 |
-| AUTH-2 | Gestão de acessos: regras de negócio faltando | Backend corrigido para IDs UUID, senha mínima, e-mail duplicado e proteção do próprio/último administrador. Permanece pendente ampliar a edição/desativação na interface. | 🔷 | correção 2026-09-23 |
-| UX-1 | Polimento do onboarding e das permissões | Passo 1 do assistente abre vazio (não pré-preenche com os dados do cadastro); "Salvar Permissões" é um botão separado de "Próximo" (sem salvar, valem os padrões); menu do Layout pisca por um instante ao trocar de página; erro ao carregar a lista de acessos só vai para o console; botão/FAB da IA aparece mesmo sem o módulo `ia`. | 🔲 | revisões das Tasks 11/13, e2e Task 14, revisão final (M3) |
+| AUTH-2 | Gestão de acessos: regras de negócio faltando | Resolvido: troca de cargo (inclusive promover a Admin, com confirmação), redefinição de senha pelo Admin (encerra as sessões da pessoa) e ativar/desativar, tudo pela interface. | ✅ | etapa 2026-09-30 |
+| UX-1 | Polimento do onboarding e das permissões | Resolvido: passo 1 já vinha pré-preenchido; no passo 2, "Salvar e continuar" salva e avança, e "Pular" deixa os padrões; o menu não pisca mais (permissões em cache síncrono); os botões de IA só aparecem com o módulo `ia`. Também corrigido: o texto dos toasts de erro e de sucesso usava cores inexistentes ou quase pretas. | ✅ | etapa 2026-09-30 |
 | QA-1 | Sem testes automatizados | Backend coberto: `pytest` com 34 testes (isolamento entre empresas e usuários, gates, regras de acesso, autenticação, auditoria, migrações), verde em SQLite, PostgreSQL e MySQL. Falta: testes de frontend e CI automatizado. `npm run lint` ainda reporta erros pré-existentes. | 🔷 | etapa 2026-09-30 |
 | API-1 | `id` do payload sobrescreve o gerado | Corrigido nos endpoints de criação: IDs e campos de escopo controlados pelo servidor são aplicados após o payload; updates bloqueiam `id`, `company_id` e campos relacionais sensíveis. | ✅ | correção 2026-09-23 |
 
@@ -59,11 +61,11 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| CSS-1 | Token `--color-warning-container` ausente | Referenciado pela tag de prioridade "ALTA" no Kanban (`Kanban.tsx`) e pelos toasts de aviso (`ToastContext.tsx`), mas nunca definido em `frontend/src/index.css`. | 🔲 | progress.md Task 23 |
+| CSS-1 | Token `--color-warning-container` ausente | Resolvido: token `--color-warning-container` definido. | ✅ | etapa 2026-09-30 |
 | CSS-2 | Contraste das colunas do Kanban | O tema quase-preto comprime as razões de contraste WCAG. Fechar mais exige um novo token mais claro que `surface-container-highest` no design system. | 🔲 | task-23-report |
 | SEED-1 | Dados de seed "envelhecem" | As datas do seed são congeladas na primeira execução (o mock antigo recalculava a cada request). Com o tempo, o seed fica com datas defasadas. | 🔲 | progress-db (nota) |
 | DB-3 | Sem migrations versionadas | Resolvido: Alembic (`app/db/alembic`), com revisão base `0001` = schema anterior; bases pré-Alembic são carimbadas e atualizadas no startup; um teste falha se models e migrações divergirem. | ✅ | etapa 2026-09-30; ADR-007 |
-| DB-4 | Limpeza pós-migração MySQL | `pool_recycle` e FK `ON DELETE SET NULL` já tratados; `app/db/database.py` confirmado removido, sem referências residuais. Falta só a segunda parte: `GET /kanban/projects/{pid}/board` ainda faz uma query por coluna e outra por cartão dentro de loops (N+1), sem `selectinload`/joins. | 🔲 | Verificado 2026-09-10 em `kanban.py::get_board` |
+| DB-4 | Limpeza pós-migração MySQL | Resolvido: o quadro do Kanban carrega com 3 consultas (colunas, cartões e comentários) em vez de N+1. | ✅ | etapa 2026-09-30 |
 
 ---
 
@@ -71,11 +73,15 @@
 
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
-| PLAN-1 | Novos planos e preços | Quatro planos: Pessoal Essencial (R$ 29,90; anual R$ 24,90/mês), Pessoal Conectado (R$ 59,90; R$ 49,90), Empresarial (R$ 249; R$ 199) e Completo (R$ 299; R$ 249). Os valores serão recalculados com a cotação real do agregador bancário. | 🔲 | decisão 2026-09-30 |
+| PLAN-1 | Novos planos e preços | Resolvido: catálogo com Pessoal Essencial (R$ 29,90 / R$ 24,90), Pessoal Conectado (R$ 59,90 / R$ 49,90), Empresarial (R$ 249 / R$ 199) e Completo (R$ 299 / R$ 249), com limites `ai_queries` e `bank_connections` por plano; a linha do plano no banco acompanha o preço do catálogo. O catálogo não promete mais exportação em XLSX/PDF. A cobrança dos limites é o LIM-1. | ✅ | etapa 2026-09-30 |
 | LIM-1 | Limites de uso por plano | Contar e limitar bancos conectados e mensagens de IA por mês, conforme o plano, para proteger a margem. | 🔲 | decisão 2026-09-30 |
 | BANK-1 | Integração bancária | Conexão com o banco do cliente via agregador de Open Finance (Pluggy/Belvo), importação OFX/CSV como alternativa e conciliação automática com contas a pagar e receber. Depende de contrato com o agregador. | 🔲 | decisão 2026-09-30 |
-| EMP-2 | Validação de payload nos cadastros | `POST /employees/` sem `email` responde 500 (erro de integridade) em vez de 400. Os endpoints recebem `dict` livre; falta validar os campos obrigatórios. | 🔲 | achado nos testes de 2026-09-30 |
-| FIN-2 | Anexo de lançamento | `POST /financial/entries/{id}/attachment` responde 501 (não implementado). | 🔲 | achado nos testes de 2026-09-30 |
+| EMP-2 | Validação de payload nos cadastros | Resolvido: o cadastro de colaborador valida nome e e-mail, e qualquer violação de integridade do banco vira 400 com mensagem clara, em vez de 500. | ✅ | etapa 2026-09-30 |
+| FIN-2 | Anexo de lançamento | Resolvido: anexo de comprovante (PDF, imagem ou XML, até 10 MB) em armazenamento privado fora de `/uploads`, servido só para a empresa dona; a chave interna não aparece na API nem nas exportações. | ✅ | etapa 2026-09-30 |
+| EXP-2 | Exportações acessíveis sem login | Resolvido: os relatórios ficavam em `/uploads` (público); agora ficam em armazenamento privado e são baixados por `GET /exports/download/{id}` autenticado. Células que começam com `=`, `+`, `-` ou `@` são neutralizadas contra injeção de fórmula no Excel. | ✅ | achado na etapa 2026-09-30 |
+| MT-3 | Padrões silenciosos de empresa/dono demo | Resolvido: 19 colunas `company_id`/`owner_id` tinham padrão `"cmp-001"`/`"usr-001"`, de modo que um código que esquecesse o campo gravaria na conta demo sem erro. Os padrões foram removidos e o seed atribui o dono demo explicitamente. | ✅ | achado na etapa 2026-09-30 |
+| FIN-3 | Lançamento ligado a fornecedor de outra empresa | Resolvido: `PUT /financial/entries/{id}` aceitava `supplier_id` de outra empresa; agora valida, com teste. | ✅ | achado na etapa 2026-09-30 |
+| PES-1 | Gráfico de patrimônio fictício | Resolvido: a evolução patrimonial do Hub Pessoal era uma rampa fixa; agora vem de saldos, dívidas e lançamentos reais. | ✅ | achado na etapa 2026-09-30 |
 | SEC-6 | Nova sessão após o deploy | Os tokens anteriores a 2026-09-30 não têm `type`/`pwd` e deixam de valer: todos os usuários precisam entrar de novo uma vez. Avisar antes de publicar. | 🔲 | ADR-007 |
 
 ---

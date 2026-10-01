@@ -1,5 +1,18 @@
 # Histórico de mudanças
 
+## 2026-09-30 - Planos comerciais e abas completas
+
+- Quatro planos com os preços aprovados: Pessoal Essencial, Pessoal Conectado, Empresarial e Completo (PLAN-1).
+- Financeiro: anexo de comprovante por lançamento, guardado em armazenamento privado (FIN-2).
+- Exportação: relatórios baixados só com login, sem link público, e protegidos contra injeção de fórmula (EXP-2).
+- Configurações: aba Custo de Pessoal (CTC) com recálculo dos colaboradores (CFG-1) e aba Auditoria (SEC-2).
+- Minha Conta: troca de senha, download dos próprios dados e exclusão da conta (LGPD).
+- Gestão de acessos: troca de cargo, promoção a Admin e redefinição de senha pelo Admin (AUTH-2).
+- Kanban: excluir tarefa (KAN-1) e quadro carregado em 3 consultas (DB-4).
+- Hub Pessoal: evolução patrimonial calculada com dados reais.
+- Correções: padrões que gravavam silenciosamente na conta demo (MT-3), fornecedor de outra empresa num lançamento (FIN-3), cadastro incompleto devolvendo 500 (EMP-2), toasts ilegíveis, menu piscando, botões de IA sem permissão, onboarding com botão de salvar separado (UX-1).
+- Suíte de testes: 61 testes, verdes em SQLite, PostgreSQL e MySQL.
+
 ## 2026-09-30 - Endurecimento de segurança e confiabilidade
 
 - Suíte de testes automatizados (`pytest`, 34 testes) cobrindo o isolamento entre empresas e entre usuários, gates por módulo e por plano, regras de acesso, autenticação, auditoria e migrações. Passa em SQLite, PostgreSQL e MySQL (QA-1).
