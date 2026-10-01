@@ -42,12 +42,15 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 
 ## Funcionalidades
 
-- Dois modos de conta (Pessoal, Empresarial e Completo), com Hub Empresarial e Hub Pessoal alternáveis pelo mesmo usuário, sem precisar logar de novo.
+- Quatro planos (Pessoal Essencial, Pessoal Conectado, Empresarial e Completo), com Hub Empresarial e Hub Pessoal alternáveis pelo mesmo usuário, sem precisar logar de novo.
 - Kanban com arrastar e soltar, gestão de equipe com modais de CRUD, fornecedores, financeiro (DRE, fluxo de caixa, lançamentos) e exportação de relatórios.
 - Hierarquia de cargos configurável: o Admin escolhe em Configurações → Hierarquia de Cargos quais módulos cada cargo acessa, e o bloqueio vale no servidor, não só na tela.
 - Assistente de onboarding de 3 passos (dados da empresa, hierarquia de cargos, conexões de API) no primeiro login do Admin de uma empresa nova.
 - Painel de conexões de API, mostrando se o banco está online e se a chave da IA foi configurada.
 - Criação de logins de Gerente e Funcionário pelo próprio Admin, em Gestão de Equipe → Acessos ao Sistema.
+- Bancos & Conciliação: importação de extrato OFX/CSV de qualquer banco (sem duplicar), conciliação automática com contas a pagar e a receber, regras de categoria e conexão automática via agregador de Open Finance (Pluggy).
+- IA com dados reais (Gemini): CFO Virtual com histórico, CFO Pessoal, sugestão de categorias e gerador de orçamentos com o custo-hora real da equipe; cota mensal por plano.
+- Anexo de comprovantes nos lançamentos, custo de pessoal (CTC) configurável, trilha de auditoria e Minha Conta (troca de senha e direitos da LGPD).
 
 ---
 
@@ -160,7 +163,8 @@ O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logi
 
 Estão registradas aqui de propósito, para que a avaliação parta do estado real do sistema. Os detalhes e a prioridade de cada uma estão em [docs/BACKLOG.md](docs/BACKLOG.md).
 
-- A IA generativa ainda não está integrada: CFO, conciliação e propostas continuam demonstrativos baseados em regras; a API identifica corretamente o modelo como `rule-based-demo` e não declara consumo fictício de tokens (IA-1).
+- A IA usa o Gemini sobre os dados reais e, sem chave válida, responde por regras com os mesmos dados. A chave atual do projeto foi bloqueada pelo Google como vazada: gere uma nova no Google AI Studio (IA-1, SEC-5).
+- A conexão automática com bancos depende de contrato e credenciais da Pluggy (`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`); sem elas, use a importação de extrato OFX/CSV em Bancos (BANK-1).
 - O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
 - MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
 - Anexos de lançamentos e exportações ficam em `storage/` (privado, servido só com login e só para a empresa dona), no disco do servidor: em produção com mais de uma instância, será preciso um armazenamento compartilhado (ex.: Supabase Storage/S3). Não há antivírus nos uploads.

@@ -15,6 +15,8 @@ Esta pasta reúne as decisões técnicas, de arquitetura e de design tomadas ao 
 | [ADR 005](adr-005-suporte-postgresql-supabase.md) | Suporte a PostgreSQL Gerenciado (Supabase) como Banco Padrão | Aprovado, com pendências (SEC-5, DB-5) | 2026-09-23 |
 | [ADR 006](adr-006-isolamento-e-persistencia-operacional.md) | Isolamento de Dados e Persistência Operacional | Aceito | 2026-09-23 |
 | [ADR 007](adr-007-endurecimento-autenticacao-migracoes-auditoria.md) | Endurecimento de Autenticação, Migrações Versionadas e Auditoria | Aceito | 2026-09-30 |
+| [ADR 008](adr-008-integracao-bancaria-e-conciliacao.md) | Integração Bancária por Agregador e Conciliação | Aceito | 2026-09-30 |
+| [ADR 009](adr-009-ia-generativa-com-dados-reais.md) | IA Generativa sobre Dados Reais, com Fallback por Regras e Cota | Aceito | 2026-09-30 |
 
 ---
 

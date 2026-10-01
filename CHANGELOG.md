@@ -1,5 +1,13 @@
 # Histórico de mudanças
 
+## 2026-09-30 - Bancos, conciliação e IA real
+
+- Bancos & Conciliação (Hub Empresarial e Hub Pessoal): importação de extrato OFX/CSV de qualquer banco, sem duplicar ao reimportar; conciliação automática com as contas a pagar e a receber; ações manuais de conciliar, lançar e ignorar; regras de categoria (BANK-1, [ADR 008](docs/decisoes/adr-008-integracao-bancaria-e-conciliacao.md)).
+- Conexão automática com bancos via agregador de Open Finance (Pluggy), pronta no código e ativada quando as credenciais forem configuradas; limite de contas conectadas por plano (LIM-1).
+- IA real: CFO Virtual, CFO Pessoal, sugestão de categorias e gerador de orçamentos usam o Gemini sobre os dados reais. Sem IA disponível, respondem por regras com os mesmos dados. Histórico do chat salvo e cota mensal de perguntas por plano (IA-1, [ADR 009](docs/decisoes/adr-009-ia-generativa-com-dados-reais.md)).
+- Removidos os últimos dados fictícios das telas de IA.
+- Suíte de testes: 99 testes, verdes em SQLite, PostgreSQL e MySQL.
+
 ## 2026-09-30 - Planos comerciais e abas completas
 
 - Quatro planos com os preços aprovados: Pessoal Essencial, Pessoal Conectado, Empresarial e Completo (PLAN-1).
