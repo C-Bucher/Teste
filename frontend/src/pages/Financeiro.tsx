@@ -20,6 +20,7 @@ interface FinancialEntry {
   category?: string;
   supplier_id?: string;
   cost_center?: string;
+  attachment_name?: string | null;
 }
 
 interface DreCategory {
@@ -111,6 +112,7 @@ function FinanceiroContent() {
   const [entryForm, setEntryForm] = useState(EMPTY_ENTRY_FORM);
   const [saving, setSaving] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   // DRE
   const [dre, setDre] = useState<DreData | null>(null);
@@ -235,6 +237,41 @@ function FinanceiroContent() {
       toast.error('Erro ao marcar lançamento como pago.');
     } finally {
       setPayingId(null);
+    }
+  };
+
+  const handleUploadAttachment = async (id: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10 MB.');
+      return;
+    }
+    setUploadingId(id);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.post(`/financial/entries/${id}/attachment`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEntries((prev) => prev.map((en) => (en.id === id ? res.data : en)));
+      toast.success('Comprovante anexado.');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Erro ao anexar comprovante.');
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const handleDownloadAttachment = async (en: FinancialEntry) => {
+    try {
+      // Authenticated download: the file is never exposed on a public URL.
+      const res = await api.get(`/financial/entries/${en.id}/attachment`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = en.attachment_name || 'comprovante';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Não foi possível baixar o comprovante.');
     }
   };
 
@@ -372,7 +409,28 @@ function FinanceiroContent() {
                     <td className={`px-lg py-md text-right font-bold ${en.type === 'RECEITA' ? 'text-success' : 'text-error'}`}>
                       {en.type === 'RECEITA' ? '+' : '-'} R$ {formatCurrency(en.amount)}
                     </td>
-                    <td className="px-lg py-md text-right">
+                    <td className="px-lg py-md text-right whitespace-nowrap">
+                      {en.attachment_name ? (
+                        <button
+                          onClick={() => handleDownloadAttachment(en)}
+                          title={`Baixar ${en.attachment_name}`}
+                          className="inline-flex items-center justify-center w-8 h-8 mr-xs rounded-lg text-primary hover:bg-primary/10 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                        </button>
+                      ) : null}
+                      <label
+                        title={en.attachment_name ? 'Substituir comprovante' : 'Anexar comprovante (PDF, imagem ou XML, até 10 MB)'}
+                        className={`inline-flex items-center justify-center w-8 h-8 mr-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all ${uploadingId === en.id ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{uploadingId === en.id ? 'hourglass_top' : 'upload_file'}</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp,.xml"
+                          className="hidden"
+                          onChange={(e) => { handleUploadAttachment(en.id, e.target.files?.[0]); e.target.value = ''; }}
+                        />
+                      </label>
                       {en.status === 'PENDENTE' && (
                         <button
                           onClick={() => handleMarkAsPaid(en.id)}

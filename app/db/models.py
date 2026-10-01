@@ -149,6 +149,8 @@ class FinancialEntryModel(Base):
     category = Column(String(100), nullable=True)
     supplier_id = Column(String(50), ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True)
     cost_center = Column(String(100), nullable=True)
+    attachment_name = Column(String(255), nullable=True)   # original file name shown to the user
+    attachment_key = Column(String(255), nullable=True)    # private storage key, never returned by the API
 
 
 class ClientModel(Base):

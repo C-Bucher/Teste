@@ -140,3 +140,13 @@ async def test_incomplete_payloads_are_400_not_500(client, company_a):
     assert r.status_code == 400
     r = await client.post("/suppliers/", headers=company_a["headers"], json={})
     assert r.status_code == 400
+
+
+async def test_entry_cannot_be_linked_to_another_companys_supplier(client, company_a, company_b):
+    sup_b = (await client.post("/suppliers/", headers=company_b["headers"], json={"name": "Fornecedor B"})).json()
+    entry = (await client.post("/financial/entries", headers=company_a["headers"], json={"type": "DESPESA", "amount": 10})).json()
+    r = await client.put(f"/financial/entries/{entry['id']}", headers=company_a["headers"], json={"supplier_id": sup_b["id"]})
+    assert r.status_code == 404
+    r = await client.put(f"/financial/entries/{entry['id']}", headers=company_a["headers"], json={"attachment_key": "../outra-empresa/x.pdf"})
+    assert r.status_code == 200
+    assert "attachment_key" not in r.json()

@@ -37,7 +37,7 @@ async def req_export(d: dict, u=Depends(get_current_user), db: AsyncSession = De
     
     if exp_type in {"DRE", "FLUXO_CAIXA"}:
         result = await db.execute(select(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"]))
-        rows = models_to_dicts(result.scalars().all())
+        rows = [{k: v for k, v in r.items() if k != "attachment_key"} for r in models_to_dicts(result.scalars().all())]
     elif exp_type == "COLABORADORES":
         result = await db.execute(select(EmployeeModel).where(EmployeeModel.company_id == u["company_id"]))
         rows = models_to_dicts(result.scalars().all())
