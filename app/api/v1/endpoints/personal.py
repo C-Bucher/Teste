@@ -217,6 +217,32 @@ async def create_split(d:dict,u=Depends(get_current_user), db: AsyncSession = De
 async def del_split(spid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await _delete_owned(PersonalSplitModel, spid, u["id"], db)
 
+_MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+
+async def _net_worth_series(owner_id: str, entries: list[dict], db: AsyncSession, months: int = 6) -> list[dict]:
+    """Net worth today = account balances (cards are negative) - remaining debt.
+    Each earlier month-end is rebuilt by undoing the entries recorded after it."""
+    accounts = await _list_owned(PersonalAccountModel, owner_id, db)
+    debts = await _list_owned(PersonalDebtModel, owner_id, db)
+    current = sum(a.get("balance") or 0 for a in accounts) - sum(d.get("remaining_amount") or 0 for d in debts)
+
+    def signed(e: dict) -> float:
+        return (e.get("amount") or 0) * (1 if e.get("type") == "RECEITA" else -1)
+
+    today = date.today()
+    series = []
+    for back in range(months - 1, -1, -1):
+        y, m = today.year, today.month - back
+        while m <= 0:
+            m += 12
+            y -= 1
+        next_month = date(y + (m == 12), m % 12 + 1, 1).isoformat()
+        after = sum(signed(e) for e in entries if (e.get("date") or "") >= next_month)
+        series.append({"month": _MONTHS_PT[m - 1], "value": round(current - after, 2)})
+    return series
+
+
 @router.get("/analytics")
 async def get_analytics(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
@@ -225,7 +251,7 @@ async def get_analytics(u=Depends(get_current_user), db: AsyncSession = Depends(
     for e in entries:
         if e["type"] == "DESPESA":
             total_by_cat[e["category"]] = total_by_cat.get(e["category"], 0) + e["amount"]
-    net_worth_series = [{"month": m, "value": 8000 + i * 650} for i, m in enumerate(["Mar","Abr","Mai","Jun","Jul","Ago"])]
+    net_worth_series = await _net_worth_series(u["id"], entries, db)
     return {"spend_by_category": [{"category": k, "total": round(v, 2)} for k, v in total_by_cat.items()], "net_worth_series": net_worth_series}
 
 @router.post("/ai/insights")
