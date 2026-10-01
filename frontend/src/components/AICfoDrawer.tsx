@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Bot, User, Sparkles, Loader2, ArrowRight } from 'lucide-react';
 import api from '../api';
@@ -24,6 +24,23 @@ export default function AICfoDrawer({ isOpen, onClose }: AICfoDrawerProps) {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  // Restore the saved conversation the first time the drawer opens.
+  useEffect(() => {
+    if (!isOpen || historyLoaded) return;
+    setHistoryLoaded(true);
+    api.get('/ai/history')
+      .then((res) => {
+        const past: Message[] = (res.data.items || []).map((m: { role: string; content: string; created_at: string }) => ({
+          sender: m.role === 'user' ? 'user' : 'ai',
+          text: m.content,
+          timestamp: new Date(m.created_at.endsWith('Z') ? m.created_at : `${m.created_at}Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }));
+        if (past.length) setMessages((prev) => [prev[0], ...past]);
+      })
+      .catch(() => { /* histórico é opcional: o chat funciona sem ele */ });
+  }, [isOpen, historyLoaded]);
 
   const quickPrompts = [
     'Como está o saldo e fluxo de caixa?',
