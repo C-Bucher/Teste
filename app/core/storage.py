@@ -6,7 +6,9 @@ import uuid
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-ATTACHMENTS_DIR = Path(os.getenv("ATTACHMENTS_DIR") or PROJECT_ROOT / "storage" / "attachments")
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR") or PROJECT_ROOT / "storage")
+ATTACHMENTS_DIR = STORAGE_DIR / "attachments"
+EXPORTS_DIR = STORAGE_DIR / "exports"
 
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".xml"}

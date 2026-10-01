@@ -52,7 +52,6 @@ async def test_export_does_not_leak_storage_key(client, company_a):
                       files={"file": ("nota.pdf", b"%PDF-1.4 x", "application/pdf")})
     r = await client.post("/exports/request", headers=company_a["headers"], json={"type": "DRE", "format": "JSON"})
     assert r.status_code == 200, r.text
-    from app.db.session import PROJECT_ROOT
-    exported = (PROJECT_ROOT / "uploads" / f"export_{r.json()['id']}.json").read_text(encoding="utf-8")
+    exported = (await client.get(f"/exports/download/{r.json()['id']}", headers=company_a["headers"])).text
     assert "attachment_key" not in exported
     assert "nota.pdf" in exported

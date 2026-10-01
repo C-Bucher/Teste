@@ -150,3 +150,15 @@ async def test_entry_cannot_be_linked_to_another_companys_supplier(client, compa
     r = await client.put(f"/financial/entries/{entry['id']}", headers=company_a["headers"], json={"attachment_key": "../outra-empresa/x.pdf"})
     assert r.status_code == 200
     assert "attachment_key" not in r.json()
+
+
+async def test_export_file_is_downloaded_with_auth_and_not_public(client, company_a):
+    await client.post("/suppliers/", headers=company_a["headers"], json={"name": "=HYPERLINK(\"http://mal\")"})
+    r = await client.post("/exports/request", headers=company_a["headers"], json={"type": "FORNECEDORES", "format": "CSV"})
+    eid = r.json()["id"]
+    d = await client.get(f"/exports/download/{eid}", headers=company_a["headers"])
+    assert d.status_code == 200
+    assert "'=HYPERLINK" in d.text, "formula cells must be neutralised"
+    public = await client.get(f"http://test/uploads/export_{eid}.csv")
+    # may be 404 or the SPA's index.html fallback, but never the report itself
+    assert "HYPERLINK" not in public.text

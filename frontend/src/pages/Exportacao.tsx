@@ -92,8 +92,15 @@ function ExportacaoContent() {
 
   const handleDownload = async (id: string) => {
     try {
-      const res = await api.get(`/exports/download/${id}`);
-      window.open(res.data.download_url, '_blank');
+      const res = await api.get(`/exports/download/${id}`, { responseType: 'blob' });
+      const disposition: string = res.headers['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] || `exportacao_${id}`;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Erro ao baixar exportação', err);
       toast.error('Erro ao baixar exportação.');
