@@ -47,7 +47,7 @@ async def test_sole_user_deletion_purges_the_company(client):
     col = (await client.get(f"/kanban/projects/{proj['id']}/board", headers=h)).json()["columns"][0]["id"]
     card = (await client.post("/kanban/cards", headers=h, json={"title": "T", "column_id": col})).json()
     await client.post(f"/kanban/cards/{card['id']}/comments", headers=h, json={"content": "c"})
-    await client.post("/employees/", headers=h, json={"full_name": "E", "email": "e@x.com", "base_salary": 1000, "contract_type": "PJ"})
+    await client.post("/employees/", headers=h, json={"full_name": "E", "email": "e@x.com", "base_salary": 1000, "contract_type": "PJ", "role": "Dev"})
     await client.post("/payments/checkout", headers=h, json={"plan_id": "plan-completo", "billing_cycle": "monthly", "payment_method": "pix"})
     await client.post("/personal/goals", headers=h, json={"name": "Meta", "target_amount": 100})
 

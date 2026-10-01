@@ -11,6 +11,7 @@ _DB_DIR = tempfile.mkdtemp(prefix="techconnect-tests-")
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite+aiosqlite:///{_DB_DIR}/test.db"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-only-for-pytest-0123456789")
 os.environ["APP_ENV"] = "test"
+os.environ["BCRYPT_ROUNDS"] = "4"
 os.environ["STORAGE_DIR"] = os.path.join(_DB_DIR, "storage")
 
 import httpx  # noqa: E402

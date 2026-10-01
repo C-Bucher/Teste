@@ -59,10 +59,10 @@ async def _purge_company(db: AsyncSession, company_id: str) -> None:
     await db.execute(delete(m.KanbanColumnModel).where(m.KanbanColumnModel.id.in_(column_ids)))
     await db.execute(delete(m.SalaryHistoryModel).where(m.SalaryHistoryModel.employee_id.in_(employee_ids)))
     await db.execute(delete(m.InvoiceModel).where(m.InvoiceModel.subscription_id.in_(subscription_ids)))
-    for model in (m.FinancialEntryModel, m.ProjectModel, m.ClientModel, m.SupplierModel, m.EmployeeModel,
-                  m.CostCenterModel, m.CategoryModel, m.ExportLogModel, m.NotificationModel, m.RolePermissionModel,
-                  m.WorkCalendarModel, m.SubscriptionModel, m.AuditLogModel):
-        await db.execute(delete(model).where(model.company_id == company_id))
+    # Every table scoped by company_id, children before parents; new tables are covered automatically.
+    for table in reversed(m.Base.metadata.sorted_tables):
+        if "company_id" in table.c and table.name not in ("users", "companies"):
+            await db.execute(delete(table).where(table.c.company_id == company_id))
     for folder in (storage.ATTACHMENTS_DIR / company_id, storage.EXPORTS_DIR / company_id):
         if folder.exists():
             for f in folder.iterdir():

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import get_current_user
+from app.core import ctc as ctc_rules
 from app.db.session import get_db
 from app.db.models import EmployeeModel, SalaryHistoryModel
 from app.db.utils import model_to_dict, models_to_dicts
@@ -16,10 +17,8 @@ router = APIRouter()
 _EMP_COLUMNS = {c.name for c in EmployeeModel.__table__.columns}
 
 
-def _compute_ctc(base_salary: float, contract_type: Optional[str]):
-    ctc = base_salary * 1.75 if contract_type == "CLT" else base_salary * 1.1
-    hr = round(ctc / 176, 2)
-    return round(ctc, 2), hr
+async def _compute_ctc(db: AsyncSession, company_id: str, base_salary: float, contract_type: Optional[str]):
+    return ctc_rules.compute(base_salary, contract_type, await ctc_rules.get_params(db, company_id))
 
 
 async def _add_salary_history(db: AsyncSession, employee: EmployeeModel, reason: str):
@@ -53,9 +52,7 @@ async def get_emps(skip: int = 0, limit: int = 100, active: Optional[bool] = Non
 async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if not str(d.get("full_name") or "").strip() or not str(d.get("email") or "").strip():
         raise HTTPException(400, "Nome e e-mail do colaborador são obrigatórios")
-    base = d.get("base_salary", 0)
-    ctc = base * 1.75 if d.get("contract_type") == "CLT" else base * 1.1
-    hr = round(ctc / 176, 2)
+    ctc, hr = await _compute_ctc(db, u["company_id"], float(d.get("base_salary") or 0), d.get("contract_type"))
     emp_dict = {**d, "id": f"emp-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"], "ctc_snapshot": round(ctc, 2), "ctc_monthly": round(ctc, 2), "hourly_rate": hr, "hourly_cost": hr, "is_active": True, "position": d.get("role", ""), "hire_date": d.get("start_date", date.today().isoformat())}
     model_kwargs = {k: v for k, v in emp_dict.items() if k in _EMP_COLUMNS}
     emp = EmployeeModel(**model_kwargs)
@@ -93,7 +90,7 @@ async def upd_emp(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSessi
     salary_affecting = ("base_salary" in d and new_base != old_base) or ("contract_type" in d and new_contract != old_contract)
 
     if salary_affecting:
-        ctc, hr = _compute_ctc(new_base or 0, new_contract)
+        ctc, hr = await _compute_ctc(db, u["company_id"], new_base or 0, new_contract)
         e.ctc_snapshot = ctc
         e.ctc_monthly = ctc
         e.hourly_rate = hr

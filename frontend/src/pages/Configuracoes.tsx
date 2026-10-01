@@ -9,8 +9,9 @@ import { useConfirm } from '../context/ConfirmContext';
 import PermissionMatrix from '../components/PermissionMatrix';
 import IntegrationsStatus from '../components/IntegrationsStatus';
 import AuditLogSection from '../components/AuditLogSection';
+import CtcParamsSection from '../components/CtcParamsSection';
 
-type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'cargos' | 'conexoes' | 'auditoria';
+type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'ctc' | 'cargos' | 'conexoes' | 'auditoria';
 
 interface Category {
   id: string;
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plano-contas', label: 'Plano de Contas', icon: 'account_tree' },
   { id: 'centros-custo', label: 'Centros de Custo', icon: 'apartment' },
   { id: 'calendario', label: 'Calendário Útil', icon: 'calendar_month' },
+  { id: 'ctc', label: 'Custo de Pessoal (CTC)', icon: 'payments' },
   { id: 'cargos', label: 'Hierarquia de Cargos', icon: 'admin_panel_settings' },
   { id: 'conexoes', label: 'Conexões de API', icon: 'cable' },
   { id: 'auditoria', label: 'Auditoria', icon: 'history' },
@@ -53,7 +55,7 @@ const WEEKDAYS = [
 function ConfiguracoesContent() {
   const toast = useToast();
   const confirm = useConfirm();
-  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes', 'auditoria'];
+  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'ctc', 'cargos', 'conexoes', 'auditoria'];
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && TAB_IDS.includes(tabFromUrl) ? tabFromUrl : 'empresa');
@@ -513,6 +515,17 @@ function ConfiguracoesContent() {
               </div>
             </>
           )}
+        </motion.div>
+      )}
+
+      {/* Aba: Custo de Pessoal (CTC) */}
+      {activeTab === 'ctc' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Custo de Pessoal (CTC)</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Como o sistema calcula o custo total de cada colaborador e o custo-hora usado nos projetos.</p>
+          </div>
+          <CtcParamsSection />
         </motion.div>
       )}
 

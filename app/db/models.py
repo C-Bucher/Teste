@@ -415,3 +415,14 @@ class AuditLogModel(Base):
     details = Column(Text, nullable=True)                # JSON-encoded
     ip = Column(String(64), nullable=True)
     created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat(), index=True)
+
+
+class CtcParamsModel(Base):
+    """Per-company multipliers for the employee total cost (CTC = base salary x multiplier)."""
+    __tablename__ = "ctc_params"
+
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True)
+    clt_multiplier = Column(Float, nullable=False, default=1.75)
+    pj_multiplier = Column(Float, nullable=False, default=1.10)
+    estagio_multiplier = Column(Float, nullable=False, default=1.10)
+    monthly_hours = Column(Float, nullable=False, default=176.0)

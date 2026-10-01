@@ -7,7 +7,9 @@ from sqlalchemy import select
 from app.core.security import get_current_user
 from app.core.permissions import require_module
 from app.db.session import get_db
-from app.db.models import CompanyModel, CostCenterModel, CategoryModel, WorkCalendarModel
+from app.db.models import CompanyModel, CostCenterModel, CategoryModel, WorkCalendarModel, EmployeeModel, SalaryHistoryModel
+from app.core import audit, ctc as ctc_rules
+from datetime import date
 from app.db.utils import model_to_dict, models_to_dicts
 
 router = APIRouter()
@@ -124,8 +126,45 @@ async def upd_calendar(d:dict,u=Depends(get_current_user), db: AsyncSession = De
     await db.refresh(calendar)
     return model_to_dict(calendar)
 
+_CTC_FIELDS = ("clt_multiplier", "pj_multiplier", "estagio_multiplier", "monthly_hours")
+
+
 @router.get("/ctc-params")
-async def get_ctc_p(u=Depends(get_current_user)): return [{"id":"p-001","contract_type":"CLT","inss_rate":0.20,"fgts_rate":0.08,"ferias_rate":0.1111,"decimo_rate":0.0833},{"id":"p-002","contract_type":"PJ","iss_rate":0.05},{"id":"p-003","contract_type":"ESTAGIO","seguro_rate":0.02}]
+async def get_ctc_p(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    params = await ctc_rules.get_params(db, u["company_id"])
+    await db.commit()
+    return {k: getattr(params, k) for k in _CTC_FIELDS}
+
+
+@router.put("/ctc-params")
+async def put_ctc_p(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("configuracoes"))):
+    """Saves the multipliers and recalculates every active employee so the dashboards reflect them at once."""
+    params = await ctc_rules.get_params(db, u["company_id"])
+    for key in _CTC_FIELDS:
+        if key not in d:
+            continue
+        try:
+            value = float(d[key])
+        except (TypeError, ValueError):
+            raise HTTPException(400, f"Valor inválido para {key}")
+        if key == "monthly_hours" and not 1 <= value <= 744:
+            raise HTTPException(400, "Horas por mês devem estar entre 1 e 744")
+        if key != "monthly_hours" and not 1 <= value <= 5:
+            raise HTTPException(400, "O multiplicador deve estar entre 1 e 5")
+        setattr(params, key, value)
+
+    employees = (await db.execute(select(EmployeeModel).where(EmployeeModel.company_id == u["company_id"], EmployeeModel.is_active == True))).scalars().all()  # noqa: E712
+    for e in employees:
+        ctc, hourly = ctc_rules.compute(e.base_salary or 0, e.contract_type, params)
+        if ctc != e.ctc_monthly or hourly != e.hourly_cost:
+            e.ctc_snapshot = e.ctc_monthly = ctc
+            e.hourly_rate = e.hourly_cost = hourly
+            db.add(SalaryHistoryModel(id=f"sh-{uuid.uuid4().hex[:8]}", employee_id=e.id, base_salary=e.base_salary,
+                                      ctc_monthly=ctc, ctc_snapshot=ctc, changed_at=date.today().isoformat(),
+                                      reason="Parâmetros de CTC atualizados"))
+    audit.record_by(db, u, "CTC_ALTERADO", entity="ctc_params", details={k: getattr(params, k) for k in _CTC_FIELDS})
+    await db.commit()
+    return {**{k: getattr(params, k) for k in _CTC_FIELDS}, "recalculated_employees": len(employees)}
 @router.post("/logo")
 async def logo(u=Depends(get_current_user)):
     raise HTTPException(501, "Upload de logotipo ainda não implementado")
