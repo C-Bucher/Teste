@@ -185,8 +185,8 @@ async def upd_auth_user(uid: str, d: dict, u=Depends(get_current_user), db: Asyn
     usr = await db.get(UserModel, uid)
     if not usr or usr.company_id != u["company_id"]:
         raise HTTPException(404)
-    if "role" in d and d["role"] != usr.role and d["role"] not in ("GERENTE", "FUNCIONARIO"):
-        raise HTTPException(400, "Cargo inválido. Use GERENTE ou FUNCIONARIO")
+    if "role" in d and d["role"] != usr.role and d["role"] not in ("ADMIN", "GERENTE", "FUNCIONARIO"):
+        raise HTTPException(400, "Cargo inválido. Use ADMIN, GERENTE ou FUNCIONARIO")
     if usr.id == u["id"] and (d.get("is_active") is False or d.get("role") not in (None, "ADMIN")):
         raise HTTPException(400, "O administrador não pode remover o próprio acesso administrativo")
     removing_admin = usr.role == "ADMIN" and (d.get("is_active") is False or d.get("role") not in (None, "ADMIN"))
@@ -230,3 +230,23 @@ async def change_password(b: ChangePasswordReq, u=Depends(get_current_user), db:
     await db.commit()
     # Old tokens die with the old password; hand back a fresh pair so this session continues.
     return {"message": "Senha alterada", **token_pair(model_to_dict(usr))}
+
+
+class ResetPasswordReq(BaseModel):
+    new_password: str
+
+@router.post("/users/{uid}/reset-password")
+async def reset_user_password(uid: str, b: ResetPasswordReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Admin sets a temporary password; the person's open sessions end immediately."""
+    if u["role"] != "ADMIN":
+        raise HTTPException(403, "Somente administradores podem redefinir senhas")
+    usr = await db.get(UserModel, uid)
+    if not usr or usr.company_id != u["company_id"]:
+        raise HTTPException(404)
+    validate_password(b.new_password)
+    usr.password_hash = hash_password(b.new_password)
+    usr.failed_login_count = 0
+    usr.locked_until = None
+    audit.record_by(db, u, "SENHA_REDEFINIDA", entity="user", entity_id=uid)
+    await db.commit()
+    return {"message": "Senha redefinida"}
