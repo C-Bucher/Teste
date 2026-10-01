@@ -15,6 +15,7 @@ import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
 import MinhaConta from './pages/MinhaConta';
+import Bancos from './pages/Bancos';
 import { usePermissions } from './hooks/usePermissions';
 import { clearSession } from './api';
 
@@ -70,6 +71,8 @@ function App() {
         <Route path="/exportacao" element={<PrivateRoute><Exportacao /></PrivateRoute>} />
         <Route path="/ia" element={<PrivateRoute><IAEmpresarial /></PrivateRoute>} />
         <Route path="/pessoal" element={<Navigate to="/pessoal/visao-geral" />} />
+        <Route path="/bancos" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="financeiro"><Bancos scope="empresa" /></ModuleRoute></ScopeRoute></PrivateRoute>} />
+        <Route path="/pessoal/bancos" element={<PrivateRoute><ScopeRoute scope="pessoal"><Bancos scope="pessoal" /></ScopeRoute></PrivateRoute>} />
         <Route path="/pessoal/:tab" element={<PrivateRoute><ScopeRoute scope="pessoal"><HubPessoal /></ScopeRoute></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
         <Route path="/minha-conta" element={<PrivateRoute><MinhaConta /></PrivateRoute>} />

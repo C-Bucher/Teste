@@ -167,6 +167,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Projetos', path: '/kanban', icon: 'view_kanban', module: 'kanban' },
     { name: 'Equipe', path: '/equipe', icon: 'groups', module: 'equipe' },
     { name: 'Financeiro', path: '/financeiro', icon: 'payments', module: 'financeiro' },
+    { name: 'Bancos', path: '/bancos', icon: 'account_balance_wallet', module: 'financeiro' },
     { name: 'Fornecedores', path: '/fornecedores', icon: 'local_shipping', module: 'fornecedores' },
     { name: 'Configurações', path: '/configuracoes', icon: 'settings', module: 'configuracoes' },
     { name: 'Exportação', path: '/exportacao', icon: 'file_download', module: 'exportacao' },
@@ -180,6 +181,7 @@ export default function Layout({ children }: LayoutProps) {
   const personalNavItems = [
     { name: 'Visão Geral', path: '/pessoal/visao-geral', icon: 'dashboard' },
     { name: 'Extrato', path: '/pessoal/extrato', icon: 'receipt_long' },
+    { name: 'Bancos', path: '/pessoal/bancos', icon: 'account_balance_wallet' },
     { name: 'Contas & Cartões', path: '/pessoal/contas-cartoes', icon: 'credit_card' },
     { name: 'Orçamento', path: '/pessoal/orcamento', icon: 'pie_chart' },
     { name: 'Metas', path: '/pessoal/metas', icon: 'flag' },
