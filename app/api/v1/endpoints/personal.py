@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, HTTPException, Depends
 import uuid
 from datetime import date
@@ -7,6 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import get_current_user
+from app.integrations.ai import rules
+from app.integrations.ai import service as ai_service
+from app.integrations.ai.context import personal_snapshot
+from app.integrations.ai.llm import Llm, LlmUnavailable, get_llm, parse_json
 from app.db.session import get_db
 from app.db.models import (
     PersonalEntryModel,
@@ -254,10 +259,33 @@ async def get_analytics(u=Depends(get_current_user), db: AsyncSession = Depends(
     net_worth_series = await _net_worth_series(u["id"], entries, db)
     return {"spend_by_category": [{"category": k, "total": round(v, 2)} for k, v in total_by_cat.items()], "net_worth_series": net_worth_series}
 
+SYSTEM_PERSONAL = (
+    "Você é o CFO Pessoal do TechConnect, consultor de finanças pessoais. Responda em português do Brasil, "
+    "com valores em reais (R$), usando somente os dados fornecidos em JSON. Nunca invente números."
+)
+
+
 @router.post("/ai/insights")
-async def personal_ai_insights(d:dict,u=Depends(get_current_user)):
-    return {"insights": [
-        {"type": "ALERT", "message": "Seus gastos com Lazer estão em 97% do orçamento mensal.", "impact_value": 390.00},
-        {"type": "OPPORTUNITY", "message": "Você poderia render R$ 42/mês a mais movendo sua reserva para um CDB de liquidez diária.", "impact_value": 42.00},
-        {"type": "CUT", "message": "Você tem 2 assinaturas ativas (Netflix, Academia) somando R$ 139,80/mês.", "impact_value": 139.80},
-    ]}
+async def personal_ai_insights(u=Depends(get_current_user), db: AsyncSession = Depends(get_db), llm: Llm | None = Depends(get_llm)):
+    snapshot = await personal_snapshot(db, u["id"])
+    prompt = (
+        f"Dados financeiros da pessoa:\n{json.dumps(snapshot, ensure_ascii=False)}\n\n"
+        'Devolva JSON {"insights": [{"type": "ALERT" | "OPPORTUNITY" | "CUT", "message": "...", "impact_value": número em reais}]} '
+        "com 3 a 5 itens concretos e acionáveis."
+    )
+    reply, reason = await ai_service.ask(db, u, llm, SYSTEM_PERSONAL, prompt, as_json=True)
+    insights, source = None, "regra"
+    if reply:
+        try:
+            data = parse_json(reply)
+            insights = [
+                {"type": i["type"], "message": str(i["message"])[:500], "impact_value": round(float(i.get("impact_value") or 0), 2)}
+                for i in data.get("insights", []) if i.get("type") in ("ALERT", "OPPORTUNITY", "CUT") and i.get("message")
+            ][:6] or None
+            source = "ia" if insights else "regra"
+        except (LlmUnavailable, AttributeError, TypeError, ValueError):
+            insights = None
+    if insights is None:
+        insights = rules.personal_insights(snapshot)
+    await db.commit()
+    return {"insights": insights, "source": source}

@@ -12,6 +12,10 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite+aio
 os.environ.setdefault("SECRET_KEY", "test-secret-key-only-for-pytest-0123456789")
 os.environ["APP_ENV"] = "test"
 os.environ["BCRYPT_ROUNDS"] = "4"
+# Never reach paid external APIs from tests, even if the developer's .env has real keys.
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["PLUGGY_CLIENT_ID"] = ""
+os.environ["PLUGGY_CLIENT_SECRET"] = ""
 os.environ["STORAGE_DIR"] = os.path.join(_DB_DIR, "storage")
 
 import httpx  # noqa: E402

@@ -21,6 +21,7 @@ from app.db.models import BankAccountModel, BankTransactionModel, Categorization
 from app.db.session import get_db
 from app.db.utils import model_to_dict, models_to_dicts
 from app.integrations.bank import service
+from app.integrations.ai.service import usage as ai_usage
 from app.integrations.bank.providers import BankProvider, ProviderError, get_bank_provider
 from app.integrations.bank.statement import StatementError, parse_statement
 
@@ -199,6 +200,27 @@ async def match_tx(tid: str, b: MatchReq, u=Depends(get_current_user), db: Async
     return model_to_dict(tx)
 
 
+class CategoryReq(BaseModel):
+    category: str
+    create_rule: bool = False
+
+
+@router.post("/transactions/{tid}/category")
+async def set_tx_category(tid: str, b: CategoryReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Applies a category (e.g. one suggested by the AI); optionally remembers it as a rule."""
+    tx = await _load(db, BankTransactionModel, tid, u)
+    category = b.category.strip()[:100]
+    if not category:
+        raise HTTPException(400, "Informe a categoria")
+    tx.category = category
+    if b.create_rule and tx.description:
+        owner = {"company_id": tx.company_id, "owner_id": None} if tx.owner_id is None else {"company_id": None, "owner_id": tx.owner_id}
+        pattern = tx.description.strip()[:100].lower()
+        db.add(CategorizationRuleModel(id=f"rule-{uuid.uuid4().hex[:10]}", pattern=pattern, category=category, **owner))
+    await db.commit()
+    return model_to_dict(tx)
+
+
 @router.post("/transactions/{tid}/ignore")
 async def ignore_tx(tid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     tx = await _load(db, BankTransactionModel, tid, u)
@@ -329,8 +351,11 @@ async def sync_account(aid: str, u=Depends(get_current_user), db: AsyncSession =
 @router.get("/usage")
 async def usage(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     plan = await current_plan(db, u)
+    ai = await ai_usage(db, u)
+    await db.commit()
     return {
         "plan_id": plan["id"],
         "plan_name": plan["name"],
         "bank_connections": {"used": await bank_connections_used(db, u), "limit": plan["limits"].get("bank_connections", 0)},
+        "ai_queries": ai,
     }

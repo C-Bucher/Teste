@@ -475,3 +475,28 @@ class CategorizationRuleModel(Base):
     owner_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     pattern = Column(String(100), nullable=False)
     category = Column(String(100), nullable=False)
+
+
+class AiMessageModel(Base):
+    """Chat history of the CFO assistants (one row per message)."""
+    __tablename__ = "ai_messages"
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)          # user | assistant
+    content = Column(Text, nullable=False)
+    source = Column(String(20), nullable=True)         # ia | regra
+    model = Column(String(60), nullable=True)
+    created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat(), index=True)
+
+
+class AiUsageModel(Base):
+    """Real model calls per company per month, checked against the plan's ai_queries (LIM-1)."""
+    __tablename__ = "ai_usage"
+    __table_args__ = (UniqueConstraint("company_id", "period", name="uq_ai_usage_period"),)
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    period = Column(String(7), nullable=False)          # YYYY-MM
+    count = Column(Integer, nullable=False, default=0)

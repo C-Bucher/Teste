@@ -100,6 +100,7 @@ async def delete_my_account(b: DeleteAccountReq, u=Depends(get_current_user), db
     for model in PERSONAL_MODELS:
         await db.execute(delete(model).where(model.owner_id == user.id))
     await db.execute(delete(m.NotificationPreferenceModel).where(m.NotificationPreferenceModel.user_id == user.id))
+    await db.execute(delete(m.AiMessageModel).where(m.AiMessageModel.user_id == user.id))
 
     if others:
         audit.record(db, "CONTA_EXCLUIDA", company_id=company_id, user_id=user.id, entity="user", entity_id=user.id)
