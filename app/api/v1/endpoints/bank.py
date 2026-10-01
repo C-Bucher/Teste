@@ -119,9 +119,16 @@ async def import_statement(
         if account.scope != scope:
             raise HTTPException(400, "A conta pertence a outro escopo")
     else:
-        default_name = f"Conta {statement.account_id}" if statement.account_id else "Conta importada"
-        account = await _new_account(db, owner, scope, account_name or default_name,
-                                     bank_name=f"Banco {statement.bank_id}" if statement.bank_id else None, source="arquivo")
+        # OFX carries bank + account number: re-importing the same account must not create a twin.
+        identity = f"{statement.bank_id or ''}:{statement.account_id}" if statement.account_id else None
+        account = (await db.execute(select(BankAccountModel).where(
+            _where(BankAccountModel, owner), BankAccountModel.source == "arquivo", BankAccountModel.provider_account_id == identity,
+        ))).scalars().first() if identity else None
+        if account is None:
+            default_name = f"Conta {statement.account_id}" if statement.account_id else "Conta importada"
+            account = await _new_account(db, owner, scope, account_name or default_name,
+                                         bank_name=f"Banco {statement.bank_id}" if statement.bank_id else None,
+                                         source="arquivo", provider_account_id=identity)
 
     result = await service.ingest(db, account, statement.transactions, u)
     account.last_sync_at = datetime.utcnow().isoformat()

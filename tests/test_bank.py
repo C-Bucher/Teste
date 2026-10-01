@@ -233,3 +233,17 @@ async def test_deleting_account_removes_its_transactions(client, company_a):
     body = (await _import(client, company_a, _csv([(_d(0), "x", "-1,00")]))).json()
     assert (await client.delete(f"/bank/accounts/{body['account']['id']}", headers=company_a["headers"])).status_code == 200
     assert (await client.get("/bank/transactions", headers=company_a["headers"], params={"scope": "empresa"})).json() == []
+
+
+async def test_ofx_reimport_without_choosing_account_reuses_the_same_account(client, company_a):
+    from tests.test_statement_parser import OFX_SGML
+
+    async def send():
+        return await client.post("/bank/import", headers=company_a["headers"], data={"scope": "empresa", "account_name": "Qualquer"},
+                                 files={"file": ("extrato.ofx", OFX_SGML, "application/x-ofx")})
+
+    first = (await send()).json()
+    second = (await send()).json()
+    assert second["account"]["id"] == first["account"]["id"]
+    assert second["imported"] == 0 and second["duplicates"] == 2
+    assert len((await client.get("/bank/accounts", headers=company_a["headers"], params={"scope": "empresa"})).json()) == 1
