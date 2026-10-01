@@ -8,8 +8,9 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import PermissionMatrix from '../components/PermissionMatrix';
 import IntegrationsStatus from '../components/IntegrationsStatus';
+import AuditLogSection from '../components/AuditLogSection';
 
-type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'cargos' | 'conexoes';
+type Tab = 'empresa' | 'plano-contas' | 'centros-custo' | 'calendario' | 'cargos' | 'conexoes' | 'auditoria';
 
 interface Category {
   id: string;
@@ -36,6 +37,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'calendario', label: 'Calendário Útil', icon: 'calendar_month' },
   { id: 'cargos', label: 'Hierarquia de Cargos', icon: 'admin_panel_settings' },
   { id: 'conexoes', label: 'Conexões de API', icon: 'cable' },
+  { id: 'auditoria', label: 'Auditoria', icon: 'history' },
 ];
 
 const WEEKDAYS = [
@@ -51,7 +53,7 @@ const WEEKDAYS = [
 function ConfiguracoesContent() {
   const toast = useToast();
   const confirm = useConfirm();
-  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes'];
+  const TAB_IDS: Tab[] = ['empresa', 'plano-contas', 'centros-custo', 'calendario', 'cargos', 'conexoes', 'auditoria'];
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl && TAB_IDS.includes(tabFromUrl) ? tabFromUrl : 'empresa');
@@ -533,6 +535,17 @@ function ConfiguracoesContent() {
             <p className="text-on-surface-variant text-body-sm mt-xs">Status das integrações do sistema em tempo real.</p>
           </div>
           <IntegrationsStatus />
+        </motion.div>
+      )}
+
+      {/* Aba: Auditoria */}
+      {activeTab === 'auditoria' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="mb-lg">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Auditoria</h3>
+            <p className="text-on-surface-variant text-body-sm mt-xs">Quem fez o quê e quando: logins, acessos, permissões e lançamentos financeiros.</p>
+          </div>
+          <AuditLogSection />
         </motion.div>
       )}
 

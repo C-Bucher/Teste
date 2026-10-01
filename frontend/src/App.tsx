@@ -14,6 +14,7 @@ import HubPessoal from './pages/HubPessoal';
 import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
+import MinhaConta from './pages/MinhaConta';
 import { usePermissions } from './hooks/usePermissions';
 import { clearSession } from './api';
 
@@ -71,6 +72,7 @@ function App() {
         <Route path="/pessoal" element={<Navigate to="/pessoal/visao-geral" />} />
         <Route path="/pessoal/:tab" element={<PrivateRoute><ScopeRoute scope="pessoal"><HubPessoal /></ScopeRoute></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
+        <Route path="/minha-conta" element={<PrivateRoute><MinhaConta /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

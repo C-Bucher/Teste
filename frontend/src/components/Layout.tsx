@@ -295,6 +295,14 @@ export default function Layout({ children }: LayoutProps) {
             <span className="font-label-md font-bold">CFO Virtual IA</span>
           </button>
 
+          <Link
+            to="/minha-conta"
+            className={`w-full flex items-center gap-md p-md rounded-lg transition-colors ${location.pathname === '/minha-conta' ? 'bg-primary-container/20 text-primary' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+          >
+            <span className="material-symbols-outlined">account_circle</span>
+            <span className="font-label-md">Minha Conta</span>
+          </Link>
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-md p-md rounded-lg text-error hover:bg-error/10 transition-colors"
