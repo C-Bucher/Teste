@@ -47,11 +47,15 @@ class DeleteAccountReq(BaseModel):
 
 async def _purge_company(db: AsyncSession, company_id: str) -> None:
     """Deletes every business row of a company, children before parents."""
-    project_ids = select(m.ProjectModel.id).where(m.ProjectModel.company_id == company_id)
-    column_ids = select(m.KanbanColumnModel.id).where(m.KanbanColumnModel.project_id.in_(project_ids))
-    card_ids = select(m.KanbanCardModel.id).where(m.KanbanCardModel.column_id.in_(column_ids))
-    employee_ids = select(m.EmployeeModel.id).where(m.EmployeeModel.company_id == company_id)
-    subscription_ids = select(m.SubscriptionModel.id).where(m.SubscriptionModel.company_id == company_id)
+    # IDs are materialised first: MySQL rejects DELETE ... WHERE id IN (SELECT ... FROM the same table).
+    async def ids(stmt) -> list[str]:
+        return list((await db.execute(stmt)).scalars().all())
+
+    project_ids = await ids(select(m.ProjectModel.id).where(m.ProjectModel.company_id == company_id))
+    column_ids = await ids(select(m.KanbanColumnModel.id).where(m.KanbanColumnModel.project_id.in_(project_ids)))
+    card_ids = await ids(select(m.KanbanCardModel.id).where(m.KanbanCardModel.column_id.in_(column_ids)))
+    employee_ids = await ids(select(m.EmployeeModel.id).where(m.EmployeeModel.company_id == company_id))
+    subscription_ids = await ids(select(m.SubscriptionModel.id).where(m.SubscriptionModel.company_id == company_id))
 
     await db.execute(delete(m.CardCommentModel).where(m.CardCommentModel.card_id.in_(card_ids)))
     await db.execute(delete(m.ActiveTimerModel).where(m.ActiveTimerModel.card_id.in_(card_ids)))
