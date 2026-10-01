@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -426,3 +426,52 @@ class CtcParamsModel(Base):
     pj_multiplier = Column(Float, nullable=False, default=1.10)
     estagio_multiplier = Column(Float, nullable=False, default=1.10)
     monthly_hours = Column(Float, nullable=False, default=176.0)
+
+
+class BankAccountModel(Base):
+    """A bank account fed by file import or by an Open Finance aggregator.
+    Business accounts carry company_id; Hub Pessoal accounts carry owner_id (never both)."""
+    __tablename__ = "bank_accounts"
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    owner_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    scope = Column(String(20), nullable=False)            # empresa | pessoal
+    name = Column(String(255), nullable=False)
+    bank_name = Column(String(255), nullable=True)
+    source = Column(String(20), nullable=False, default="arquivo")   # arquivo | agregador
+    provider = Column(String(30), nullable=True)
+    provider_item_id = Column(String(100), nullable=True)
+    provider_account_id = Column(String(100), nullable=True)
+    status = Column(String(20), nullable=False, default="ATIVA")
+    last_sync_at = Column(String(50), nullable=True)
+    created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat())
+
+
+class BankTransactionModel(Base):
+    __tablename__ = "bank_transactions"
+    __table_args__ = (UniqueConstraint("bank_account_id", "external_id", name="uq_bank_tx_external"),)
+
+    id = Column(String(50), primary_key=True)
+    bank_account_id = Column(String(50), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    owner_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    external_id = Column(String(100), nullable=False)
+    date = Column(String(20), nullable=False)
+    amount = Column(Float, nullable=False)                 # + money in, - money out
+    description = Column(String(255), nullable=True)
+    category = Column(String(100), nullable=True)
+    status = Column(String(20), nullable=False, default="NOVA")   # NOVA | CONCILIADA | LANCADA | IGNORADA
+    entry_id = Column(String(50), nullable=True)           # financial_entries.id or personal_entries.id
+    created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat())
+
+
+class CategorizationRuleModel(Base):
+    """"If the bank description contains <pattern>, use <category>"."""
+    __tablename__ = "categorization_rules"
+
+    id = Column(String(50), primary_key=True)
+    company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
+    owner_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    pattern = Column(String(100), nullable=False)
+    category = Column(String(100), nullable=False)

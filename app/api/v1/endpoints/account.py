@@ -14,7 +14,9 @@ from app.db.utils import models_to_dicts
 
 router = APIRouter()
 
+# Order matters for deletion: bank transactions before the bank accounts they belong to.
 PERSONAL_MODELS = [
+    m.BankTransactionModel, m.CategorizationRuleModel, m.BankAccountModel,
     m.PersonalAccountModel, m.PersonalBudgetModel, m.PersonalCategoryModel, m.PersonalDebtModel,
     m.PersonalEntryModel, m.PersonalGoalModel, m.PersonalOkrModel, m.PersonalSplitModel,
     m.PersonalSubscriptionModel, m.PersonalTimeboxModel,
