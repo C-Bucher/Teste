@@ -174,6 +174,8 @@ export default function Layout({ children }: LayoutProps) {
   ];
 
   const businessNavItems = ALL_BUSINESS_ITEMS.filter((item) => allowedModules.includes(item.module));
+  // The CFO drawer calls the business AI endpoints, which require the 'ia' module (403 otherwise).
+  const canUseAi = showBusiness && allowedModules.includes('ia');
 
   const personalNavItems = [
     { name: 'Visão Geral', path: '/pessoal/visao-geral', icon: 'dashboard' },
@@ -233,14 +235,16 @@ export default function Layout({ children }: LayoutProps) {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setIsAiDrawerOpen(true)}
-            className="p-2 bg-gradient-to-tr from-primary to-secondary rounded-full text-on-primary shadow-md"
-          >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              chat_bubble
-            </span>
-          </button>
+          {canUseAi && (
+            <button
+              onClick={() => setIsAiDrawerOpen(true)}
+              className="p-2 bg-gradient-to-tr from-primary to-secondary rounded-full text-on-primary shadow-md"
+            >
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                chat_bubble
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -287,13 +291,15 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
 
         <div className="mt-auto space-y-xs pt-lg border-t border-border-subtle shrink-0">
-          <button
-            onClick={() => setIsAiDrawerOpen(true)}
-            className="w-full flex items-center gap-md p-md rounded-lg text-primary hover:bg-primary-container/20 transition-colors"
-          >
-            <span className="material-symbols-outlined">psychology</span>
-            <span className="font-label-md font-bold">CFO Virtual IA</span>
-          </button>
+          {canUseAi && (
+            <button
+              onClick={() => setIsAiDrawerOpen(true)}
+              className="w-full flex items-center gap-md p-md rounded-lg text-primary hover:bg-primary-container/20 transition-colors"
+            >
+              <span className="material-symbols-outlined">psychology</span>
+              <span className="font-label-md font-bold">CFO Virtual IA</span>
+            </button>
+          )}
 
           <Link
             to="/minha-conta"
@@ -404,13 +410,15 @@ export default function Layout({ children }: LayoutProps) {
               </span>
             )}
           </button>
-          <button
-            onClick={() => setIsAiDrawerOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-on-primary px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md hover:opacity-90 transition-all"
-          >
-            <span className="material-symbols-outlined text-sm">auto_awesome</span>
-            CFO Virtual IA
-          </button>
+          {canUseAi && (
+            <button
+              onClick={() => setIsAiDrawerOpen(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-on-primary px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md hover:opacity-90 transition-all"
+            >
+              <span className="material-symbols-outlined text-sm">auto_awesome</span>
+              CFO Virtual IA
+            </button>
+          )}
           <div className="h-8 w-px bg-border-subtle"></div>
           <div className="flex items-center gap-sm cursor-pointer" onClick={() => navigate('/assinatura')}>
             <div className="text-right hidden sm:block">
@@ -431,17 +439,19 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Floating Action Button: Talk to AI */}
       <div className="fixed bottom-lg right-lg z-40">
-        <button
-          onClick={() => setIsAiDrawerOpen(true)}
-          className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center shadow-xl shadow-primary/30 hover:scale-110 active:scale-95 transition-all group"
-        >
-          <span className="material-symbols-outlined text-on-primary text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            chat_bubble
-          </span>
-          <div className="absolute right-16 bg-glass-bg border border-border-subtle p-md rounded-xl opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none whitespace-nowrap">
-            <p className="font-label-md text-primary">Falar com CFO Virtual</p>
-          </div>
-        </button>
+        {canUseAi && (
+          <button
+            onClick={() => setIsAiDrawerOpen(true)}
+            className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center shadow-xl shadow-primary/30 hover:scale-110 active:scale-95 transition-all group"
+          >
+            <span className="material-symbols-outlined text-on-primary text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              chat_bubble
+            </span>
+            <div className="absolute right-16 bg-glass-bg border border-border-subtle p-md rounded-xl opacity-0 translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all pointer-events-none whitespace-nowrap">
+              <p className="font-label-md text-primary">Falar com CFO Virtual</p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* AI CFO Drawer Component */}

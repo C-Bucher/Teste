@@ -21,9 +21,10 @@ const ROLES: { key: 'GERENTE' | 'FUNCIONARIO'; label: string }[] = [
 
 interface Props {
   onSaved?: () => void;
+  saveLabel?: string;
 }
 
-export default function PermissionMatrix({ onSaved }: Props) {
+export default function PermissionMatrix({ onSaved, saveLabel = 'Salvar Permissões' }: Props) {
   const toast = useToast();
   const [matrix, setMatrix] = useState<Record<string, string[]>>({ GERENTE: [], FUNCIONARIO: [] });
   const [loading, setLoading] = useState(true);
@@ -103,7 +104,7 @@ export default function PermissionMatrix({ onSaved }: Props) {
           disabled={saving}
           className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 disabled:opacity-50"
         >
-          {saving ? 'Salvando...' : 'Salvar Permissões'}
+          {saving ? 'Salvando...' : saveLabel}
         </button>
       </div>
     </div>

@@ -6,9 +6,12 @@ const FALLBACK_MODULES = ['dashboard', 'kanban'];
 
 // Cache compartilhado (chave = token atual) para que Layout + guard da página façam UMA requisição.
 const cache = new Map<string, Promise<string[]>>();
+// Valor já resolvido: inicializa o estado de forma síncrona e evita o menu "piscar" a cada troca de página.
+const resolved = new Map<string, string[]>();
 
 export function clearPermissionsCache() {
   cache.clear();
+  resolved.clear();
 }
 
 function getRole(): string {
@@ -24,7 +27,11 @@ function fetchModules(token: string): Promise<string[]> {
   if (!p) {
     p = api
       .get('/permissions/mine')
-      .then((res) => res.data.modules as string[])
+      .then((res) => {
+        const modules = res.data.modules as string[];
+        resolved.set(token, modules);
+        return modules;
+      })
       .catch((err) => {
         console.error('Erro ao carregar permissões', err);
         cache.delete(token); // não cacheia falha: um próximo mount tenta de novo
@@ -38,7 +45,7 @@ function fetchModules(token: string): Promise<string[]> {
 export function usePermissions() {
   const isAdmin = getRole() === 'ADMIN';
   const token = localStorage.getItem('token') || '';
-  const [modules, setModules] = useState<string[] | null>(null);
+  const [modules, setModules] = useState<string[] | null>(() => resolved.get(token) ?? null);
 
   useEffect(() => {
     if (isAdmin) return;

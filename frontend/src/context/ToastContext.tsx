@@ -35,19 +35,19 @@ const STYLES: Record<ToastType, { border: string; bg: string; text: string; icon
   success: {
     border: 'border-success/30',
     bg: 'bg-[#121f1d]/90',
-    text: 'text-success-container',
+    text: 'text-success',
     iconColor: 'text-success',
   },
   error: {
     border: 'border-error/30',
     bg: 'bg-[#261318]/90',
-    text: 'text-error-container',
+    text: 'text-on-error-container',
     iconColor: 'text-error',
   },
   warning: {
     border: 'border-warning/30',
     bg: 'bg-[#241c10]/90',
-    text: 'text-warning-container',
+    text: 'text-warning',
     iconColor: 'text-warning',
   },
   info: {
