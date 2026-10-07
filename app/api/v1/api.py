@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from app.api.v1.endpoints import auth, company, employees, suppliers, financial, kanban, notifications, personal, search, exports, ai, clients, plans, payments, permissions, system, audit, account, bank
+from app.api.v1.endpoints import auth, company, employees, suppliers, financial, kanban, notifications, personal, search, exports, ai, clients, plans, payments, permissions, system, audit, account, bank, bank_hooks
 from app.core.permissions import require_module, require_plan_scope
 from app.core.billing import require_active_subscription
 
@@ -26,4 +26,5 @@ api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
 api_router.include_router(account.router, prefix="/account", tags=["account"])
 api_router.include_router(bank.router, prefix="/bank", tags=["bank"], dependencies=[paid])
+api_router.include_router(bank_hooks.router, prefix="/bank", tags=["bank-hooks"])
 api_router.include_router(ai.router, prefix="/ai-consultant", tags=["ai-consultant"], dependencies=[Depends(require_module("ia")), paid])

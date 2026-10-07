@@ -6,7 +6,7 @@
 
 import os
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -346,17 +346,11 @@ async def sync_account(aid: str, u=Depends(get_current_user), db: AsyncSession =
     if account.source != "agregador":
         raise HTTPException(400, "Esta conta é alimentada por importação de extrato")
     provider = _require_provider(provider)
-    # Overlap a few days so late-posted transactions are not missed; duplicates are skipped anyway.
-    since = (date.fromisoformat(account.last_sync_at[:10]) - timedelta(days=3)) if account.last_sync_at else date.today() - timedelta(days=90)
     try:
-        parsed = await provider.list_transactions(account.provider_account_id, since)
+        result = await service.sync_from_provider(db, account, provider, u)
     except ProviderError as e:
-        account.status = "ERRO"
         await db.commit()
         raise HTTPException(502, str(e))
-    result = await service.ingest(db, account, parsed, u)
-    account.last_sync_at = datetime.utcnow().isoformat()
-    account.status = "ATIVA"
     await db.commit()
     return result
 

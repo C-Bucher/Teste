@@ -102,3 +102,20 @@ def mark_paid(db: AsyncSession, entry: FinancialEntryModel, tx: BankTransactionM
     audit.record_by(db, u, "CONCILIACAO_AUTOMATICA" if automatic else "CONCILIACAO_MANUAL",
                     entity="financial_entry", entity_id=entry.id,
                     details={"transacao": tx.id, "valor": tx.amount, "data": tx.date})
+
+
+
+async def sync_from_provider(db: AsyncSession, account: BankAccountModel, provider, actor: dict) -> dict:
+    """Pulls the aggregator's transactions since the last sync (3 days of overlap: late postings are
+    caught and duplicates skipped). Raises ProviderError after marking the account. Caller commits."""
+    from datetime import datetime, timedelta
+    since = (date.fromisoformat(account.last_sync_at[:10]) - timedelta(days=3)) if account.last_sync_at else date.today() - timedelta(days=90)
+    try:
+        parsed = await provider.list_transactions(account.provider_account_id, since)
+    except Exception:
+        account.status = "ERRO"
+        raise
+    result = await ingest(db, account, parsed, actor)
+    account.last_sync_at = datetime.utcnow().isoformat()
+    account.status = "ATIVA"
+    return result

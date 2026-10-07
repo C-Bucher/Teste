@@ -247,3 +247,47 @@ async def test_ofx_reimport_without_choosing_account_reuses_the_same_account(cli
     assert second["account"]["id"] == first["account"]["id"]
     assert second["imported"] == 0 and second["duplicates"] == 2
     assert len((await client.get("/bank/accounts", headers=company_a["headers"], params={"scope": "empresa"})).json()) == 1
+
+
+# ---------- automatic sync: Pluggy webhook and scheduler endpoint ----------
+
+async def _connected_account(client, acc, fake_provider, item_id):
+    r = await client.post("/bank/connections", headers=acc["headers"], json={"scope": "empresa", "item_id": item_id})
+    assert r.status_code == 200, r.text
+    return next(a for a in r.json() if a["provider_account_id"] == "pa-1")
+
+
+async def test_pluggy_webhook_syncs_the_item(client, company_a, fake_provider, monkeypatch):
+    monkeypatch.setenv("PLUGGY_WEBHOOK_SECRET", "segredo-pluggy")
+    await _connected_account(client, company_a, fake_provider, "item-webhook")
+    bad = await client.post("/bank/webhook/pluggy", json={"event": "item/updated", "itemId": "item-webhook"}, headers={"x-webhook-secret": "x"})
+    assert bad.status_code == 401
+    ok = await client.post("/bank/webhook/pluggy", json={"event": "transactions/created", "itemId": "item-webhook"},
+                           headers={"x-webhook-secret": "segredo-pluggy"})
+    assert ok.status_code == 200 and ok.json()["synced_accounts"] >= 1
+    txs = (await client.get("/bank/transactions", headers=company_a["headers"], params={"scope": "empresa"})).json()
+    assert any(t["description"] == "Padaria" for t in txs)
+
+
+async def test_scheduler_sync_all_needs_secret_and_skips_blocked_companies(client, fake_provider, monkeypatch):
+    from datetime import datetime, timedelta as td
+    from sqlalchemy import update
+    from app.db.models import BankAccountModel, SubscriptionModel
+    from app.db.session import async_session_maker
+
+    monkeypatch.setenv("CRON_SECRET", "segredo-cron")
+    active = await register_admin(client, plan="plan-empresarial")
+    blocked = await register_admin(client, plan="plan-empresarial")
+    a1 = await _connected_account(client, active, fake_provider, "item-a")
+    a2 = await _connected_account(client, blocked, fake_provider, "item-b")
+    async with async_session_maker() as s:
+        await s.execute(update(SubscriptionModel).where(SubscriptionModel.company_id == blocked["user"]["company_id"])
+                        .values(trial_ends_at=(datetime.utcnow() - td(days=1)).isoformat()))
+        await s.commit()
+
+    assert (await client.post("/bank/sync-all", headers={"x-cron-secret": "errado"})).status_code == 401
+    r = await client.post("/bank/sync-all", headers={"x-cron-secret": "segredo-cron"})
+    assert r.status_code == 200, r.text
+    async with async_session_maker() as s:
+        assert (await s.get(BankAccountModel, a1["id"])).last_sync_at is not None
+        assert (await s.get(BankAccountModel, a2["id"])).last_sync_at is None
