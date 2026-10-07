@@ -21,7 +21,7 @@ PERSONAL_MODELS = [
     m.PersonalEntryModel, m.PersonalGoalModel, m.PersonalOkrModel, m.PersonalSplitModel,
     m.PersonalSubscriptionModel, m.PersonalTimeboxModel,
 ]
-_PRIVATE_USER_FIELDS = {"password_hash", "failed_login_count", "locked_until"}
+_PRIVATE_USER_FIELDS = {"password_hash", "failed_login_count", "locked_until", "mfa_secret", "mfa_recovery_codes"}
 
 
 @router.get("/export")
@@ -101,6 +101,7 @@ async def delete_my_account(b: DeleteAccountReq, u=Depends(get_current_user), db
         await db.execute(delete(model).where(model.owner_id == user.id))
     await db.execute(delete(m.NotificationPreferenceModel).where(m.NotificationPreferenceModel.user_id == user.id))
     await db.execute(delete(m.AiMessageModel).where(m.AiMessageModel.user_id == user.id))
+    await db.execute(delete(m.PasswordResetModel).where(m.PasswordResetModel.user_id == user.id))
 
     if others:
         audit.record(db, "CONTA_EXCLUIDA", company_id=company_id, user_id=user.id, entity="user", entity_id=user.id)

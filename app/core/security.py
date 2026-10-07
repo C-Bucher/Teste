@@ -37,6 +37,11 @@ def create_refresh_token(user: dict) -> str:
     return _encode(user, "refresh", timedelta(days=REFRESH_TOKEN_EXP_DAYS))
 
 
+def create_mfa_token(user: dict) -> str:
+    """Proves the password step only; accepted solely by /auth/login/mfa."""
+    return _encode(user, "mfa", timedelta(minutes=5))
+
+
 def token_pair(user: dict) -> dict:
     return {"access_token": create_token(user), "refresh_token": create_refresh_token(user), "token_type": "bearer"}
 

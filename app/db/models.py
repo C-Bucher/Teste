@@ -37,6 +37,8 @@ class UserModel(Base):
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     failed_login_count = Column(Integer, nullable=False, default=0, server_default="0")
     locked_until = Column(String(50), nullable=True)
+    mfa_secret = Column(String(255), nullable=True)          # TOTP seed, encrypted (app/core/crypto.py)
+    mfa_recovery_codes = Column(Text, nullable=True)         # JSON list of SHA-256 hashes, each usable once
 
     company = relationship("CompanyModel", back_populates="users")
 
@@ -500,3 +502,15 @@ class AiUsageModel(Base):
     company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
     period = Column(String(7), nullable=False)          # YYYY-MM
     count = Column(Integer, nullable=False, default=0)
+
+
+class PasswordResetModel(Base):
+    """One-time password recovery link (AUTH-3). Only the SHA-256 of the token is stored."""
+    __tablename__ = "password_resets"
+
+    id = Column(String(50), primary_key=True)
+    user_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(String(50), nullable=False)
+    used_at = Column(String(50), nullable=True)
+    created_at = Column(String(50), nullable=False, default=lambda: datetime.utcnow().isoformat())

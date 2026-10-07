@@ -11,6 +11,7 @@ interface SystemUser {
   email: string;
   role: string;
   is_active: boolean;
+  mfa_enabled?: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -71,6 +72,23 @@ export default function SystemAccessSection() {
       await fetchUsers();
     } catch (err: unknown) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao alterar o cargo.' : 'Erro ao alterar o cargo.');
+    }
+  };
+
+  const handleDisableMfa = async (user: SystemUser) => {
+    const ok = await confirm({
+      title: 'Desativar verificação em duas etapas',
+      message: `Use só se ${user.full_name} perdeu o celular e os códigos de recuperação. A pessoa poderá ativar de novo em Minha Conta.`,
+      confirmLabel: 'Desativar',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.post(`/auth/users/${user.id}/mfa/disable`);
+      toast.success('Verificação em duas etapas desativada.');
+      await fetchUsers();
+    } catch (err: unknown) {
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao desativar.' : 'Erro ao desativar.');
     }
   };
 
@@ -162,6 +180,11 @@ export default function SystemAccessSection() {
                   </td>
                   <td className="px-lg py-md text-label-md text-on-surface-variant">{u.is_active ? 'Ativo' : 'Inativo'}</td>
                   <td className="px-lg py-md text-right whitespace-nowrap">
+                    {u.id !== me.id && u.mfa_enabled && (
+                      <button onClick={() => handleDisableMfa(u)} className="text-on-surface-variant hover:text-primary hover:underline text-label-md mr-md">
+                        Desativar 2FA
+                      </button>
+                    )}
                     {u.id !== me.id && (
                       <button onClick={() => { setResetUser(u); setResetPassword(''); }} className="text-on-surface-variant hover:text-primary hover:underline text-label-md mr-md">
                         Redefinir senha

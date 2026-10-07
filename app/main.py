@@ -7,6 +7,7 @@ from app.db.session import init_db
 from app.db.seed import seed_if_empty
 from app.core.config import CORS_ORIGINS
 from app.core.audit import client_ip
+from app.core import rate_limit
 import logging
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import JSONResponse as _JSONResponse
@@ -30,8 +31,13 @@ async def integrity_error(request, exc: IntegrityError):
 
 @app.middleware("http")
 async def remember_client_ip(request, call_next):
-    forwarded = request.headers.get("x-forwarded-for")
-    client_ip.set(forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None))
+    ip = rate_limit.resolve_client_ip(request)
+    client_ip.set(ip)
+    if rate_limit.is_limited(request.url.path, request.method):
+        wait = rate_limit.check(ip)
+        if wait:
+            return _JSONResponse(status_code=429, headers={"Retry-After": str(wait)},
+                                 content={"detail": f"Muitas tentativas. Aguarde {wait} segundos e tente de novo."})
     return await call_next(request)
 
 app.include_router(api_router, prefix="/api/v1")

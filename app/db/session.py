@@ -17,7 +17,8 @@ BASELINE_REVISION = "0001"
 # Tables introduced after the baseline; a pre-Alembic database must not get them from create_all.
 # Pre-Alembic databases always have `users`, so post-baseline columns on it are added by their revision.
 POST_BASELINE_TABLES = {"audit_logs", "ctc_params", "bank_accounts", "bank_transactions", "categorization_rules",
-                        "ai_messages", "ai_usage"}
+                        "ai_messages", "ai_usage", "password_resets"}
+# users.mfa_secret / mfa_recovery_codes are added by revision 0008.
 
 engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 if "postgresql" in DATABASE_URL:

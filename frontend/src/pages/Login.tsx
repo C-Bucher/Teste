@@ -4,15 +4,16 @@ import api, { saveSession } from '../api';
 import { clearPermissionsCache } from '../hooks/usePermissions';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ChevronRight, Loader2, User, Shield, Briefcase } from 'lucide-react';
-import { useToast } from '../context/ToastContext';
+import axios from 'axios';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mfaToken, setMfaToken] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const navigate = useNavigate();
-  const toast = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,24 +24,50 @@ export default function Login() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      saveSession(response.data);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      try {
-        const companyRes = await api.get('/company/');
-        localStorage.setItem('company', JSON.stringify(companyRes.data));
-        if (response.data.user.role === 'ADMIN' && companyRes.data.onboarding_completed === false) {
-          navigate('/onboarding');
-          return;
-        }
-      } catch (err) {
-        console.error('Erro ao carregar dados da empresa', err);
+      if (response.data.mfa_required) {
+        setMfaToken(response.data.mfa_token);
+        return;
       }
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erro ao realizar login');
+      await finishLogin(response.data);
+    } catch (err) {
+      setError(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao realizar login' : 'Erro ao realizar login');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMfa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.post('/auth/login/mfa', { mfa_token: mfaToken, code: mfaCode });
+      await finishLogin(response.data);
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      if (status === 401 && axios.isAxiosError(err) && err.response?.data?.detail !== 'Código de verificação inválido') {
+        setMfaToken(''); // the 5-minute step expired: back to the password
+      }
+      setError(axios.isAxiosError(err) ? err.response?.data?.detail || 'Código inválido' : 'Código inválido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const finishLogin = async (data: { user: { role: string }; access_token: string; refresh_token?: string }) => {
+    saveSession(data);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    try {
+      const companyRes = await api.get('/company/');
+      localStorage.setItem('company', JSON.stringify(companyRes.data));
+      if (data.user.role === 'ADMIN' && companyRes.data.onboarding_completed === false) {
+        navigate('/onboarding');
+        return;
+      }
+    } catch (err) {
+      console.error('Erro ao carregar dados da empresa', err);
+    }
+    navigate('/dashboard');
   };
 
   const autofill = (role: 'admin' | 'gerente' | 'funcionario') => {
@@ -77,6 +104,7 @@ export default function Login() {
             <p className="text-on-surface-variant">Entre na sua conta para continuar</p>
           </div>
 
+          {import.meta.env.DEV && !mfaToken && (
           <div className="flex gap-2 justify-center mb-6">
             <button type="button" onClick={() => autofill('admin')} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20">
               <Shield size={14} /> Admin
@@ -88,6 +116,7 @@ export default function Login() {
               <User size={14} /> Funcionário
             </button>
           </div>
+          )}
 
           {error && (
             <div className="bg-error/10 border border-error/50 text-error p-3 rounded-xl mb-6 text-sm text-center">
@@ -95,6 +124,29 @@ export default function Login() {
             </div>
           )}
 
+          {mfaToken ? (
+            <form onSubmit={handleMfa} className="space-y-5">
+              <p className="text-sm text-on-surface-variant text-center">
+                Digite o código de 6 dígitos do seu aplicativo autenticador, ou um código de recuperação.
+              </p>
+              <input
+                autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                className="block w-full px-4 py-3 border border-border-subtle rounded-xl bg-surface-container text-on-surface text-center tracking-[0.4em] text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="000000"
+                required
+              />
+              <button type="submit" disabled={loading} className="w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl shadow-lg shadow-primary/20 text-sm font-semibold text-on-primary bg-gradient-to-r from-primary to-secondary hover:opacity-90 disabled:opacity-50 transition-all">
+                {loading ? <Loader2 className="animate-spin" size={20} /> : 'Confirmar'}
+              </button>
+              <button type="button" onClick={() => { setMfaToken(''); setMfaCode(''); }} className="w-full text-sm text-on-surface-variant hover:text-on-surface">
+                Voltar
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Usuário ou E-mail</label>
@@ -116,13 +168,9 @@ export default function Login() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-sm font-medium text-on-surface-variant">Senha</label>
-                <button
-                  type="button"
-                  onClick={() => toast.info('Contate o administrador da sua conta para redefinir a senha.')}
-                  className="text-sm text-primary hover:opacity-80 transition-colors"
-                >
+                <Link to="/esqueci-senha" className="text-sm text-primary hover:opacity-80 transition-colors">
                   Esqueceu a senha?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -137,18 +185,6 @@ export default function Login() {
                   required
                 />
               </div>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 bg-surface-container border-border-subtle rounded text-primary focus:ring-primary accent-primary"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-on-surface-variant">
-                Lembrar de mim
-              </label>
             </div>
 
             <button
@@ -166,6 +202,7 @@ export default function Login() {
               )}
             </button>
           </form>
+          )}
 
           <div className="mt-6 text-center text-xs text-on-surface-variant border-t border-border-subtle pt-4">
             Não possui uma conta?{' '}

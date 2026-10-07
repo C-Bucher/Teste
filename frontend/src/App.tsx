@@ -16,6 +16,7 @@ import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
 import MinhaConta from './pages/MinhaConta';
 import Bancos from './pages/Bancos';
+import { EsqueciSenha, RedefinirSenha } from './pages/RecuperarSenha';
 import { usePermissions } from './hooks/usePermissions';
 import { clearSession } from './api';
 
@@ -59,6 +60,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/cadastro" element={<Register />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/planos" element={<Plans />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/dashboard" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="dashboard"><Dashboard /></ModuleRoute></ScopeRoute></PrivateRoute>} />

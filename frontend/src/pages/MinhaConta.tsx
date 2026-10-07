@@ -7,6 +7,7 @@ import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { clearPermissionsCache } from '../hooks/usePermissions';
+import TwoFactorSection from '../components/TwoFactorSection';
 
 const inputClass =
   'w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none';
@@ -121,6 +122,8 @@ export default function MinhaConta() {
             </button>
           </form>
         </section>
+
+        <TwoFactorSection />
 
         <section className="glass-card p-lg rounded-2xl">
           <h3 className="font-headline-sm text-headline-sm text-on-surface mb-xs">Privacidade (LGPD)</h3>

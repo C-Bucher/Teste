@@ -12,6 +12,7 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite+aio
 os.environ.setdefault("SECRET_KEY", "test-secret-key-only-for-pytest-0123456789")
 os.environ["APP_ENV"] = "test"
 os.environ["BCRYPT_ROUNDS"] = "4"
+os.environ["AUTH_RATE_LIMIT_PER_MINUTE"] = "100000"  # the suite registers many users from one client
 # Never reach paid external APIs from tests, even if the developer's .env has real keys.
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["PLUGGY_CLIENT_ID"] = ""

@@ -14,6 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import audit
+from app.core.notify import notify_company
 from app.core.permissions import get_allowed_modules
 from app.core.plans import bank_connections_used, current_plan
 from app.core.security import get_current_user
@@ -134,6 +135,11 @@ async def import_statement(
     account.last_sync_at = datetime.utcnow().isoformat()
     audit.record_by(db, u, "EXTRATO_IMPORTADO", entity="bank_account", entity_id=account.id,
                     details={"arquivo": file.filename, **result})
+    if scope == "empresa" and result["imported"]:
+        pending = result["imported"] - result["reconciled"]
+        await notify_company(db, u["company_id"], "Extrato importado",
+                             f"{account.name}: {result['imported']} movimentação(ões) nova(s), {result['reconciled']} conciliada(s) "
+                             f"automaticamente e {pending} aguardando você em Bancos.")
     await db.commit()
     await db.refresh(account)
     return {"account": model_to_dict(account), **result}

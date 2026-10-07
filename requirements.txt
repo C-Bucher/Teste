@@ -13,3 +13,5 @@ aiomysql
 cryptography
 asyncpg
 alembic
+pyotp
+qrcode
