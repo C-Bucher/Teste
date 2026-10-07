@@ -17,6 +17,7 @@ class CompanyModel(Base):
     fiscal_year_start = Column(Integer, default=1)
     onboarding_completed = Column(Boolean, default=False)
     permissions_customized = Column(Boolean, default=False)
+    billing_customer_id = Column(String(100), nullable=True)   # customer id at the payment provider
 
     users = relationship("UserModel", back_populates="company")
     subscriptions = relationship("SubscriptionModel", back_populates="company")
@@ -73,6 +74,10 @@ class SubscriptionModel(Base):
     auto_renew = Column(Boolean, default=True)
     current_period_end = Column(String(50), nullable=False)
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
+    provider = Column(String(30), nullable=True)                    # asaas | simulado | None (trial/legacy)
+    provider_subscription_id = Column(String(100), nullable=True, index=True)
+    trial_ends_at = Column(String(50), nullable=True)
+    canceled_at = Column(String(50), nullable=True)
 
     company = relationship("CompanyModel", back_populates="subscriptions")
     plan = relationship("PlanModel", back_populates="subscriptions")
@@ -88,6 +93,11 @@ class InvoiceModel(Base):
     description = Column(String(255), nullable=True)
     pdf_url = Column(String(255), nullable=True)
     created_at = Column(String(50), default=lambda: datetime.utcnow().isoformat())
+    provider_payment_id = Column(String(100), nullable=True, unique=True, index=True)  # named unique index
+    due_date = Column(String(20), nullable=True)
+    paid_at = Column(String(50), nullable=True)
+    payment_url = Column(String(500), nullable=True)                # provider-hosted page (Pix/boleto/card)
+    billing_type = Column(String(20), nullable=True)
 
     subscription = relationship("SubscriptionModel", back_populates="invoices")
 

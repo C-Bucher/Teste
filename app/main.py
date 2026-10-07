@@ -20,7 +20,7 @@ async def on_startup():
     await seed_if_empty()
 
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
+                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition", "X-Subscription", "Retry-After"])
 
 @app.exception_handler(IntegrityError)
 async def integrity_error(request, exc: IntegrityError):

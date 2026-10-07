@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
 import api, { saveSession } from '../api';
@@ -13,7 +13,8 @@ export default function Register() {
   const [companyName, setCompanyName] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [cnpjCpf, setCnpjCpf] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('plan-empresarial');
+  const [searchParams] = useSearchParams();
+  const [selectedPlan, setSelectedPlan] = useState(searchParams.get('plan') || 'plan-empresarial');
   const [plans, setPlans] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);

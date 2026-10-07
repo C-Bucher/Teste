@@ -45,6 +45,11 @@ async function renewAccessToken(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // Subscription blocked (trial over or payment overdue): send the person to billing, the only way out.
+    if (error?.response?.status === 402 && error.response.headers?.['x-subscription'] === 'blocked') {
+      if (!window.location.pathname.startsWith('/assinatura')) window.location.assign('/assinatura?bloqueado=1');
+      return Promise.reject(error);
+    }
     const original = error?.config as (AxiosRequestConfig & { _retried?: boolean }) | undefined;
     const isAuthCall = original?.url?.startsWith('/auth/login') || original?.url?.startsWith('/auth/register');
     if (error?.response?.status === 401 && original && !original._retried && !isAuthCall) {

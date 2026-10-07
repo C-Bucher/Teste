@@ -20,6 +20,7 @@ import qrcode.image.svg
 from app.core import audit
 from app.core.mailer import APP_URL, send_email
 from app.core.legal import TERMS_VERSION
+from app.core.billing import start_trial
 from app.core.notify import notify_user
 import hashlib
 import secrets
@@ -95,6 +96,7 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     )
     db.add(new_user)
     await db.flush()  # company must exist before the audit row that references it (Postgres/MySQL enforce the FK)
+    await start_trial(db, company_id, plan["id"])
     audit.record(db, "CADASTRO", company_id=company_id, user_id=user_id, entity="company", entity_id=company_id, details={"plano": b.selected_plan})
     await db.commit()
     await db.refresh(new_user)

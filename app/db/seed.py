@@ -424,6 +424,15 @@ async def seed_if_empty() -> None:
             ]
         )
 
+        from app.core.billing import ensure_plan_row, plan_by_id
+        from app.db.models import SubscriptionModel
+        await ensure_plan_row(session, plan_by_id("plan-completo"))
+        session.add(SubscriptionModel(
+            id="sub-demo", company_id=DEMO_COMPANY_ID, plan_id="plan-completo", billing_cycle="yearly",
+            amount=plan_by_id("plan-completo")["price_yearly"] * 12, status="ACTIVE", provider="simulado",
+            payment_method=None, auto_renew=False, current_period_end="2099-12-31T00:00:00",
+        ))
+
         # PERSONAL_TIMEBOXES / PERSONAL_OKRS are empty lists in the mock —
         # nothing to seed; tables exist via PersonalTimeboxModel /
         # PersonalOkrModel for later routers to write into.

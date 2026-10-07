@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AICfoDrawer from './AICfoDrawer';
+import SubscriptionBanner from './SubscriptionBanner';
 import api, { clearSession } from '../api';
 import { useToast } from '../context/ToastContext';
 import { usePermissions, clearPermissionsCache } from '../hooks/usePermissions';
@@ -436,6 +437,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main Content Container */}
       <main className="lg:ml-64 mt-16 p-md lg:p-lg pb-28 lg:pb-28 min-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+        <SubscriptionBanner />
         {children}
       </main>
 
