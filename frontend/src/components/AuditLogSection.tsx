@@ -53,7 +53,6 @@ export default function AuditLogSection() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
     api.get('/audit/', { params: { page, size: PAGE_SIZE, action: action || undefined } })
       .then((res) => { setItems(res.data.items); setTotal(res.data.total); setError(''); })
       .catch((err) => setError(err?.response?.status === 403 ? 'Somente administradores podem consultar a auditoria.' : 'Erro ao carregar a auditoria.'))
@@ -67,7 +66,7 @@ export default function AuditLogSection() {
       <div className="flex items-center gap-md">
         <select
           value={action}
-          onChange={(e) => { setAction(e.target.value); setPage(1); }}
+          onChange={(e) => { setAction(e.target.value); setPage(1); setLoading(true); }}
           className="bg-surface-container border border-border-subtle rounded-lg px-3 py-2 text-label-md text-on-surface outline-none focus:border-primary"
         >
           <option value="">Todas as ações</option>
@@ -111,9 +110,9 @@ export default function AuditLogSection() {
 
       {pages > 1 && (
         <div className="flex items-center justify-end gap-sm">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1.5 rounded-lg border border-border-subtle text-label-md disabled:opacity-40">Anterior</button>
+          <button disabled={page <= 1} onClick={() => { setPage(page - 1); setLoading(true); }} className="px-3 py-1.5 rounded-lg border border-border-subtle text-label-md disabled:opacity-40">Anterior</button>
           <span className="text-body-sm text-on-surface-variant">{page} / {pages}</span>
-          <button disabled={page >= pages} onClick={() => setPage(page + 1)} className="px-3 py-1.5 rounded-lg border border-border-subtle text-label-md disabled:opacity-40">Próxima</button>
+          <button disabled={page >= pages} onClick={() => { setPage(page + 1); setLoading(true); }} className="px-3 py-1.5 rounded-lg border border-border-subtle text-label-md disabled:opacity-40">Próxima</button>
         </div>
       )}
     </div>

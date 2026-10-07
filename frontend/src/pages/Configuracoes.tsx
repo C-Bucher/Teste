@@ -28,7 +28,7 @@ interface CostCenter {
 interface WorkCalendar {
   work_days: number[];
   work_hours_per_day: number;
-  holidays: any[];
+  holidays: string[];
 }
 
 const TABS: { id: Tab; label: string; icon: string }[] = [

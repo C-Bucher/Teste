@@ -7,6 +7,8 @@ import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import SystemAccessSection from '../components/SystemAccessSection';
+import { defer } from '../utils/defer';
+import type { Employee, SalaryHistoryItem } from '../types';
 
 function GestaoEquipeContent() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -15,12 +17,12 @@ function GestaoEquipeContent() {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEmp, setEditingEmp] = useState<any>(null);
-  const [historyModal, setHistoryModal] = useState<{ open: boolean; items: any[]; employeeName: string }>({ open: false, items: [], employeeName: '' });
+  const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
+  const [historyModal, setHistoryModal] = useState<{ open: boolean; items: SalaryHistoryItem[]; employeeName: string }>({ open: false, items: [], employeeName: '' });
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -43,7 +45,7 @@ function GestaoEquipeContent() {
   };
 
   useEffect(() => {
-    fetchEmployees();
+    defer(fetchEmployees);
   }, []);
 
   const handleTerminate = async (id: string) => {
@@ -56,7 +58,7 @@ function GestaoEquipeContent() {
     if (!ok) return;
     try {
       const res = await api.post(`/employees/${id}/terminate`);
-      setEmployees(employees.map((e: any) => (e.id === id ? res.data : e)));
+      setEmployees(employees.map((e) => (e.id === id ? res.data : e)));
       toast.success('Colaborador desligado.');
     } catch (err) {
       console.error('Erro ao desligar', err);
@@ -64,7 +66,7 @@ function GestaoEquipeContent() {
     }
   };
 
-  const handleViewHistory = async (emp: any) => {
+  const handleViewHistory = async (emp: Employee) => {
     try {
       const res = await api.get(`/employees/${emp.id}/salary-history`);
       setHistoryModal({ open: true, items: res.data.items, employeeName: emp.full_name });
@@ -74,14 +76,14 @@ function GestaoEquipeContent() {
     }
   };
 
-  const handleEdit = (emp: any) => {
+  const handleEdit = (emp: Employee) => {
     setEditingEmp(emp);
     setFormData({
       full_name: emp.full_name,
       email: emp.email,
       role: emp.role,
       contract_type: emp.contract_type || 'CLT',
-      base_salary: emp.base_salary || ''
+      base_salary: emp.base_salary ? String(emp.base_salary) : ''
     });
     setIsModalOpen(true);
   };
@@ -103,7 +105,7 @@ function GestaoEquipeContent() {
     try {
       if (editingEmp) {
         const res = await api.put(`/employees/${editingEmp.id}`, { ...formData, base_salary: Number(formData.base_salary) });
-        setEmployees(employees.map((emp: any) => emp.id === editingEmp.id ? res.data : emp));
+        setEmployees(employees.map((emp) => emp.id === editingEmp.id ? res.data : emp));
         toast.success('Colaborador atualizado.');
       } else {
         const res = await api.post('/employees/', { ...formData, base_salary: Number(formData.base_salary), is_active: true });
@@ -211,7 +213,7 @@ function GestaoEquipeContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50">
-                {employees.map((emp: any, i: number) => (
+                {employees.map((emp, i) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -272,7 +274,7 @@ function GestaoEquipeContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg">
-            {employees.map((emp: any, i: number) => (
+            {employees.map((emp, i) => (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -448,7 +450,7 @@ function GestaoEquipeContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle/50">
-                    {historyModal.items.map((item: any) => (
+                    {historyModal.items.map((item) => (
                       <tr key={item.id}>
                         <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">{item.changed_at}</td>
                         <td className="px-md py-sm text-on-surface-variant font-label-md text-label-md">R$ {Number(item.base_salary ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>

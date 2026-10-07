@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
+import { defer } from '../utils/defer';
 
 interface ExportLog {
   id: string;
@@ -74,7 +75,7 @@ function ExportacaoContent() {
   };
 
   useEffect(() => {
-    fetchLogs();
+    defer(fetchLogs);
   }, []);
 
   const handleRequestExport = async (type: string, format: string) => {

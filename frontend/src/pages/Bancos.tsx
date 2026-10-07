@@ -84,26 +84,39 @@ export default function Bancos({ scope }: { scope: Scope }) {
   const [launchCategory, setLaunchCategory] = useState('');
   const [newRule, setNewRule] = useState({ pattern: '', category: '' });
 
-  const load = useCallback(async () => {
-    try {
-      const [acc, tx, rl, us] = await Promise.all([
-        api.get('/bank/accounts', { params: { scope } }),
-        api.get('/bank/transactions', { params: { scope, status: onlyPending ? 'NOVA' : undefined } }),
-        api.get('/bank/rules', { params: { scope } }),
-        api.get('/bank/usage'),
-      ]);
-      setAccounts(acc.data);
-      setTransactions(tx.data);
-      setRules(rl.data);
-      setUsage(us.data);
-    } catch (err) {
-      toast.error(detail(err, 'Erro ao carregar dados bancários.'));
-    } finally {
-      setLoading(false);
-    }
+  const fetchAll = useCallback(async () => {
+    const [acc, tx, rl, us] = await Promise.all([
+      api.get('/bank/accounts', { params: { scope } }),
+      api.get('/bank/transactions', { params: { scope, status: onlyPending ? 'NOVA' : undefined } }),
+      api.get('/bank/rules', { params: { scope } }),
+      api.get('/bank/usage'),
+    ]);
+    return { accounts: acc.data as BankAccount[], transactions: tx.data as BankTransaction[], rules: rl.data as Rule[], usage: us.data as Usage };
   }, [scope, onlyPending]);
 
-  useEffect(() => { load(); }, [load]);
+  const apply = useCallback((d: Awaited<ReturnType<typeof fetchAll>>) => {
+    setAccounts(d.accounts);
+    setTransactions(d.transactions);
+    setRules(d.rules);
+    setUsage(d.usage);
+  }, []);
+
+  const load = useCallback(async () => {
+    try {
+      apply(await fetchAll());
+    } catch (err) {
+      toast.error(detail(err, 'Erro ao carregar dados bancários.'));
+    }
+  }, [fetchAll, apply, toast]);
+
+  useEffect(() => {
+    let active = true;
+    fetchAll()
+      .then((d) => { if (active) apply(d); })
+      .catch((err) => { if (active) toast.error(detail(err, 'Erro ao carregar dados bancários.')); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [fetchAll, apply, toast]);
 
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name || '';
 

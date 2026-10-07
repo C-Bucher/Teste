@@ -7,6 +7,7 @@ import api from '../api';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
 
 interface Sub {
   plan_name: string;
@@ -97,9 +98,9 @@ export default function Subscription() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { defer(load); }, [load]);
 
   const handleCancel = async () => {
     const ok = await confirm({

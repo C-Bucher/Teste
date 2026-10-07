@@ -5,15 +5,17 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
+import type { Board, Client, KanbanCard, Project } from '../types';
 
 export default function Kanban() {
   const toast = useToast();
   const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(searchParams.get('project'));
-  const [boardData, setBoardData] = useState<any>(null);
+  const [boardData, setBoardData] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Wrapper que sincroniza estado e URL ao mesmo tempo
@@ -45,7 +47,7 @@ export default function Kanban() {
   const [activeTimerCardId, setActiveTimerCardId] = useState<string | null>(null);
 
   // Card Detail Panel State
-  const [detailCard, setDetailCard] = useState<any>(null);
+  const [detailCard, setDetailCard] = useState<KanbanCard | null>(null);
   const [commentText, setCommentText] = useState('');
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function Kanban() {
         setProjects(projRes.data);
         setClients(clientsRes.data);
         const urlProjectId = searchParams.get('project');
-        if (urlProjectId && projRes.data.some((p: any) => p.id === urlProjectId)) {
+        if (urlProjectId && projRes.data.some((p: Project) => p.id === urlProjectId)) {
           // Restaura projeto da URL
           setSelectedProjectIdState(urlProjectId);
         } else if (projRes.data.length > 0) {
@@ -73,13 +75,8 @@ export default function Kanban() {
       }
     };
     fetchInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load only; later project changes go through setSelectedProjectId
   }, []);
-
-  useEffect(() => {
-    if (selectedProjectId) {
-      fetchBoard(selectedProjectId);
-    }
-  }, [selectedProjectId]);
 
   const fetchBoard = async (pid: string) => {
     setLoading(true);
@@ -92,6 +89,13 @@ export default function Kanban() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      defer(() => fetchBoard(selectedProjectId));
+    }
+  }, [selectedProjectId]);
+
 
   const handleDragStart = (e: React.DragEvent, cardId: string) => {
     setDraggedCardId(cardId);
@@ -120,34 +124,18 @@ export default function Kanban() {
 
   const handleDrop = async (e: React.DragEvent, targetColId: string) => {
     e.preventDefault();
-    if (!draggedCardId) return;
+    if (!draggedCardId || !boardData) return;
 
-    // Find current col of the card
-    let sourceColId = null;
-    for (const col of boardData.columns) {
-      if (col.cards.find((c: any) => c.id === draggedCardId)) {
-        sourceColId = col.id;
-        break;
-      }
-    }
+    const sourceCol = boardData.columns.find((col) => col.cards.some((c) => c.id === draggedCardId));
+    const cardObj = sourceCol?.cards.find((c) => c.id === draggedCardId);
+    if (!sourceCol || !cardObj || sourceCol.id === targetColId) return;
 
-    if (sourceColId === targetColId) return; // Didn't change column
-
-    // Optimistic UI Update
-    const newColumns = [...boardData.columns];
-    const sColIndex = newColumns.findIndex(c => c.id === sourceColId);
-    const tColIndex = newColumns.findIndex(c => c.id === targetColId);
-    
-    const cardObj = newColumns[sColIndex].cards.find((c:any) => c.id === draggedCardId);
-    newColumns[sColIndex].cards = newColumns[sColIndex].cards.filter((c:any) => c.id !== draggedCardId);
-    
-    // Update status based on standard column patterns or backend logic
-    if (targetColId.includes('col-')) {
-       // just move it
-    }
-
-    newColumns[tColIndex].cards.push(cardObj);
-    
+    // Optimistic update, without mutating the current state objects.
+    const newColumns = boardData.columns.map((col) => {
+      if (col.id === sourceCol.id) return { ...col, cards: col.cards.filter((c) => c.id !== draggedCardId) };
+      if (col.id === targetColId) return { ...col, cards: [...col.cards, cardObj] };
+      return col;
+    });
     setBoardData({ ...boardData, columns: newColumns });
 
     try {
@@ -304,7 +292,7 @@ export default function Kanban() {
 
         {/* Kanban Board */}
         <div className="flex gap-lg flex-1 min-w-[1200px] overflow-x-auto overflow-y-hidden pb-4">
-          {boardData?.columns?.map((column: any, i: number) => {
+          {boardData?.columns?.map((column, i) => {
             // Determine colors dynamically based on order/name
             let colorClass = 'bg-outline';
             let bgClass = 'bg-surface-container-low/60 border-border-subtle';
@@ -347,7 +335,7 @@ export default function Kanban() {
 
                 {/* Column Cards Container */}
                 <div className={`kanban-column flex-1 overflow-y-auto p-md space-y-md rounded-xl backdrop-blur-sm border ${bgClass}`}>
-                  {column.cards?.map((card: any) => {
+                  {column.cards?.map((card) => {
                     const isDone = card.status === 'CONCLUIDO';
                     const isActive = card.status === 'EM_ANDAMENTO';
                     const tagColor = card.priority === 'URGENTE' ? 'bg-error-container/20 text-error' :
@@ -370,10 +358,10 @@ export default function Kanban() {
                               {card.priority}
                             </span>
                           </div>
-                          {card.total_time_seconds > 0 && (
+                          {(card.total_time_seconds ?? 0) > 0 && (
                             <div className="flex items-center gap-xs px-sm py-1 bg-success/10 text-success rounded-full timer-pulse">
                               <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
-                              <span className="text-[10px] font-bold">{Math.floor(card.total_time_seconds / 3600)}h</span>
+                              <span className="text-[10px] font-bold">{Math.floor((card.total_time_seconds ?? 0) / 3600)}h</span>
                             </div>
                           )}
                           {isDone && (
@@ -390,7 +378,7 @@ export default function Kanban() {
                         
                         <div className="flex items-end justify-between mt-auto pt-sm border-t border-border-subtle/60 gap-sm">
                           <div className="flex items-center gap-xs min-w-0 flex-1">
-                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface-container-highest flex items-center justify-center text-[10px] font-bold text-primary shrink-0" title={card.assignee}>
+                            <div className="w-7 h-7 rounded-full bg-primary/20 border-2 border-surface-container-highest flex items-center justify-center text-[10px] font-bold text-primary shrink-0" title={card.assignee ?? undefined}>
                               {card.assignee ? card.assignee.substring(0, 2).toUpperCase() : 'NN'}
                             </div>
                             <span className="text-[11px] text-on-surface-variant truncate">{card.assignee || 'Sem responsável'}</span>
@@ -699,7 +687,7 @@ export default function Kanban() {
                     {(detailCard.comments || []).length === 0 && (
                       <p className="text-body-sm text-outline">Nenhum comentário ainda.</p>
                     )}
-                    {(detailCard.comments || []).map((c: any) => (
+                    {(detailCard.comments || []).map((c) => (
                       <div key={c.id} className="bg-surface-container rounded-lg p-sm border border-border-subtle">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] font-bold text-on-surface">{c.author}</span>

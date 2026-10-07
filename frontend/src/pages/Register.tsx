@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
 import api, { saveSession } from '../api';
 import { clearPermissionsCache } from '../hooks/usePermissions';
+import { errorMessage, type Plan } from '../types';
 
 export default function Register() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -15,7 +16,7 @@ export default function Register() {
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [searchParams] = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState(searchParams.get('plan') || 'plan-empresarial');
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -76,8 +77,8 @@ export default function Register() {
 
       // Redirect to payment checkout with selected plan
       navigate(`/checkout?plan=${selectedPlan}&cycle=monthly`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erro ao realizar cadastro.');
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao realizar cadastro.'));
     } finally {
       setLoading(false);
     }

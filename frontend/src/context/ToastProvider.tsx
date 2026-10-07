@@ -1,28 +1,7 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { FC, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-export type ToastType = 'success' | 'error' | 'info' | 'warning';
-
-export interface Toast {
-  id: string;
-  type: ToastType;
-  title?: string;
-  message: string;
-  duration?: number;
-}
-
-interface ToastContextType {
-  toasts: Toast[];
-  showToast: (toast: Omit<Toast, 'id'>) => void;
-  removeToast: (id: string) => void;
-  success: (message: string, title?: string) => void;
-  error: (message: string, title?: string) => void;
-  info: (message: string, title?: string) => void;
-  warning: (message: string, title?: string) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+import { ToastContext, type Toast, type ToastType } from './ToastContext';
 
 const ICONS: Record<ToastType, string> = {
   success: 'check_circle',
@@ -31,29 +10,25 @@ const ICONS: Record<ToastType, string> = {
   info: 'info',
 };
 
-const STYLES: Record<ToastType, { border: string; bg: string; text: string; iconColor: string }> = {
+const STYLES: Record<ToastType, { border: string; bg: string; iconColor: string }> = {
   success: {
     border: 'border-success/30',
     bg: 'bg-[#121f1d]/90',
-    text: 'text-success',
     iconColor: 'text-success',
   },
   error: {
     border: 'border-error/30',
     bg: 'bg-[#261318]/90',
-    text: 'text-on-error-container',
     iconColor: 'text-error',
   },
   warning: {
     border: 'border-warning/30',
     bg: 'bg-[#241c10]/90',
-    text: 'text-warning',
     iconColor: 'text-warning',
   },
   info: {
     border: 'border-primary/30',
     bg: 'bg-[#101827]/90',
-    text: 'text-primary-container',
     iconColor: 'text-primary',
   },
 };
@@ -86,8 +61,10 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const info = useCallback((message: string, title?: string) => showToast({ type: 'info', message, title }), [showToast]);
   const warning = useCallback((message: string, title?: string) => showToast({ type: 'warning', message, title }), [showToast]);
 
+  const actions = useMemo(() => ({ showToast, removeToast, success, error, info, warning }), [showToast, removeToast, success, error, info, warning]);
+
   return (
-    <ToastContext.Provider value={{ toasts, showToast, removeToast, success, error, info, warning }}>
+    <ToastContext.Provider value={actions}>
       {children}
       {/* Toast Render Container */}
       <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-3 sm:px-0">
@@ -124,12 +101,4 @@ export const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
       </div>
     </ToastContext.Provider>
   );
-};
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
 };

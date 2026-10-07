@@ -6,6 +6,8 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
+import { defer } from '../utils/defer';
+import { errorMessage } from '../types';
 
 type Tab = 'lancamentos' | 'dre' | 'fluxo-caixa';
 
@@ -148,10 +150,6 @@ function FinanceiroContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType, filterStatus, search, page]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filterType, filterStatus, search]);
-
   const fetchDre = async () => {
     setDreLoading(true);
     try {
@@ -177,8 +175,7 @@ function FinanceiroContent() {
   };
 
   useEffect(() => {
-    fetchDre();
-    fetchCashflow();
+    defer(() => Promise.all([fetchDre(), fetchCashflow()]));
   }, []);
 
   // Re-fetch DRE / Fluxo de Caixa whenever those tabs become active, so
@@ -186,12 +183,11 @@ function FinanceiroContent() {
   // are reflected without requiring a full page reload.
   useEffect(() => {
     if (activeTab === 'dre') {
-      fetchDre();
+      defer(fetchDre);
     }
     if (activeTab === 'fluxo-caixa') {
-      fetchCashflow();
+      defer(fetchCashflow);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const handleAddNew = () => {
@@ -253,8 +249,8 @@ function FinanceiroContent() {
       const res = await api.post(`/financial/entries/${id}/attachment`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
       setEntries((prev) => prev.map((en) => (en.id === id ? res.data : en)));
       toast.success('Comprovante anexado.');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Erro ao anexar comprovante.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao anexar comprovante.'));
     } finally {
       setUploadingId(null);
     }
@@ -321,7 +317,7 @@ function FinanceiroContent() {
           <div className="flex flex-wrap items-center gap-md mb-lg">
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
               className="bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface text-label-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="">Todos os Tipos</option>
@@ -330,7 +326,7 @@ function FinanceiroContent() {
             </select>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface text-label-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="">Todos os Status</option>
@@ -341,7 +337,7 @@ function FinanceiroContent() {
               <span className="material-symbols-outlined text-outline text-[18px]">search</span>
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Buscar por descrição, categoria..."
                 className="bg-transparent border-none focus:ring-0 text-body-sm w-full text-on-surface focus:outline-none px-sm"
               />

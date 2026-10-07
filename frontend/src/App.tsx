@@ -27,8 +27,8 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   if (!token) return <Navigate to="/" />;
 
-  let user: { role?: string; terms_version?: string | null } = {};
-  let company: { onboarding_completed?: boolean } = {};
+  let user: { role?: string; terms_version?: string | null };
+  let company: { onboarding_completed?: boolean };
   try {
     user = JSON.parse(localStorage.getItem('user') || '{}');
     company = JSON.parse(localStorage.getItem('company') || '{}');

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Zap, ArrowRight, Building2, HelpCircle } from 'lucide-react';
 import api from '../api';
+import type { Plan } from '../types';
 
 export default function Plans() {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [yearly, setYearly] = useState(true);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import { defer } from '../utils/defer';
 
 interface Integration {
   key: string;
@@ -40,7 +41,7 @@ export default function IntegrationsStatus() {
   };
 
   useEffect(() => {
-    fetchStatus();
+    defer(fetchStatus);
   }, []);
 
   return (

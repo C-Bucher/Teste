@@ -31,7 +31,7 @@ export default function CtcParamsSection() {
     api.get('/company/ctc-params')
       .then((res) => setParams(res.data))
       .catch(() => toast.error('Erro ao carregar os parâmetros de CTC.'));
-  }, []);
+  }, [toast]);
 
   const handleSave = async () => {
     if (!params) return;

@@ -6,6 +6,7 @@ import SubscriptionBanner from './SubscriptionBanner';
 import api, { clearSession } from '../api';
 import { useToast } from '../context/ToastContext';
 import { usePermissions, clearPermissionsCache } from '../hooks/usePermissions';
+import type { NotificationItem } from '../types';
 
 interface SearchResult {
   type: string;
@@ -40,7 +41,7 @@ export default function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotifPanelOpen, setIsNotifPanelOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);

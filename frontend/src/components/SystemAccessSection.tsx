@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
 
 interface SystemUser {
   id: string;
@@ -33,7 +34,7 @@ export default function SystemAccessSection() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'FUNCIONARIO' });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get('/auth/users');
@@ -44,7 +45,7 @@ export default function SystemAccessSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleToggleActive = async (user: SystemUser) => {
     try {
@@ -105,7 +106,7 @@ export default function SystemAccessSection() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { defer(fetchUsers); }, [fetchUsers]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

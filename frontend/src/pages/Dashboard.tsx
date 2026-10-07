@@ -3,6 +3,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, A
 import api from '../api';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
+import type { FinancialEntryRow } from '../types';
 
 interface MonthlySummaryItem {
   name: string;
@@ -33,7 +34,7 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState<MonthlySummaryItem[]>([]);
   const [dre, setDre] = useState<DreData | null>(null);
   const [cashflow, setCashflow] = useState<CashflowData | null>(null);
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<FinancialEntryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function Dashboard() {
         // Log de diagnóstico em desenvolvimento
         const failed = [monthlyRes, dreRes, entriesRes, cashflowRes]
           .filter(r => r.status === 'rejected')
-          .map((r: any) => r.reason?.message || r.reason);
+          .map((r) => (r as PromiseRejectedResult).reason?.message || (r as PromiseRejectedResult).reason);
         if (failed.length > 0) {
           console.warn('[Dashboard] Endpoints com falha:', failed);
         }
@@ -292,7 +293,7 @@ export default function Dashboard() {
                     <tr>
                       <td colSpan={5} className="p-md text-center text-on-surface-variant text-body-sm">Nenhuma transação encontrada.</td>
                     </tr>
-                  ) : entries.map((entry: any) => (
+                  ) : entries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-surface-bright transition-colors group">
                       <td className="p-md">
                         <div className="flex items-center gap-sm">
