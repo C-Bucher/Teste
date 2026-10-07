@@ -11,6 +11,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [cnpjCpf, setCnpjCpf] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('plan-empresarial');
   const [plans, setPlans] = useState<any[]>([]);
@@ -37,6 +38,10 @@ export default function Register() {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
+    if (!acceptTerms) {
+      setError('É preciso aceitar os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
     setError('');
     setStep(2);
   };
@@ -54,7 +59,8 @@ export default function Register() {
         password,
         company_name: companyName,
         cnpj_cpf: cnpjCpf,
-        selected_plan: selectedPlan
+        selected_plan: selectedPlan,
+        accept_terms: acceptTerms,
       });
 
       saveSession(response.data);
@@ -185,6 +191,14 @@ export default function Register() {
                 </div>
                 <p className="text-xs text-slate-500 mt-1">Mínimo de 8 caracteres, com letras e números.</p>
               </div>
+
+              <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5" />
+                <span>
+                  Li e aceito os <Link to="/termos" target="_blank" className="text-blue-400 hover:underline">Termos de Uso</Link> e
+                  a <Link to="/privacidade" target="_blank" className="text-blue-400 hover:underline">Política de Privacidade</Link>.
+                </span>
+              </label>
 
               <button
                 type="submit"

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
 from app.db.session import get_db, DATABASE_URL
+from app.core.legal import TERMS_VERSION
 
 router = APIRouter()
 
@@ -29,3 +30,10 @@ async def get_integrations(u=Depends(get_current_user), db: AsyncSession = Depen
             {"key": "gemini", "label": "IA Gemini", "status": "configured" if gemini_configured else "unconfigured"},
         ]
     }
+
+
+
+@router.get("/legal")
+async def legal_info():
+    """Public: the version of the terms of use and privacy policy currently in force."""
+    return {"terms_version": TERMS_VERSION}

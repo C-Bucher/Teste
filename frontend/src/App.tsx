@@ -17,6 +17,8 @@ import Onboarding from './pages/Onboarding';
 import MinhaConta from './pages/MinhaConta';
 import Bancos from './pages/Bancos';
 import { EsqueciSenha, RedefinirSenha } from './pages/RecuperarSenha';
+import { AceiteTermos, Privacidade, Termos } from './pages/Legal';
+import { TERMS_VERSION } from './legal';
 import { usePermissions } from './hooks/usePermissions';
 import { clearSession } from './api';
 
@@ -25,7 +27,7 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   if (!token) return <Navigate to="/" />;
 
-  let user: { role?: string } = {};
+  let user: { role?: string; terms_version?: string | null } = {};
   let company: { onboarding_completed?: boolean } = {};
   try {
     user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -33,6 +35,9 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   } catch {
     clearSession();
     return <Navigate to="/" replace />;
+  }
+  if (user.terms_version !== TERMS_VERSION && location.pathname !== '/aceite-termos') {
+    return <Navigate to="/aceite-termos" replace />;
   }
   if (user.role === 'ADMIN' && company.onboarding_completed === false && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" />;
@@ -61,6 +66,9 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/cadastro" element={<Register />} />
         <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+        <Route path="/termos" element={<Termos />} />
+        <Route path="/privacidade" element={<Privacidade />} />
+        <Route path="/aceite-termos" element={<PrivateRoute><AceiteTermos /></PrivateRoute>} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/planos" element={<Plans />} />
         <Route path="/checkout" element={<Checkout />} />

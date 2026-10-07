@@ -39,6 +39,8 @@ class UserModel(Base):
     locked_until = Column(String(50), nullable=True)
     mfa_secret = Column(String(255), nullable=True)          # TOTP seed, encrypted (app/core/crypto.py)
     mfa_recovery_codes = Column(Text, nullable=True)         # JSON list of SHA-256 hashes, each usable once
+    terms_version = Column(String(20), nullable=True)        # version of terms + privacy policy accepted (app/core/legal.py)
+    terms_accepted_at = Column(String(50), nullable=True)
 
     company = relationship("CompanyModel", back_populates="users")
 

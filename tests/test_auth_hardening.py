@@ -13,7 +13,7 @@ def _new_email():
 
 @pytest.mark.parametrize("weak", ["curta1", "semnumeros", "12345678"])
 async def test_register_rejects_weak_password(client, weak):
-    r = await client.post("/auth/register", json={"full_name": "X", "email": _new_email(), "password": weak, "selected_plan": "plan-pessoal"})
+    r = await client.post("/auth/register", json={"full_name": "X", "email": _new_email(), "password": weak, "selected_plan": "plan-pessoal", "accept_terms": True})
     assert r.status_code == 400
 
 

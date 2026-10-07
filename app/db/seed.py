@@ -21,6 +21,8 @@ from datetime import datetime, timedelta, date
 import bcrypt
 from sqlalchemy import event, select
 
+from app.core.legal import TERMS_VERSION
+
 from app.db.session import async_session_maker
 from app.db.models import (
     CompanyModel,
@@ -94,6 +96,9 @@ def _assign_demo_owner(session, _flush_context=None, _instances=None) -> None:
             obj.company_id = DEMO_COMPANY_ID
         if hasattr(obj, "owner_id") and obj.owner_id is None:
             obj.owner_id = DEMO_USER_ID
+        if isinstance(obj, UserModel) and obj.terms_version is None:
+            obj.terms_version = TERMS_VERSION  # demo logins skip the acceptance screen
+            obj.terms_accepted_at = datetime.utcnow().isoformat()
 
 
 async def seed_if_empty() -> None:

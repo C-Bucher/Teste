@@ -49,6 +49,7 @@ async def register_admin(client: httpx.AsyncClient, plan: str = "plan-completo",
         "password": PASSWORD,
         "company_name": company or f"Empresa {uuid.uuid4().hex[:4]}",
         "selected_plan": plan,
+        "accept_terms": True,
     })
     assert r.status_code == 200, r.text
     body = r.json()

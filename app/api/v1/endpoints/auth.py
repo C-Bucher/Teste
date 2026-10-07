@@ -19,6 +19,7 @@ import qrcode
 import qrcode.image.svg
 from app.core import audit
 from app.core.mailer import APP_URL, send_email
+from app.core.legal import TERMS_VERSION
 from app.core.notify import notify_user
 import hashlib
 import secrets
@@ -50,6 +51,7 @@ class RegisterReq(BaseModel):
     company_name: Optional[str] = "Minha Empresa"
     cnpj_cpf: Optional[str] = None
     selected_plan: Optional[str] = "plan-empresarial"
+    accept_terms: bool = False
 
 class CreateUserReq(BaseModel):
     full_name: str
@@ -64,6 +66,8 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
     if existing:
         raise HTTPException(400, "Este e-mail já está cadastrado no sistema")
 
+    if not b.accept_terms:
+        raise HTTPException(400, "É preciso aceitar os Termos de Uso e a Política de Privacidade")
     validate_password(b.password)
     plan = next((p for p in PLANS_DB if p["id"] == b.selected_plan), None)
     if not plan:
@@ -85,7 +89,9 @@ async def register(b: RegisterReq, db: AsyncSession = Depends(get_db)):
         plan_scope=plan_scope,
         password_hash=pwd_hash,
         is_active=True,
-        mfa_enabled=False
+        mfa_enabled=False,
+        terms_version=TERMS_VERSION,
+        terms_accepted_at=datetime.utcnow().isoformat(),
     )
     db.add(new_user)
     await db.flush()  # company must exist before the audit row that references it (Postgres/MySQL enforce the FK)
@@ -468,3 +474,20 @@ async def admin_disable_mfa(uid: str, u=Depends(get_current_user), db: AsyncSess
     await notify_user(db, usr, "Verificação em duas etapas desativada",
                       f"{u['full_name']} desativou a verificação em duas etapas da sua conta. Ative de novo em Minha Conta.", security=True)
     return {"message": "Verificação em duas etapas desativada"}
+
+
+class AcceptTermsReq(BaseModel):
+    version: str
+
+
+@router.post("/accept-terms")
+async def accept_terms(b: AcceptTermsReq, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """People created by an admin (and accounts older than the current texts) accept on their next access."""
+    if b.version != TERMS_VERSION:
+        raise HTTPException(400, "Versão dos termos desatualizada; recarregue a página")
+    usr = await db.get(UserModel, u["id"])
+    usr.terms_version = TERMS_VERSION
+    usr.terms_accepted_at = datetime.utcnow().isoformat()
+    audit.record_by(db, u, "TERMOS_ACEITOS", entity="user", entity_id=usr.id, details={"versao": TERMS_VERSION})
+    await db.commit()
+    return {"terms_version": usr.terms_version, "terms_accepted_at": usr.terms_accepted_at}
