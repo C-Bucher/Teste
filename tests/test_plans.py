@@ -20,9 +20,11 @@ async def test_catalog_has_the_four_approved_plans(client):
         assert "bank_connections" in plans[pid]["limits"]
 
 
-async def test_catalog_does_not_promise_unavailable_export_formats(client):
+async def test_catalog_promises_only_export_formats_that_exist(client):
+    from app.api.v1.endpoints.exports import FORMATS
     text = (await client.get("/plans/")).text
-    assert "XLSX" not in text and "PDF" not in text
+    assert {"XLSX", "PDF", "CSV", "JSON"} <= set(FORMATS)
+    assert "Excel, PDF, CSV e JSON" in text
 
 
 async def test_checkout_charges_current_price_and_sets_scope(client):

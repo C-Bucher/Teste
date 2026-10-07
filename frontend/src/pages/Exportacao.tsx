@@ -32,6 +32,8 @@ const REPORT_TYPES: ReportType[] = [
 
 const FORMATS: { format: string; label: string; icon: string }[] = [
   { format: 'CSV', label: 'CSV', icon: 'description' },
+  { format: 'XLSX', label: 'Excel', icon: 'table_view' },
+  { format: 'PDF', label: 'PDF', icon: 'picture_as_pdf' },
   { format: 'JSON', label: 'JSON', icon: 'data_object' },
 ];
 

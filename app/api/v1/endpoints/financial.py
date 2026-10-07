@@ -1,6 +1,7 @@
 import os
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
+import mimetypes
 from typing import Optional
 import uuid
 from datetime import datetime, date, timedelta
@@ -143,12 +144,12 @@ async def attach(eid: str, file: UploadFile = File(...), u=Depends(get_current_u
     if len(content) > storage.MAX_ATTACHMENT_BYTES:
         raise HTTPException(413, "Arquivo maior que 10 MB")
     old_key = entry.attachment_key
-    entry.attachment_key = storage.save(u["company_id"], filename, content)
+    entry.attachment_key = await storage.save_attachment(u["company_id"], filename, content)
     entry.attachment_name = filename
     audit.record_by(db, u, "ANEXO_ENVIADO", entity="financial_entry", entity_id=eid, details={"arquivo": filename, "bytes": len(content)})
     await db.commit()
     if old_key:
-        storage.delete(old_key)
+        await storage.delete_attachment(old_key)
     await db.refresh(entry)
     return _entry_out(entry)
 
@@ -158,13 +159,12 @@ async def download_attachment(eid: str, u=Depends(get_current_user), db: AsyncSe
     entry = await db.get(FinancialEntryModel, eid)
     if not entry or entry.company_id != u["company_id"] or not entry.attachment_key:
         raise HTTPException(404, "Anexo não encontrado")
-    try:
-        path = storage.path_for(entry.attachment_key)
-    except ValueError:
+    content = await storage.read_attachment(entry.attachment_key)
+    if content is None:
         raise HTTPException(404, "Anexo não encontrado")
-    if not path.exists():
-        raise HTTPException(404, "Anexo não encontrado")
-    return FileResponse(path, filename=entry.attachment_name or path.name)
+    name = (entry.attachment_name or "comprovante").replace('"', "")
+    media = mimetypes.guess_type(name)[0] or "application/octet-stream"
+    return Response(content, media_type=media, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.get("/dre")

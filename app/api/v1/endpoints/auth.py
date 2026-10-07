@@ -389,7 +389,7 @@ async def reset_password_with_token(b: ResetPasswordWithTokenReq, db: AsyncSessi
     audit.record(db, "SENHA_REDEFINIDA_POR_EMAIL", company_id=usr.company_id, user_id=usr.id)
     await db.commit()
     await notify_user(db, usr, "Sua senha foi alterada", "A senha da sua conta TechConnect foi redefinida pelo link de recuperação. "
-                      f"Se não foi você, fale com o administrador da sua empresa.", security=True)
+                      "Se não foi você, fale com o administrador da sua empresa.", security=True)
     return {"message": "Senha redefinida. Entre com a nova senha."}
 
 

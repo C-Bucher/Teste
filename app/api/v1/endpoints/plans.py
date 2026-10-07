@@ -52,7 +52,7 @@ PLANS_DB = [
             "Colaboradores com CTC automático, fornecedores e centros de custo",
             "Até 3 contas PJ conectadas (conta extra cobrada à parte)",
             "CFO Virtual IA, conciliação e gerador de orçamentos",
-            "Exportação de relatórios em CSV e JSON"
+            "Exportação de relatórios em Excel, PDF, CSV e JSON"
         ],
         "limits": {"max_employees": 15, "max_projects": -1, "ai_queries": 3000, "bank_connections": 3}
     },

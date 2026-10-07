@@ -69,11 +69,7 @@ async def _purge_company(db: AsyncSession, company_id: str) -> None:
     for table in reversed(m.Base.metadata.sorted_tables):
         if "company_id" in table.c and table.name not in ("users", "companies"):
             await db.execute(delete(table).where(table.c.company_id == company_id))
-    for folder in (storage.ATTACHMENTS_DIR / company_id, storage.EXPORTS_DIR / company_id):
-        if folder.exists():
-            for f in folder.iterdir():
-                f.unlink(missing_ok=True)
-            folder.rmdir()
+    await storage.delete_company_files(company_id)
 
 
 @router.delete("")
