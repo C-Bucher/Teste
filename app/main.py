@@ -18,6 +18,10 @@ app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 async def on_startup():
     await init_db()
     await seed_if_empty()
+    if os.getenv("APP_ENV", "development").lower() == "production":
+        from app.core.readiness import production_warnings
+        for warning in production_warnings():
+            logging.getLogger("techconnect").warning("Configuração de produção: %s", warning)
     if os.getenv("DEMO_REFRESH_DATES") == "1":
         from app.db.demo_dates import refresh_demo_dates
         from app.db.session import async_session_maker

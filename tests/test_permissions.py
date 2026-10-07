@@ -48,3 +48,11 @@ async def test_admin_cannot_edit_users_of_another_company(client, company_a, com
 async def test_last_admin_cannot_demote_itself(client, company_a):
     r = await client.put(f"/auth/users/{company_a['user']['id']}", headers=company_a["headers"], json={"role": "GERENTE"})
     assert r.status_code == 400
+
+
+async def test_integrations_panel_reports_every_external_service(client, company_a):
+    r = await client.get("/system/integrations", headers=company_a["headers"])
+    assert r.status_code == 200
+    keys = {i["key"] for i in r.json()["integrations"]}
+    assert {"database", "gemini", "payments", "email", "bank", "storage", "scheduler", "encryption"} <= keys
+    assert all("detail" in i for i in r.json()["integrations"])

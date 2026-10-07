@@ -6,6 +6,7 @@ interface Integration {
   key: string;
   label: string;
   status: string;
+  detail?: string;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -13,6 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
   configured: 'bg-success/10 text-success',
   offline: 'bg-error/10 text-error',
   unconfigured: 'bg-warning/10 text-warning',
+  partial: 'bg-warning/10 text-warning',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -20,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
   configured: 'Configurada',
   offline: 'Offline',
   unconfigured: 'Não configurada',
+  partial: 'Incompleta',
 };
 
 export default function IntegrationsStatus() {
@@ -48,8 +51,11 @@ export default function IntegrationsStatus() {
     <div className="space-y-md">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-md">
         {integrations.map((it) => (
-          <div key={it.key} className="glass-card p-lg rounded-2xl flex items-center justify-between">
-            <span className="text-label-md text-on-surface">{it.label}</span>
+          <div key={it.key} className="glass-card p-lg rounded-2xl flex items-start justify-between gap-md">
+            <div>
+              <span className="text-label-md text-on-surface">{it.label}</span>
+              {it.detail && <p className="text-[12px] text-on-surface-variant mt-xs">{it.detail}</p>}
+            </div>
             <span className={`inline-flex items-center gap-xs px-2 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${STATUS_STYLES[it.status] || 'bg-surface-container-highest text-on-surface-variant'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${it.status === 'online' || it.status === 'configured' ? 'bg-success' : it.status === 'offline' ? 'bg-error' : 'bg-warning'}`}></span>
               {STATUS_LABELS[it.status] || it.status}
