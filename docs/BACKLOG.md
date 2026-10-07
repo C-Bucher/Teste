@@ -2,7 +2,9 @@
 
 > Backlog oficial do projeto, consolidado a partir dos planos de execução já concluídos ([docs/planejamento/plans/](planejamento/plans/)), dos registros de andamento e revisão de cada fase (arquivos de trabalho locais, não versionados) e do [registro de alterações](registro-de-alteracoes-para-documentacao.md). Cada item foi conferido contra o código em 2026-09-21, com um checkpoint adicional em 2026-09-23 para a integração com Supabase.
 >
-> **Última atualização (2026-09-30, etapas 3 e 4):** branches `feature/integracao-bancaria` e `feature/ia-generativa`: importação de extrato OFX/CSV com conciliação automática, conexão com bancos via Pluggy (pronta, aguardando credenciais), regras de categoria, IA real com Gemini sobre os dados da empresa/pessoa e cota mensal por plano. Ver ADR-008 e ADR-009.
+> **Última atualização (2026-10-07, etapa 5 — lançamento):** branch `feature/lancamento`: cobrança recorrente (Asaas), recuperação de senha, 2FA, limite por IP, consentimento, armazenamento S3, exportação XLSX/PDF, sincronização bancária automática, e-mails, lint zerado, testes de frontend e CI. Ver ADR-010, ADR-011 e a [Sprint 03](../sprints/sprint-03.md).
+>
+> **Etapas 3 e 4 (2026-09-30):** branches `feature/integracao-bancaria` e `feature/ia-generativa`: importação de extrato OFX/CSV com conciliação automática, conexão com bancos via Pluggy (pronta, aguardando credenciais), regras de categoria, IA real com Gemini sobre os dados da empresa/pessoa e cota mensal por plano. Ver ADR-008 e ADR-009.
 >
 > **Etapa 2 (2026-09-30):** branch `feature/planos-e-abas`: quatro planos com os preços aprovados, anexos de lançamento, exportações privadas, CTC configurável, exclusão de cartão, Minha Conta (troca de senha e direitos LGPD), auditoria na interface, gestão completa de acessos e correções de interface.
 >
@@ -29,7 +31,7 @@
 | DB-1 | Alinhar banco + persistência confiável | Resolvido: `.env` carregado fora do Docker (`913f78d`) e SQLite padrão com caminho absoluto na raiz do projeto. | ✅ | 2026-09-23 e 2026-09-30 |
 | DB-2 | Persistir assinatura/pagamento + registro | Assinaturas e faturas agora usam `SubscriptionModel`/`InvoiceModel`, são filtradas pela empresa e sobrevivem a reinícios. O catálogo estático é sincronizado em `PlanModel` no checkout. O gateway financeiro continua simulado. | ✅ | correção 2026-09-23 |
 | DB-5 | Troca de banco não é automática entre Supabase/MySQL/SQLite | Resolvido: no Compose, o backend usa o MySQL do próprio Compose por padrão; para o Supabase, define-se `COMPOSE_DATABASE_URL`. A `DATABASE_URL` do `.env` vale para a execução manual. | ✅ | etapa 2026-09-30 |
-| SEC-2 | Auditoria e conformidade LGPD | Resolvido para o escopo do produto: `audit_logs` com tela em Configurações → Auditoria (filtro por ação, paginação); direitos do titular em Minha Conta: exportar os próprios dados (JSON) e excluir a conta (o único usuário leva junto todos os dados da empresa; com equipe, só os dados pessoais). Falta, fora do código: termo de uso e política de privacidade revisados por jurídico, e política de retenção. | 🔷 | etapas 2026-09-30 |
+| SEC-2 | Auditoria e conformidade LGPD | Resolvido no código: auditoria com tela, direitos do titular em Minha Conta, aceite versionado e datado dos termos (cadastro e próximo acesso). Falta, fora do código: revisão jurídica dos textos (hoje minuta) e política de retenção. | 🔷 | etapas 2026-09-30 e 2026-10-07 |
 
 ---
 
@@ -38,8 +40,8 @@
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
 | IA-1 | Integração real de IA generativa | Resolvido no código: CFO Virtual (chat com histórico persistido e insights), CFO Pessoal, sugestão de categorias para movimentações bancárias reais e gerador de orçamentos usam o Gemini sobre um resumo dos dados reais. Sem chave, com falha ou com a cota esgotada, respondem por regras calculadas com os mesmos dados (nada de números fixos). **Pendente operacional:** a `GEMINI_API_KEY` atual foi bloqueada pelo Google como vazada (403 "reported as leaked"); é preciso gerar outra no Google AI Studio e mantê-la só no `.env`. | 🔷 | etapa 2026-09-30; ADR-009 |
-| AUTH-1 | Autenticação de dois fatores (2FA) | O campo `mfa_enabled` existe no `UserModel` e o login aceita `mfa_code`, mas não há fluxo de ativação nem verificação real. | 🔲 | registro §9 |
-| EXP-1 | Exportação de relatórios | Resolvido: `exports.py` consulta os dados reais da empresa e gera CSV ou JSON válido; o download verifica a propriedade do log. PDF/XLSX foram removidos da interface até existirem geradores próprios. | ✅ | correção 2026-09-23 |
+| AUTH-1 | Autenticação de dois fatores (2FA) | Resolvido: TOTP com QR code em Minha Conta, 8 códigos de recuperação de uso único, segundo passo no login (token intermediário de 5 min), desativação com senha + código e pelo Admin; segredo criptografado com `ENCRYPTION_KEY`. | ✅ | etapa 2026-10-07; ADR-011 |
+| EXP-1 | Exportação de relatórios | Resolvido: CSV, JSON, Excel (XLSX) e PDF com os dados reais da empresa, em armazenamento privado, com proteção contra injeção de fórmula. | ✅ | etapa 2026-10-07 |
 | CFG-1 | Configurações que não persistem | Resolvido: calendário e preferências persistem (2026-09-23); parâmetros de CTC por empresa (`ctc_params`) editáveis em Configurações → Custo de Pessoal, usados no cálculo real e com recálculo automático dos colaboradores ativos (registrado no histórico salarial). | ✅ | etapa 2026-09-30 |
 
 ---
@@ -53,8 +55,8 @@
 | FIN-1 | DRE — composição por categoria | ~~Trechos hardcoded.~~ Resolvido: `GET /financial/dre` agora agrega receitas e despesas por categoria a partir dos lançamentos reais do banco (`receitas_map`/`despesas_map` em `financial.py`), sem valores fixos. | ✅ | Verificado 2026-09-10 em `financial.py` |
 | NAV-1 | Guarda de rota do Hub Pessoal | Corrigido: guards de escopo são aplicados na rota e no backend; slugs inválidos redirecionam para a visão geral. | ✅ | correção 2026-09-23 |
 | AUTH-2 | Gestão de acessos: regras de negócio faltando | Resolvido: troca de cargo (inclusive promover a Admin, com confirmação), redefinição de senha pelo Admin (encerra as sessões da pessoa) e ativar/desativar, tudo pela interface. | ✅ | etapa 2026-09-30 |
-| UX-1 | Polimento do onboarding e das permissões | Resolvido: passo 1 já vinha pré-preenchido; no passo 2, "Salvar e continuar" salva e avança, e "Pular" deixa os padrões; o menu não pisca mais (permissões em cache síncrono); os botões de IA só aparecem com o módulo `ia`. Também corrigido: o texto dos toasts de erro e de sucesso usava cores inexistentes ou quase pretas. | ✅ | etapa 2026-09-30 |
-| QA-1 | Sem testes automatizados | Backend coberto: `pytest` com 34 testes (isolamento entre empresas e usuários, gates, regras de acesso, autenticação, auditoria, migrações), verde em SQLite, PostgreSQL e MySQL. Falta: testes de frontend e CI automatizado. `npm run lint` ainda reporta erros pré-existentes. | 🔷 | etapa 2026-09-30 |
+| UX-1 | Polimento do onboarding e das permissões | Resolvido: passo 1 já vinha pré-preenchido; no passo 2, "Salvar e continuar" salva e avança, e "Pular" deixa os padrões; o menu não pisca mais (permissões em cache síncrono); os botões de IA só aparecem com o módulo `ia`. (Correção do registro: em 30/09 constou aqui que os toasts eram ilegíveis; o campo de cor alterado não era usado no render, então não havia problema.) | ✅ | etapa 2026-09-30 |
+| QA-1 | Sem testes automatizados | Resolvido: 139 testes de backend (SQLite, PostgreSQL, MySQL e Python 3.11), 14 de frontend (Vitest), teste de contrato frontend × rotas, ESLint sem erros nem avisos e CI no GitHub Actions a cada PR. | ✅ | etapas 2026-09-30 e 2026-10-07 |
 | API-1 | `id` do payload sobrescreve o gerado | Corrigido nos endpoints de criação: IDs e campos de escopo controlados pelo servidor são aplicados após o payload; updates bloqueiam `id`, `company_id` e campos relacionais sensíveis. | ✅ | correção 2026-09-23 |
 
 ---
@@ -64,8 +66,8 @@
 | ID | Item | Descrição | Status | Fonte |
 |----|------|-----------|--------|-------|
 | CSS-1 | Token `--color-warning-container` ausente | Resolvido: token `--color-warning-container` definido. | ✅ | etapa 2026-09-30 |
-| CSS-2 | Contraste das colunas do Kanban | O tema quase-preto comprime as razões de contraste WCAG. Fechar mais exige um novo token mais claro que `surface-container-highest` no design system. | 🔲 | task-23-report |
-| SEED-1 | Dados de seed "envelhecem" | As datas do seed são congeladas na primeira execução (o mock antigo recalculava a cada request). Com o tempo, o seed fica com datas defasadas. | 🔲 | progress-db (nota) |
+| CSS-2 | Contraste das colunas do Kanban | Resolvido: contraste medido pela fórmula WCAG; só o texto `outline` sobre cartões ficava abaixo de 4,5:1 (3,85) e foi clareado para `#999dac` (4,54:1 no pior fundo). | ✅ | etapa 2026-10-07 |
+| SEED-1 | Dados de seed "envelhecem" | Resolvido: `python -m app.db.demo_dates` (ou `DEMO_REFRESH_DATES=1` na inicialização) desloca as datas da empresa e do usuário demo para hoje, mantendo os intervalos. | ✅ | etapa 2026-10-07 |
 | DB-3 | Sem migrations versionadas | Resolvido: Alembic (`app/db/alembic`), com revisão base `0001` = schema anterior; bases pré-Alembic são carimbadas e atualizadas no startup; um teste falha se models e migrações divergirem. | ✅ | etapa 2026-09-30; ADR-007 |
 | DB-4 | Limpeza pós-migração MySQL | Resolvido: o quadro do Kanban carrega com 3 consultas (colunas, cartões e comentários) em vez de N+1. | ✅ | etapa 2026-09-30 |
 
@@ -77,7 +79,7 @@
 |----|------|-----------|--------|-------|
 | PLAN-1 | Novos planos e preços | Resolvido: catálogo com Pessoal Essencial (R$ 29,90 / R$ 24,90), Pessoal Conectado (R$ 59,90 / R$ 49,90), Empresarial (R$ 249 / R$ 199) e Completo (R$ 299 / R$ 249), com limites `ai_queries` e `bank_connections` por plano; a linha do plano no banco acompanha o preço do catálogo. O catálogo não promete mais exportação em XLSX/PDF. A cobrança dos limites é o LIM-1. | ✅ | etapa 2026-09-30 |
 | LIM-1 | Limites de uso por plano | Resolvido: limite de contas conectadas por plano (402 com mensagem de upgrade) e cota mensal de perguntas à IA por empresa (`ai_usage`); consumo visível em `GET /bank/usage` e na tela Bancos. | ✅ | etapa 2026-09-30 |
-| BANK-1 | Integração bancária | Resolvido no código: importação OFX (SGML/XML) e CSV sem duplicar, conciliação automática com contas a pagar/receber (só com candidato único), ações manuais (conciliar, lançar, ignorar), regras de categoria, telas Bancos nos dois hubs e conexão via Pluggy atrás de uma interface `BankProvider`. **Pendente:** contrato e credenciais da Pluggy (`PLUGGY_CLIENT_ID`/`SECRET`), validar o widget no sandbox e o formato real das transações; webhook de sincronização em tempo real. | 🔷 | etapa 2026-09-30; ADR-008 |
+| BANK-1 | Integração bancária | Resolvido no código: importação OFX/CSV, conciliação, regras, telas nos dois hubs, Pluggy atrás de interface, webhook da Pluggy (`/bank/webhook/pluggy`) e sincronização agendada (`/bank/sync-all`), que pulam empresas inadimplentes. Pendente: contrato e credenciais da Pluggy e validação do widget e das transações no sandbox. | 🔷 | etapas 2026-09-30 e 2026-10-07; ADR-008 |
 | EMP-2 | Validação de payload nos cadastros | Resolvido: o cadastro de colaborador valida nome e e-mail, e qualquer violação de integridade do banco vira 400 com mensagem clara, em vez de 500. | ✅ | etapa 2026-09-30 |
 | FIN-2 | Anexo de lançamento | Resolvido: anexo de comprovante (PDF, imagem ou XML, até 10 MB) em armazenamento privado fora de `/uploads`, servido só para a empresa dona; a chave interna não aparece na API nem nas exportações. | ✅ | etapa 2026-09-30 |
 | EXP-2 | Exportações acessíveis sem login | Resolvido: os relatórios ficavam em `/uploads` (público); agora ficam em armazenamento privado e são baixados por `GET /exports/download/{id}` autenticado. Células que começam com `=`, `+`, `-` ou `@` são neutralizadas contra injeção de fórmula no Excel. | ✅ | achado na etapa 2026-09-30 |
@@ -86,6 +88,15 @@
 | PES-1 | Gráfico de patrimônio fictício | Resolvido: a evolução patrimonial do Hub Pessoal era uma rampa fixa; agora vem de saldos, dívidas e lançamentos reais. | ✅ | achado na etapa 2026-09-30 |
 | PES-2 | Importação de extrato no Hub Pessoal | Resolvido: a tela Bancos (`/pessoal/bancos`) importa OFX/CSV e transforma cada movimentação em lançamento pessoal, sem duplicar ao reimportar. | ✅ | etapa 2026-09-30 |
 | IA-2 | Conciliação de IA com dados simulados | Resolvido: a aba Conciliação da IA Empresarial ignorava o arquivo e usava três transações fixas; agora sugere categorias para as movimentações reais importadas em Bancos, e aprovar aplica a categoria e cria regra. | ✅ | etapa 2026-09-30 |
+| PAY-1 | Pagamento real | Resolvido no código: Asaas atrás de `PaymentProvider`, página de pagamento hospedada (sem dados de cartão no servidor), teste de 7 dias, webhook autenticado e idempotente que ativa, renova, marca atraso e estorno, bloqueio com 402 após 5 dias, cancelamento com acesso até o fim do período e página de assinatura com dados reais. Pendente: conta no Asaas, webhook configurado e validação no sandbox (inclusive cartão recorrente). | 🔷 | etapa 2026-10-07; ADR-010 |
+| AUTH-3 | Recuperação de senha por e-mail | Resolvido: link de uso único (1 h, só o hash guardado), resposta igual exista ou não o e-mail, desbloqueio da conta e revogação das sessões; telas `/esqueci-senha` e `/redefinir-senha`. Depende de SMTP configurado para chegar ao usuário. | ✅ | etapa 2026-10-07; ADR-011 |
+| STO-1 | Armazenamento compartilhado | Resolvido: anexos e exportações em disco local ou em S3 compatível (Supabase Storage, AWS S3, R2) via `STORAGE_BACKEND=s3`. | ✅ | etapa 2026-10-07 |
+| SEC-7 | Limite de requisições por IP | Resolvido: janela deslizante nas rotas de autenticação (20/min por IP); `X-Forwarded-For` só com `TRUSTED_PROXY_HOPS`. Vale por instância (ver SEC-9). | ✅ | etapa 2026-10-07 |
+| NOT-1 | E-mail de notificações | Resolvido: notificações de importação de extrato e de pagamento vão também por e-mail conforme a preferência; e-mails de segurança (senha, bloqueio, 2FA) sempre são enviados. | ✅ | etapa 2026-10-07 |
+| NOT-2 | Alertas automáticos de vencimento | Resolvido: `POST /jobs/daily` (agendador, `X-Cron-Secret`) cria avisos de contas a pagar nos próximos 3 dias, recebimentos atrasados e tarefas do Kanban com prazo em até 2 dias, uma vez por dia por empresa, com e-mail ao Admin; empresas inadimplentes são puladas. A mesma rota roda a sincronização bancária. | ✅ | etapa 2026-10-07 |
+| SEC-8 | Antivírus nos uploads | Comprovantes e extratos não passam por antivírus (ex.: ClamAV ou serviço do provedor de armazenamento). | 🔲 | ADR-011 |
+| SEC-9 | Limite global entre instâncias | O limite por IP e o contador de cota são por processo; com várias instâncias, mover o limite por IP para o Redis já provisionado. | 🔲 | ADR-011 |
+| DEP-1 | Implantação em produção | Definir onde hospedar backend e frontend, domínio, HTTPS, `APP_ENV=production`, `TRUSTED_PROXY_HOPS`, webhooks e agendador diário; o painel de Conexões de API lista o que falta. | 🔲 | auditoria 2026-10-07 |
 | SEC-6 | Nova sessão após o deploy | Os tokens anteriores a 2026-09-30 não têm `type`/`pwd` e deixam de valer: todos os usuários precisam entrar de novo uma vez. Avisar antes de publicar. | 🔲 | ADR-007 |
 
 ---
@@ -97,9 +108,9 @@ Trabalho de reescrita do Escopo / ERS / DAS oficiais:
 
 | ID | Documento | O que atualizar |
 |----|-----------|-----------------|
-| DOC-1 | Escopo | Modelo de 3 planos (Pessoal / Empresarial / Completo) como novo requisito de negócio; confirmar lista de módulos dos dois Hubs. |
-| DOC-2 | ERS | Requisitos funcionais detalhados de cada módulo (CTC, fluxo de caixa D+90, timer em cartão, 10 módulos do Hub Pessoal); requisitos não-funcionais de segurança (segredos fora do código); lista honesta de lacunas (itens P0/P1 deste backlog) como "fora do escopo desta entrega". |
-| DOC-3 | DAS | Atualizado para SQLAlchemy async, 32 tabelas, isolamento, persistência operacional, migração de compatibilidade e guards por módulo/escopo. |
+| DOC-1 | Escopo | Modelo de 4 planos com cobrança recorrente, teste de 7 dias e limites por plano; integrações (bancos, IA, pagamentos) como requisito de negócio; lista de módulos dos dois Hubs. Insumo pronto no [registro de alterações](registro-de-alteracoes-para-documentacao.md) §12. |
+| DOC-2 | ERS | [requisitos.md](requisitos.md) está atualizado (RF01–RF29, RNF01–RNF10, matriz de 07/10). Falta transpor para o documento oficial da disciplina. |
+| DOC-3 | DAS | [arquitetura.md](arquitetura.md) reescrito em 07/10: 40 tabelas versionadas por Alembic, integrações externas atrás de interfaces, cobrança e acesso por assinatura, controles de segurança e CI. Falta transpor para o documento oficial da disciplina. |
 
 ---
 

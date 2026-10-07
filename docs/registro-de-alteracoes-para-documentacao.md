@@ -160,6 +160,61 @@ Onde impacta: DAS (múltiplos backends relacionais atrás de uma única variáve
 
 ---
 
+## 12. Produto comercial: segurança, planos, bancos, IA real e cobrança (30/09 a 07/10)
+
+A partir de 30/09 o TechConnect passou a ser tratado como produto para clientes pagantes. As mudanças foram feitas em cinco etapas, em branches empilhados (`fix/endurecimento-seguranca` → `feature/planos-e-abas` → `feature/integracao-bancaria` → `feature/ia-generativa` → `feature/lancamento`), com especificação de cada uma em [docs/planejamento/specs](planejamento/specs). Ver também a [Sprint 03](../sprints/sprint-03.md).
+
+- **Modelo de negócio (Escopo).** Quatro planos com preços aprovados, a recalcular quando houver a cotação real do agregador bancário:
+
+    | Plano | Mensal | Anual (por mês) |
+    | --- | --- | --- |
+    | Pessoal Essencial | R$ 29,90 | R$ 24,90 |
+    | Pessoal Conectado | R$ 59,90 | R$ 49,90 |
+    | Empresarial | R$ 249 | R$ 199 |
+    | Completo | R$ 299 | R$ 249 |
+
+    A cobrança é recorrente pelo Asaas, com 7 dias de teste e bloqueio após 5 dias de atraso. Cada plano limita as contas bancárias conectadas e as perguntas mensais à IA.
+- **Requisitos (ERS).** Novos RF20 a RF29 em [requisitos.md](requisitos.md):
+    - integração bancária e conciliação;
+    - assinatura e cobrança;
+    - recuperação de senha e verificação em duas etapas;
+    - auditoria, direitos do titular e consentimento;
+    - comprovantes, parâmetros de CTC e limites por plano.
+
+    Novos RNF09 (qualidade e CI) e RNF10 (acessibilidade). A matriz de atendimento foi refeita com o estado real.
+- **Arquitetura (DAS).** [arquitetura.md](arquitetura.md) foi reescrito:
+    - integrações externas atrás de interfaces (Gemini, Asaas, Pluggy, SMTP, armazenamento S3);
+    - 40 tabelas versionadas por Alembic;
+    - regras de acesso por assinatura;
+    - controles de autenticação;
+    - CI. Decisões nas ADRs 007 a 011.
+- **Qualidade.**
+    - 139 testes de backend, em SQLite, PostgreSQL e MySQL;
+    - 14 de frontend;
+    - teste de contrato entre as chamadas do frontend e as rotas do backend;
+    - ESLint sem erros (eram 59);
+    - CI no GitHub Actions.
+- **Correções relevantes encontradas no caminho:**
+    - o checkout enviava cartão e CVV ao servidor;
+    - qualquer empresa sem assinatura ganhava uma assinatura ativa automática;
+    - exportações e anexos ficavam acessíveis sem login;
+    - colunas de dono tinham padrão silencioso para a conta demo;
+    - a página de assinatura mostrava dados fixos (cartão "4242", consumo "142");
+    - o gráfico de patrimônio e as telas de IA usavam números inventados;
+    - o Kanban mutava o estado do React ao arrastar.
+
+    Também houve um registro meu equivocado: no CHANGELOG de 30/09 constou que os toasts estavam ilegíveis, mas o campo de cor alterado não era usado no render. Os toasts sempre foram legíveis, e o registro foi corrigido.
+- **Limitações que a documentação formal deve manter:**
+    - SEC-5 continua aberto, e a chave do Gemini foi bloqueada pelo Google como vazada;
+    - Asaas e Pluggy não foram validados nos sandboxes reais;
+    - os textos legais são minuta;
+    - o limite por IP é por instância;
+    - não há antivírus nos uploads.
+
+Onde impacta: Escopo (planos, cobrança, integrações como requisito de negócio), ERS (RF20 a RF29, RNF09, RNF10, matriz) e DAS (seções 1 a 6 reescritas).
+
+---
+
 ## Sugestão de como dividir a atualização entre Escopo / ERS / DAS
 
 - Escopo: seção 1 (modelo de planos/contas) é a mudança mais estrutural — precisa entrar como novo requisito de negócio. Seções 2 e 3 (lista de módulos) confirmam/expandem o que já estava previsto.

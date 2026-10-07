@@ -1,5 +1,19 @@
 # Histórico de mudanças
 
+## 2026-10-07 - Preparação para o lançamento
+
+- Cobrança recorrente pelo Asaas, com o cartão digitado na página do Asaas (o checkout deixou de enviar número e CVV ao servidor), 7 dias de teste, webhook autenticado que ativa, renova e marca atraso, bloqueio com tolerância de 5 dias, cancelamento e página de assinatura com dados reais ([ADR 010](docs/decisoes/adr-010-cobranca-recorrente-e-acesso-por-assinatura.md)).
+- Corrigido: empresas sem assinatura recebiam automaticamente uma assinatura ativa.
+- Conta: recuperação de senha por e-mail, verificação em duas etapas com códigos de recuperação, limite de requisições por IP e aceite versionado dos termos e da política de privacidade ([ADR 011](docs/decisoes/adr-011-conta-2fa-consentimento-armazenamento.md)).
+- E-mails transacionais e de notificação (SMTP) e alertas diários de contas a vencer, recebimentos atrasados e prazos do Kanban.
+- Arquivos em armazenamento S3 compatível (Supabase Storage, S3, R2) e exportação em Excel e PDF.
+- Webhook da Pluggy e job diário de sincronização bancária.
+- Painel de Conexões de API cobrindo todas as integrações, com avisos de produção no log.
+- Datas da demonstração atualizáveis e contraste WCAG AA no texto secundário.
+- Qualidade: ESLint sem erros (eram 59), tipos da API compartilhados, carregamentos fora do corpo dos efeitos, arrastar do Kanban sem mutar o estado, testes de frontend (Vitest), teste de contrato entre frontend e backend e CI no GitHub Actions.
+- Documentação: ERS (RF20 a RF29, RNF09 e RNF10, matriz refeita), DAS reescrito, ADRs 010 e 011, Sprint 03 e registro de alterações.
+- Correção de registro: a entrada de 30/09 citava "toasts ilegíveis", problema que não existia.
+
 ## 2026-09-30 - Bancos, conciliação e IA real
 
 - Bancos & Conciliação (Hub Empresarial e Hub Pessoal): importação de extrato OFX/CSV de qualquer banco, sem duplicar ao reimportar; conciliação automática com as contas a pagar e a receber; ações manuais de conciliar, lançar e ignorar; regras de categoria (BANK-1, [ADR 008](docs/decisoes/adr-008-integracao-bancaria-e-conciliacao.md)).
@@ -18,7 +32,7 @@
 - Gestão de acessos: troca de cargo, promoção a Admin e redefinição de senha pelo Admin (AUTH-2).
 - Kanban: excluir tarefa (KAN-1) e quadro carregado em 3 consultas (DB-4).
 - Hub Pessoal: evolução patrimonial calculada com dados reais.
-- Correções: padrões que gravavam silenciosamente na conta demo (MT-3), fornecedor de outra empresa num lançamento (FIN-3), cadastro incompleto devolvendo 500 (EMP-2), toasts ilegíveis, menu piscando, botões de IA sem permissão, onboarding com botão de salvar separado (UX-1).
+- Correções: padrões que gravavam silenciosamente na conta demo (MT-3), fornecedor de outra empresa num lançamento (FIN-3), cadastro incompleto devolvendo 500 (EMP-2), menu piscando, botões de IA sem permissão, onboarding com botão de salvar separado (UX-1).
 - Suíte de testes: 61 testes, verdes em SQLite, PostgreSQL e MySQL.
 
 ## 2026-09-30 - Endurecimento de segurança e confiabilidade

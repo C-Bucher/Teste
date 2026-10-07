@@ -46,11 +46,13 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 - Kanban com arrastar e soltar, gestão de equipe com modais de CRUD, fornecedores, financeiro (DRE, fluxo de caixa, lançamentos) e exportação de relatórios.
 - Hierarquia de cargos configurável: o Admin escolhe em Configurações → Hierarquia de Cargos quais módulos cada cargo acessa, e o bloqueio vale no servidor, não só na tela.
 - Assistente de onboarding de 3 passos (dados da empresa, hierarquia de cargos, conexões de API) no primeiro login do Admin de uma empresa nova.
-- Painel de conexões de API, mostrando se o banco está online e se a chave da IA foi configurada.
+- Painel de conexões de API: banco, IA, pagamentos, e-mail, bancos, armazenamento, agendador e criptografia, com o que falta configurar.
 - Criação de logins de Gerente e Funcionário pelo próprio Admin, em Gestão de Equipe → Acessos ao Sistema.
 - Bancos & Conciliação: importação de extrato OFX/CSV de qualquer banco (sem duplicar), conciliação automática com contas a pagar e a receber, regras de categoria e conexão automática via agregador de Open Finance (Pluggy).
 - IA com dados reais (Gemini): CFO Virtual com histórico, CFO Pessoal, sugestão de categorias e gerador de orçamentos com o custo-hora real da equipe; cota mensal por plano.
-- Anexo de comprovantes nos lançamentos, custo de pessoal (CTC) configurável, trilha de auditoria e Minha Conta (troca de senha e direitos da LGPD).
+- Assinatura com cobrança recorrente pelo Asaas (Pix, boleto ou cartão na página do Asaas), 7 dias de teste, bloqueio após atraso e cancelamento.
+- Segurança de conta: recuperação de senha por e-mail, verificação em duas etapas (aplicativo autenticador), bloqueio por tentativas e limite por IP.
+- Anexo de comprovantes, exportação em Excel, PDF, CSV e JSON, custo de pessoal (CTC) configurável, trilha de auditoria, alertas diários de vencimento e Minha Conta (senha, 2FA e direitos da LGPD).
 
 ---
 
@@ -59,7 +61,9 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
-| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 assíncrono, Uvicorn — 32 tabelas, seed idempotente e migrações aditivas de compatibilidade |
+| Backend | FastAPI (Python 3.11+), Pydantic, SQLAlchemy 2.0 assíncrono, Alembic, Uvicorn — 40 tabelas, seed idempotente |
+| Integrações | Google Gemini (IA), Asaas (cobrança), Pluggy (Open Finance), SMTP (e-mail), S3 compatível (arquivos) |
+| Qualidade | pytest, Vitest + Testing Library, ESLint, GitHub Actions |
 | Banco de dados | PostgreSQL gerenciado (Supabase, via Connection Pooler), MySQL 8.0 (Docker) ou SQLite (fallback local) |
 | Infraestrutura | Docker e Docker Compose; segredos e credenciais via `.env`, que fica fora do Git |
 | Redis 7 | provisionado no Compose, mas ainda não utilizado pela aplicação (reservado para cache/filas) |
@@ -139,7 +143,42 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-A suíte sobe a API em memória sobre um SQLite temporário e cobre isolamento entre empresas e entre usuários, gates por módulo e por plano, regras de acesso, política de senha, bloqueio de login, tokens, auditoria e migrações. Para rodá-la contra um banco real, aponte `TEST_DATABASE_URL` para um banco **descartável**, por exemplo um PostgreSQL local em Docker com `DATABASE_SSL=disable`; a suíte grava dados nele.
+A suíte do backend sobe a API em memória sobre um SQLite temporário. Ela cobre:
+- isolamento entre empresas e entre usuários, gates por módulo, plano e assinatura;
+- autenticação, 2FA, recuperação de senha, cobrança e webhooks;
+- bancos, IA (com modelo simulado), exportações e migrações;
+- um teste de contrato que falha se o frontend chamar uma rota inexistente.
+
+Nenhuma chamada sai para serviços pagos, mesmo com chaves no `.env`. Para rodar contra um banco real, aponte `TEST_DATABASE_URL` para um banco **descartável** (por exemplo, um PostgreSQL local em Docker com `DATABASE_SSL=disable`): a suíte grava dados nele.
+
+Frontend:
+
+```bash
+cd frontend
+npm run lint && npm test && npm run build
+```
+
+O CI (`.github/workflows/ci.yml`) roda tudo isso a cada pull request, com o backend em SQLite e em PostgreSQL.
+
+### Integrações e rotinas
+
+Cada serviço externo funciona sem credenciais em desenvolvimento:
+- IA responde por regras;
+- pagamento é simulado;
+- e-mail vai para o log;
+- bancos funcionam por importação de extrato;
+- arquivos ficam em disco local.
+
+Para produção, preencha as seções do `.env.example` e confira em Configurações → Conexões de API:
+
+| Serviço | Onde configurar |
+| --- | --- |
+| Asaas | Crie o webhook para `<API>/api/v1/payments/webhook/asaas` com o token de `ASAAS_WEBHOOK_TOKEN` |
+| Pluggy | Webhook para `<API>/api/v1/bank/webhook/pluggy`, com o cabeçalho `X-Webhook-Secret` |
+| Agendador | Uma vez por dia, `POST <API>/api/v1/jobs/daily` com `X-Cron-Secret`: alertas de vencimento e sincronização bancária |
+| Arquivos | `STORAGE_BACKEND=s3` com Supabase Storage, S3 ou R2 |
+
+Para trazer as datas da demonstração para hoje, rode `python -m app.db.demo_dates`.
 
 ---
 
@@ -153,7 +192,7 @@ A suíte sobe a API em memória sobre um SQLite temporário e cobre isolamento e
 
 ### Permissões por papel
 
-As senhas precisam ter pelo menos 8 caracteres, com letras e números. Depois de 5 senhas erradas seguidas, a conta fica bloqueada por 15 minutos. A sessão dura 60 minutos e é renovada automaticamente por até 7 dias; trocar a senha encerra as sessões antigas.
+As senhas precisam ter pelo menos 8 caracteres, com letras e números. Depois de 5 senhas (ou códigos de 2FA) errados seguidos, a conta fica bloqueada por 15 minutos. A sessão dura 60 minutos e é renovada automaticamente por até 7 dias; trocar ou redefinir a senha encerra as sessões antigas. A empresa demo tem assinatura ativa; contas novas começam com 7 dias de teste.
 
 O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logins, edita a matriz de permissões e vê o status das integrações. Por padrão, o Gerente acessa Dashboard, Projetos, Equipe, Financeiro, Fornecedores, Exportação e IA Empresarial, mas não Configurações; o Funcionário acessa só Dashboard e Projetos. Esse padrão vale até o Admin salvar uma matriz própria em Configurações → Hierarquia de Cargos. A partir daí, a matriz salva prevalece, mesmo que deixe algum cargo sem nenhum módulo.
 
@@ -163,14 +202,12 @@ O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logi
 
 Estão registradas aqui de propósito, para que a avaliação parta do estado real do sistema. Os detalhes e a prioridade de cada uma estão em [docs/BACKLOG.md](docs/BACKLOG.md).
 
-- A IA usa o Gemini sobre os dados reais e, sem chave válida, responde por regras com os mesmos dados. A chave atual do projeto foi bloqueada pelo Google como vazada: gere uma nova no Google AI Studio (IA-1, SEC-5).
-- A conexão automática com bancos depende de contrato e credenciais da Pluggy (`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET`); sem elas, use a importação de extrato OFX/CSV em Bancos (BANK-1).
-- O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
-- MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
-- Anexos de lançamentos e exportações ficam em `storage/` (privado, servido só com login e só para a empresa dona), no disco do servidor: em produção com mais de uma instância, será preciso um armazenamento compartilhado (ex.: Supabase Storage/S3). Não há antivírus nos uploads.
-- Auditoria (Configurações → Auditoria) e direitos do titular (Minha Conta) estão implementados; termo de uso, política de privacidade e política de retenção ainda precisam de revisão jurídica (SEC-2).
-- Os testes automatizados cobrem o backend; o frontend ainda não tem testes.
-- Um commit anterior expôs credenciais reais (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda não foram rotacionados no Supabase e permanecem visíveis no histórico do Git (SEC-5).
+- **Credenciais expostas (SEC-5).** Um commit anterior colou em texto puro neste README a senha do banco Supabase, a `SUPABASE_ANON_KEY` e um `SECRET_KEY`. Foram trocadas por placeholders, mas continuam válidas no histórico do Git, e a chave do Gemini do projeto foi bloqueada pelo Google como vazada. Trocar essas credenciais é pré-requisito do lançamento.
+- **IA.** Sem uma chave válida do Gemini, a IA responde por regras calculadas com os dados reais (IA-1).
+- **Pagamentos e bancos.** Asaas e Pluggy estão implementados e testados com provedores simulados, mas ainda não foram validados nos sandboxes reais por falta de credenciais (PAY-1, BANK-1).
+- **E-mail.** Sem SMTP configurado, os e-mails (inclusive a recuperação de senha) ficam só no log.
+- **Textos legais.** Termos de uso e política de privacidade são minuta para revisão jurídica (SEC-2).
+- **Operação.** O limite por IP e a cota de IA valem por instância (SEC-9); os uploads não passam por antivírus (SEC-8); a hospedagem de produção ainda não foi definida (DEP-1).
 - Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.
 
 ---
@@ -180,14 +217,18 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 ```
 .
 ├── app/                        # Backend FastAPI
-│   ├── api/v1/endpoints/       # Rotas (auth, company, permissions, system, financial, kanban, employees, personal...)
-│   ├── core/                   # Segurança (JWT), configuração e permissões por módulo (permissions.py)
-│   └── db/                     # models.py (32 tabelas), migrations.py, session.py, seed.py, utils.py
+│   ├── api/v1/endpoints/       # Rotas por domínio (auth, account, payments, bank, financial, kanban, ai, jobs...)
+│   ├── core/                   # Segurança, cobrança, permissões, auditoria, e-mail, armazenamento, alertas
+│   ├── integrations/           # ai/ (Gemini), bank/ (OFX/CSV, Pluggy), payments/ (Asaas)
+│   └── db/                     # models.py (40 tabelas), alembic/ (migrações), session.py, seed.py, demo_dates.py
+├── tests/                      # pytest: isolamento, autenticação, cobrança, bancos, IA, contrato da API
 ├── frontend/src/               # Frontend React + Vite
-│   ├── components/             # Layout, PermissionMatrix, IntegrationsStatus, SystemAccessSection, modais
+│   ├── components/             # Layout, painéis de Configurações, 2FA, banner de assinatura, modais
 │   ├── context/                # Toasts e confirmação
-│   ├── hooks/                  # usePermissions
-│   └── pages/                  # Hub Empresarial, Hub Pessoal, Configurações, Onboarding, Login/Cadastro
+│   ├── hooks/  utils/          # usePermissions, defer
+│   ├── pages/                  # Hubs, Bancos, Assinatura/Checkout, Minha Conta, recuperação de senha, termos
+│   └── types.ts  api.ts        # Tipos da API e cliente HTTP (renovação de sessão, bloqueio por assinatura)
+├── .github/workflows/ci.yml    # CI: pytest (SQLite e PostgreSQL), lint, testes e build do frontend
 ├── architecture/               # POPs de IA (CFO Virtual, Conciliação, Orçamentos)
 ├── docs/                       # Requisitos, arquitetura, ADRs, BACKLOG, reuniões, planejamento
 ├── sprints/  entregas/         # Sprints e relatórios de entrega
