@@ -33,7 +33,8 @@ def integrations_report() -> list[dict]:
          else "Disco local do servidor: use S3/Supabase Storage com mais de uma instância."},
         {"key": "scheduler", "label": "Sincronização diária",
          "status": "configured" if _set("CRON_SECRET") else "unconfigured",
-         "detail": "Agendador pode chamar /api/v1/bank/sync-all." if _set("CRON_SECRET") else "Defina CRON_SECRET e agende POST /api/v1/bank/sync-all."},
+         "detail": "Agende POST /api/v1/jobs/daily uma vez por dia (alertas e sincronização bancária)." if _set("CRON_SECRET")
+         else "Defina CRON_SECRET e agende POST /api/v1/jobs/daily: sem isso não há alertas de vencimento nem sincronização diária."},
         {"key": "encryption", "label": "Chave de criptografia",
          "status": "configured" if _set("ENCRYPTION_KEY") else ("partial" if prod else "configured"),
          "detail": "Chave própria para segredos do 2FA." if _set("ENCRYPTION_KEY")
