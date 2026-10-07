@@ -37,7 +37,7 @@
   --color-inverse-on-surface: #2c303b;
   --color-on-secondary: #3c0091;
   --color-on-surface: #dfe2f1;
-  --color-outline: #8c909f;
+  --color-outline: #999dac; /* 4.5:1 (WCAG AA) on cards and raised surfaces */
   --color-glass-bg: rgba(17, 24, 39, 0.7);
   --color-on-tertiary: #502400;
   --color-tertiary-fixed-dim: #ffb786;

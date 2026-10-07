@@ -18,6 +18,11 @@ app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 async def on_startup():
     await init_db()
     await seed_if_empty()
+    if os.getenv("DEMO_REFRESH_DATES") == "1":
+        from app.db.demo_dates import refresh_demo_dates
+        from app.db.session import async_session_maker
+        async with async_session_maker() as db:
+            await refresh_demo_dates(db)
 
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
                    allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition", "X-Subscription", "Retry-After"])
