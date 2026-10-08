@@ -2,7 +2,7 @@
 
 > Backlog oficial do projeto, consolidado a partir dos planos de execução já concluídos ([docs/planejamento/plans/](planejamento/plans/)), dos registros de andamento e revisão de cada fase (arquivos de trabalho locais, não versionados) e do [registro de alterações](registro-de-alteracoes-para-documentacao.md). Cada item foi conferido contra o código em 2026-09-21, com um checkpoint adicional em 2026-09-23 para a integração com Supabase.
 >
-> **Última atualização (2026-10-07, etapa 5 — lançamento):** branch `feature/lancamento`: cobrança recorrente (Asaas), recuperação de senha, 2FA, limite por IP, consentimento, armazenamento S3, exportação XLSX/PDF, sincronização bancária automática, e-mails, lint zerado, testes de frontend e CI. Ver ADR-010, ADR-011 e a [Sprint 03](../sprints/sprint-03.md).
+> **Última atualização (2026-10-07, etapa 5 — lançamento; mergeada na `main` pelo PR #3 em 2026-10-08):** branch `feature/lancamento`: cobrança recorrente (Asaas), recuperação de senha, 2FA, limite por IP, consentimento, armazenamento S3, exportação XLSX/PDF, sincronização bancária automática, e-mails, lint zerado, testes de frontend e CI. Ver ADR-010, ADR-011 e a [Sprint 03](../sprints/sprint-03.md).
 >
 > **Etapas 3 e 4 (2026-09-30):** branches `feature/integracao-bancaria` e `feature/ia-generativa`: importação de extrato OFX/CSV com conciliação automática, conexão com bancos via Pluggy (pronta, aguardando credenciais), regras de categoria, IA real com Gemini sobre os dados da empresa/pessoa e cota mensal por plano. Ver ADR-008 e ADR-009.
 >

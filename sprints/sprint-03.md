@@ -1,7 +1,7 @@
 # Sprint 03 — Produto comercial: segurança, cobrança, bancos e IA real
 
 ## 1. Identificação da sprint
-Período de 23/09/2026 a 07/10/2026. Status: em revisão (branches empilhados, aguardando pull request no repositório institucional).
+Período de 23/09/2026 a 07/10/2026. Status: concluída (mergeada na `main` via pull request #3, em 08/10/2026).
 
 ## 2. Objetivo da sprint
 Levar o TechConnect de protótipo acadêmico a produto que pode cobrar clientes. A sprint teve quatro frentes:
