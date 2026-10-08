@@ -36,7 +36,7 @@ O cliente HTTP (`src/api.ts`) injeta o token de acesso e, diante de um 401, reno
 
 ### 2.2 Backend (API assíncrona)
 
-O backend é FastAPI (Python 3.11+), com Pydantic v2 e SQLAlchemy 2.0 assíncrono. São 172 rotas, divididas por domínio em `app/api/v1/endpoints/`:
+O backend é FastAPI (Python 3.11+), com Pydantic v2 e SQLAlchemy 2.0 assíncrono. São 173 rotas, divididas por domínio em `app/api/v1/endpoints/`:
 
 | Arquivo | Responsabilidade |
 | --- | --- |

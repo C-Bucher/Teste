@@ -11,7 +11,7 @@ Esta pasta reúne o planejamento, o acompanhamento e o encerramento de cada spri
 | [Sprint 00](sprint-00-planejamento.md) | Planejamento, concepção e arquitetura | Inicial | Concluída |
 | [Sprint 01](sprint-01.md) | MVP do frontend, Hub Duplo, backend FastAPI e MySQL real | Agosto / 2026 | Concluída |
 | [Sprint 02](sprint-02.md) | Permissões por cargo, onboarding e consolidação do repositório | Setembro / 2026 | Concluída |
-| [Sprint 03](sprint-03.md) | Produto comercial: segurança, cobrança, bancos e IA real | Setembro–Outubro / 2026 | Em revisão |
+| [Sprint 03](sprint-03.md) | Produto comercial: segurança, cobrança, bancos e IA real | Setembro–Outubro / 2026 | Concluída |
 
 ---
 
