@@ -1,18 +1,7 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { FC, ReactNode } from 'react';
 import ConfirmModal from '../components/ConfirmModal';
-
-interface ConfirmOptions {
-  title: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  isDestructive?: boolean;
-}
-
-type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
-
-const ConfirmContext = createContext<ConfirmFn | undefined>(undefined);
+import { ConfirmContext, type ConfirmFn, type ConfirmOptions } from './ConfirmContext';
 
 export const ConfirmProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
@@ -46,12 +35,4 @@ export const ConfirmProvider: FC<{ children: ReactNode }> = ({ children }) => {
       />
     </ConfirmContext.Provider>
   );
-};
-
-export const useConfirm = () => {
-  const ctx = useContext(ConfirmContext);
-  if (!ctx) {
-    throw new Error('useConfirm must be used within a ConfirmProvider');
-  }
-  return ctx;
 };

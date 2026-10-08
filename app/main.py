@@ -6,6 +6,11 @@ from app.api.v1.api import api_router
 from app.db.session import init_db
 from app.db.seed import seed_if_empty
 from app.core.config import CORS_ORIGINS
+from app.core.audit import client_ip
+from app.core import rate_limit
+import logging
+from sqlalchemy.exc import IntegrityError
+from starlette.responses import JSONResponse as _JSONResponse
 
 app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 
@@ -13,9 +18,36 @@ app = FastAPI(title="TechConnect API v2.0 - Clean Arch", version="2.0.0")
 async def on_startup():
     await init_db()
     await seed_if_empty()
+    if os.getenv("APP_ENV", "development").lower() == "production":
+        from app.core.readiness import production_warnings
+        for warning in production_warnings():
+            logging.getLogger("techconnect").warning("Configuração de produção: %s", warning)
+    if os.getenv("DEMO_REFRESH_DATES") == "1":
+        from app.db.demo_dates import refresh_demo_dates
+        from app.db.session import async_session_maker
+        async with async_session_maker() as db:
+            await refresh_demo_dates(db)
 
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True,
-                   allow_methods=["*"], allow_headers=["*"])
+                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition", "X-Subscription", "Retry-After"])
+
+@app.exception_handler(IntegrityError)
+async def integrity_error(request, exc: IntegrityError):
+    # Endpoints take free-form dicts; a missing required field or duplicate must be a 400, not a 500.
+    logging.getLogger("techconnect").warning("IntegrityError em %s: %s", request.url.path, exc.orig)
+    return _JSONResponse(status_code=400, content={"detail": "Dados inválidos ou incompletos: verifique os campos obrigatórios"})
+
+
+@app.middleware("http")
+async def remember_client_ip(request, call_next):
+    ip = rate_limit.resolve_client_ip(request)
+    client_ip.set(ip)
+    if rate_limit.is_limited(request.url.path, request.method):
+        wait = rate_limit.check(ip)
+        if wait:
+            return _JSONResponse(status_code=429, headers={"Retry-After": str(wait)},
+                                 content={"detail": f"Muitas tentativas. Aguarde {wait} segundos e tente de novo."})
+    return await call_next(request)
 
 app.include_router(api_router, prefix="/api/v1")
 

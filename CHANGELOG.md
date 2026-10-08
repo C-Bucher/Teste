@@ -1,5 +1,49 @@
 # Histórico de mudanças
 
+## 2026-10-07 - Preparação para o lançamento
+
+- Cobrança recorrente pelo Asaas, com o cartão digitado na página do Asaas (o checkout deixou de enviar número e CVV ao servidor), 7 dias de teste, webhook autenticado que ativa, renova e marca atraso, bloqueio com tolerância de 5 dias, cancelamento e página de assinatura com dados reais ([ADR 010](docs/decisoes/adr-010-cobranca-recorrente-e-acesso-por-assinatura.md)).
+- Corrigido: empresas sem assinatura recebiam automaticamente uma assinatura ativa.
+- Conta: recuperação de senha por e-mail, verificação em duas etapas com códigos de recuperação, limite de requisições por IP e aceite versionado dos termos e da política de privacidade ([ADR 011](docs/decisoes/adr-011-conta-2fa-consentimento-armazenamento.md)).
+- E-mails transacionais e de notificação (SMTP) e alertas diários de contas a vencer, recebimentos atrasados e prazos do Kanban.
+- Arquivos em armazenamento S3 compatível (Supabase Storage, S3, R2) e exportação em Excel e PDF.
+- Webhook da Pluggy e job diário de sincronização bancária.
+- Painel de Conexões de API cobrindo todas as integrações, com avisos de produção no log.
+- Datas da demonstração atualizáveis e contraste WCAG AA no texto secundário.
+- Qualidade: ESLint sem erros (eram 59), tipos da API compartilhados, carregamentos fora do corpo dos efeitos, arrastar do Kanban sem mutar o estado, testes de frontend (Vitest), teste de contrato entre frontend e backend e CI no GitHub Actions.
+- Documentação: ERS (RF20 a RF29, RNF09 e RNF10, matriz refeita), DAS reescrito, ADRs 010 e 011, Sprint 03 e registro de alterações.
+- Correção de registro: a entrada de 30/09 citava "toasts ilegíveis", problema que não existia.
+
+## 2026-09-30 - Bancos, conciliação e IA real
+
+- Bancos & Conciliação (Hub Empresarial e Hub Pessoal): importação de extrato OFX/CSV de qualquer banco, sem duplicar ao reimportar; conciliação automática com as contas a pagar e a receber; ações manuais de conciliar, lançar e ignorar; regras de categoria (BANK-1, [ADR 008](docs/decisoes/adr-008-integracao-bancaria-e-conciliacao.md)).
+- Conexão automática com bancos via agregador de Open Finance (Pluggy), pronta no código e ativada quando as credenciais forem configuradas; limite de contas conectadas por plano (LIM-1).
+- IA real: CFO Virtual, CFO Pessoal, sugestão de categorias e gerador de orçamentos usam o Gemini sobre os dados reais. Sem IA disponível, respondem por regras com os mesmos dados. Histórico do chat salvo e cota mensal de perguntas por plano (IA-1, [ADR 009](docs/decisoes/adr-009-ia-generativa-com-dados-reais.md)).
+- Removidos os últimos dados fictícios das telas de IA.
+- Suíte de testes: 99 testes, verdes em SQLite, PostgreSQL e MySQL.
+
+## 2026-09-30 - Planos comerciais e abas completas
+
+- Quatro planos com os preços aprovados: Pessoal Essencial, Pessoal Conectado, Empresarial e Completo (PLAN-1).
+- Financeiro: anexo de comprovante por lançamento, guardado em armazenamento privado (FIN-2).
+- Exportação: relatórios baixados só com login, sem link público, e protegidos contra injeção de fórmula (EXP-2).
+- Configurações: aba Custo de Pessoal (CTC) com recálculo dos colaboradores (CFG-1) e aba Auditoria (SEC-2).
+- Minha Conta: troca de senha, download dos próprios dados e exclusão da conta (LGPD).
+- Gestão de acessos: troca de cargo, promoção a Admin e redefinição de senha pelo Admin (AUTH-2).
+- Kanban: excluir tarefa (KAN-1) e quadro carregado em 3 consultas (DB-4).
+- Hub Pessoal: evolução patrimonial calculada com dados reais.
+- Correções: padrões que gravavam silenciosamente na conta demo (MT-3), fornecedor de outra empresa num lançamento (FIN-3), cadastro incompleto devolvendo 500 (EMP-2), menu piscando, botões de IA sem permissão, onboarding com botão de salvar separado (UX-1).
+- Suíte de testes: 61 testes, verdes em SQLite, PostgreSQL e MySQL.
+
+## 2026-09-30 - Endurecimento de segurança e confiabilidade
+
+- Suíte de testes automatizados (`pytest`, 34 testes) cobrindo o isolamento entre empresas e entre usuários, gates por módulo e por plano, regras de acesso, autenticação, auditoria e migrações. Passa em SQLite, PostgreSQL e MySQL (QA-1).
+- Migrações versionadas com Alembic, com revisão base igual ao schema anterior; bases criadas antes do Alembic são reconhecidas e atualizadas automaticamente (DB-3, [ADR 007](docs/decisoes/adr-007-endurecimento-autenticacao-migracoes-auditoria.md)).
+- Autenticação: sem `SECRET_KEY` padrão conhecida; política de senha (8+ caracteres, letras e números); troca de senha; bloqueio de 15 minutos após 5 senhas erradas; access token de 60 minutos e refresh token de 7 dias, ambos invalidados ao trocar a senha; o frontend renova a sessão sozinho (SEC-4).
+- Trilha de auditoria em `audit_logs`, com `GET /audit/` restrito ao Admin da própria empresa (SEC-2, parte 1).
+- Docker Compose usa o próprio MySQL por padrão (`COMPOSE_DATABASE_URL` para o Supabase) e o SQLite usa caminho absoluto (DB-5, DB-1).
+- Corrigido: o cadastro gravava o registro de auditoria antes da empresa, o que o PostgreSQL e o MySQL recusavam por chave estrangeira.
+
 ## 2026-09-23 - Isolamento, autorização e persistência operacional
 
 - Dados empresariais passaram a ser isolados por `company_id` em modelos, CRUDs, busca, notificações e exportações.

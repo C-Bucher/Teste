@@ -117,23 +117,28 @@ async def get_board(pid: str, u=Depends(get_current_user), db: AsyncSession = De
         select(KanbanColumnModel).where(KanbanColumnModel.project_id == pid).order_by(KanbanColumnModel.order)
     )
     columns = columns_result.scalars().all()
+    column_ids = [col.id for col in columns]
+
+    # Three queries for the whole board instead of one per column and one per card (DB-4).
+    cards = (await db.execute(select(KanbanCardModel).where(KanbanCardModel.column_id.in_(column_ids)))).scalars().all() if column_ids else []
+    card_ids = [card.id for card in cards]
+    comments = (await db.execute(
+        select(CardCommentModel).where(CardCommentModel.card_id.in_(card_ids)).order_by(CardCommentModel.created_at)
+    )).scalars().all() if card_ids else []
+
+    comments_by_card: dict[str, list] = {}
+    for comment in comments:
+        comments_by_card.setdefault(comment.card_id, []).append(model_to_dict(comment))
+    cards_by_column: dict[str, list] = {}
+    for card in cards:
+        card_dict = model_to_dict(card)
+        card_dict["comments"] = comments_by_card.get(card.id, [])
+        cards_by_column.setdefault(card.column_id, []).append(card_dict)
 
     columns_out = []
     for col in columns:
-        cards_result = await db.execute(select(KanbanCardModel).where(KanbanCardModel.column_id == col.id))
-        cards = cards_result.scalars().all()
-
-        cards_out = []
-        for card in cards:
-            comments_result = await db.execute(
-                select(CardCommentModel).where(CardCommentModel.card_id == card.id).order_by(CardCommentModel.created_at)
-            )
-            card_dict = model_to_dict(card)
-            card_dict["comments"] = models_to_dicts(comments_result.scalars().all())
-            cards_out.append(card_dict)
-
         col_dict = model_to_dict(col)
-        col_dict["cards"] = cards_out
+        col_dict["cards"] = cards_by_column.get(col.id, [])
         columns_out.append(col_dict)
 
     return {

@@ -6,6 +6,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, A
 import Layout from '../components/Layout';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
 
 // ---------------------------------------------------------------------------
 // Tab definitions. This exact list is shared with Tasks 13-17, which each
@@ -466,32 +467,24 @@ export default function HubPessoal() {
   };
 
   useEffect(() => {
-    fetchDashboard();
-    fetchEntries();
-    fetchCategories();
-    fetchAccounts();
-    fetchBudgets();
-    fetchGoals();
-    fetchDebts();
-    fetchSubscriptions();
-    fetchSplits();
-    fetchAnalytics();
-    fetchTimeboxes();
-    fetchOkrs();
+    defer(() => Promise.all([
+      fetchDashboard(), fetchEntries(), fetchCategories(), fetchAccounts(), fetchBudgets(), fetchGoals(),
+      fetchDebts(), fetchSubscriptions(), fetchSplits(), fetchAnalytics(), fetchTimeboxes(), fetchOkrs(),
+    ]));
   }, []);
 
   // Re-fetch the dashboard whenever the user comes back to "Visão Geral" so
   // the saldo/receitas/despesas reflect any entries created in "Extrato".
   useEffect(() => {
     if (activeTab === 'visao-geral') {
-      fetchDashboard();
+      defer(fetchDashboard);
     }
     // Same idea for "Analítico" — spend_by_category should reflect entries
     // created/removed elsewhere in the hub.
     if (activeTab === 'analitico') {
-      fetchAnalytics();
+      defer(fetchAnalytics);
     }
-  }, [tab]);
+  }, [activeTab]);
 
   const handleAddNew = () => {
     setEntryForm(EMPTY_ENTRY_FORM);
@@ -1717,7 +1710,7 @@ export default function HubPessoal() {
                         <Tooltip
                           contentStyle={{ backgroundColor: 'rgba(28, 31, 42, 0.9)', borderColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '0.75rem', color: '#dfe2f1', backdropFilter: 'blur(8px)' }}
                           itemStyle={{ color: '#dfe2f1' }}
-                          formatter={(value: any) => [`R$ ${formatCurrency(Number(value))}`, 'Patrimônio']}
+                          formatter={(value) => [`R$ ${formatCurrency(Number(value))}`, 'Patrimônio']}
                         />
                         <Area type="monotone" dataKey="value" stroke="#adc6ff" strokeWidth={3} fillOpacity={1} fill="url(#colorPatrimonio)" />
                       </AreaChart>

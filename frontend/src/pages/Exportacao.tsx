@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
+import { defer } from '../utils/defer';
 
 interface ExportLog {
   id: string;
@@ -32,6 +33,8 @@ const REPORT_TYPES: ReportType[] = [
 
 const FORMATS: { format: string; label: string; icon: string }[] = [
   { format: 'CSV', label: 'CSV', icon: 'description' },
+  { format: 'XLSX', label: 'Excel', icon: 'table_view' },
+  { format: 'PDF', label: 'PDF', icon: 'picture_as_pdf' },
   { format: 'JSON', label: 'JSON', icon: 'data_object' },
 ];
 
@@ -72,7 +75,7 @@ function ExportacaoContent() {
   };
 
   useEffect(() => {
-    fetchLogs();
+    defer(fetchLogs);
   }, []);
 
   const handleRequestExport = async (type: string, format: string) => {
@@ -92,8 +95,15 @@ function ExportacaoContent() {
 
   const handleDownload = async (id: string) => {
     try {
-      const res = await api.get(`/exports/download/${id}`);
-      window.open(res.data.download_url, '_blank');
+      const res = await api.get(`/exports/download/${id}`, { responseType: 'blob' });
+      const disposition: string = res.headers['content-disposition'] || '';
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = match?.[1] || `exportacao_${id}`;
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Erro ao baixar exportação', err);
       toast.error('Erro ao baixar exportação.');

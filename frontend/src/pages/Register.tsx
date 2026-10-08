@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Building, ShieldCheck, ChevronRight, Loader2, ArrowLeft } from 'lucide-react';
-import api from '../api';
+import api, { saveSession } from '../api';
 import { clearPermissionsCache } from '../hooks/usePermissions';
+import { errorMessage, type Plan } from '../types';
 
 export default function Register() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -11,9 +12,11 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [cnpjCpf, setCnpjCpf] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('plan-empresarial');
-  const [plans, setPlans] = useState<any[]>([]);
+  const [searchParams] = useSearchParams();
+  const [selectedPlan, setSelectedPlan] = useState(searchParams.get('plan') || 'plan-empresarial');
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -37,6 +40,10 @@ export default function Register() {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
+    if (!acceptTerms) {
+      setError('É preciso aceitar os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
     setError('');
     setStep(2);
   };
@@ -54,10 +61,11 @@ export default function Register() {
         password,
         company_name: companyName,
         cnpj_cpf: cnpjCpf,
-        selected_plan: selectedPlan
+        selected_plan: selectedPlan,
+        accept_terms: acceptTerms,
       });
 
-      localStorage.setItem('token', response.data.access_token);
+      saveSession(response.data);
       localStorage.setItem('user', JSON.stringify(response.data.user));
 
       try {
@@ -69,8 +77,8 @@ export default function Register() {
 
       // Redirect to payment checkout with selected plan
       navigate(`/checkout?plan=${selectedPlan}&cycle=monthly`);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Erro ao realizar cadastro.');
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao realizar cadastro.'));
     } finally {
       setLoading(false);
     }
@@ -183,7 +191,16 @@ export default function Register() {
                     placeholder="••••••••"
                   />
                 </div>
+                <p className="text-xs text-slate-500 mt-1">Mínimo de 8 caracteres, com letras e números.</p>
               </div>
+
+              <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5" />
+                <span>
+                  Li e aceito os <Link to="/termos" target="_blank" className="text-blue-400 hover:underline">Termos de Uso</Link> e
+                  a <Link to="/privacidade" target="_blank" className="text-blue-400 hover:underline">Política de Privacidade</Link>.
+                </span>
+              </label>
 
               <button
                 type="submit"

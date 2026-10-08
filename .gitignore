@@ -58,3 +58,4 @@ Thumbs.db
 # Docker volumes locais
 mysql_data/
 redis_data/
+storage/

@@ -42,12 +42,17 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 
 ## Funcionalidades
 
-- Dois modos de conta (Pessoal, Empresarial e Completo), com Hub Empresarial e Hub Pessoal alternáveis pelo mesmo usuário, sem precisar logar de novo.
+- Quatro planos (Pessoal Essencial, Pessoal Conectado, Empresarial e Completo), com Hub Empresarial e Hub Pessoal alternáveis pelo mesmo usuário, sem precisar logar de novo.
 - Kanban com arrastar e soltar, gestão de equipe com modais de CRUD, fornecedores, financeiro (DRE, fluxo de caixa, lançamentos) e exportação de relatórios.
 - Hierarquia de cargos configurável: o Admin escolhe em Configurações → Hierarquia de Cargos quais módulos cada cargo acessa, e o bloqueio vale no servidor, não só na tela.
 - Assistente de onboarding de 3 passos (dados da empresa, hierarquia de cargos, conexões de API) no primeiro login do Admin de uma empresa nova.
-- Painel de conexões de API, mostrando se o banco está online e se a chave da IA foi configurada.
+- Painel de conexões de API: banco, IA, pagamentos, e-mail, bancos, armazenamento, agendador e criptografia, com o que falta configurar.
 - Criação de logins de Gerente e Funcionário pelo próprio Admin, em Gestão de Equipe → Acessos ao Sistema.
+- Bancos & Conciliação: importação de extrato OFX/CSV de qualquer banco (sem duplicar), conciliação automática com contas a pagar e a receber, regras de categoria e conexão automática via agregador de Open Finance (Pluggy).
+- IA com dados reais (Gemini): CFO Virtual com histórico, CFO Pessoal, sugestão de categorias e gerador de orçamentos com o custo-hora real da equipe; cota mensal por plano.
+- Assinatura com cobrança recorrente pelo Asaas (Pix, boleto ou cartão na página do Asaas), 7 dias de teste, bloqueio após atraso e cancelamento.
+- Segurança de conta: recuperação de senha por e-mail, verificação em duas etapas (aplicativo autenticador), bloqueio por tentativas e limite por IP.
+- Anexo de comprovantes, exportação em Excel, PDF, CSV e JSON, custo de pessoal (CTC) configurável, trilha de auditoria, alertas diários de vencimento e Minha Conta (senha, 2FA e direitos da LGPD).
 
 ---
 
@@ -56,7 +61,9 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
-| Backend | FastAPI (Python), Pydantic, SQLAlchemy 2.0 assíncrono, Uvicorn — 32 tabelas, seed idempotente e migrações aditivas de compatibilidade |
+| Backend | FastAPI (Python 3.11+), Pydantic, SQLAlchemy 2.0 assíncrono, Alembic, Uvicorn — 40 tabelas, seed idempotente |
+| Integrações | Google Gemini (IA), Asaas (cobrança), Pluggy (Open Finance), SMTP (e-mail), S3 compatível (arquivos) |
+| Qualidade | pytest, Vitest + Testing Library, ESLint, GitHub Actions |
 | Banco de dados | PostgreSQL gerenciado (Supabase, via Connection Pooler), MySQL 8.0 (Docker) ou SQLite (fallback local) |
 | Infraestrutura | Docker e Docker Compose; segredos e credenciais via `.env`, que fica fora do Git |
 | Redis 7 | provisionado no Compose, mas ainda não utilizado pela aplicação (reservado para cache/filas) |
@@ -92,7 +99,7 @@ venv\Scripts\activate          # Windows  |  Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
-Na primeira inicialização com o Supabase, o backend cria automaticamente as 32 tabelas relacionais e executa a carga de dados inicial (seed idempotente). Bases anteriores recebem as colunas aditivas de compatibilidade durante o startup.
+Na inicialização, o backend aplica as migrações versionadas do Alembic (`alembic upgrade head`) e executa a carga de dados inicial (seed idempotente) se o banco estiver vazio. Uma base criada antes do Alembic é reconhecida automaticamente: recebe as colunas de compatibilidade, é marcada na revisão base e então atualizada. Para criar uma nova migração depois de alterar `app/db/models.py`, rode `alembic revision --autogenerate -m "descricao"`.
 
 Frontend (React + Vite), em outro terminal:
 
@@ -106,7 +113,7 @@ Frontend em `http://localhost:5173`, API em `http://localhost:8000`.
 
 ### Opção 2 — Docker Compose (MySQL)
 
-O `.env.example` vem com a `DATABASE_URL` do Supabase ativa por padrão. Para usar o MySQL do Compose é preciso comentar essa linha e descomentar a do MySQL (`mysql+aiomysql://techuser:...@db:3306/techconnect`) no `.env` antes de subir os containers. Do contrário, o backend, mesmo rodando em Docker, tenta conectar no Supabase em vez do MySQL local que o próprio Compose acabou de subir — esse comportamento está registrado como item DB-5 no [BACKLOG](docs/BACKLOG.md).
+Dentro do Compose, o backend usa automaticamente o MySQL do próprio Compose, montado a partir de `MYSQL_USER`, `MYSQL_PASSWORD` e `MYSQL_DATABASE`, independentemente da `DATABASE_URL` do `.env`, que continua valendo para a execução manual. Para apontar o backend em Docker para o Supabase, defina `COMPOSE_DATABASE_URL` no `.env`.
 
 ```bash
 docker-compose up -d
@@ -127,7 +134,51 @@ Para parar: `docker-compose down`.
 
 ### Opção 3 — Execução manual com SQLite
 
-Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o backend cai automaticamente no SQLite local (`techconnect.db`). Só copiar o `.env.example` sem editar não ativa esse fallback, porque ele já vem com a `DATABASE_URL` do Supabase preenchida.
+Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o backend cai automaticamente no SQLite local (`techconnect.db`, sempre na raiz do projeto, independentemente da pasta de onde o `uvicorn` foi iniciado). Só copiar o `.env.example` sem editar não ativa esse fallback, porque ele já vem com a `DATABASE_URL` do Supabase preenchida.
+
+### Testes automatizados
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+A suíte do backend sobe a API em memória sobre um SQLite temporário. Ela cobre:
+- isolamento entre empresas e entre usuários, gates por módulo, plano e assinatura;
+- autenticação, 2FA, recuperação de senha, cobrança e webhooks;
+- bancos, IA (com modelo simulado), exportações e migrações;
+- um teste de contrato que falha se o frontend chamar uma rota inexistente.
+
+Nenhuma chamada sai para serviços pagos, mesmo com chaves no `.env`. Para rodar contra um banco real, aponte `TEST_DATABASE_URL` para um banco **descartável** (por exemplo, um PostgreSQL local em Docker com `DATABASE_SSL=disable`): a suíte grava dados nele.
+
+Frontend:
+
+```bash
+cd frontend
+npm run lint && npm test && npm run build
+```
+
+O CI (`.github/workflows/ci.yml`) roda tudo isso a cada pull request, com o backend em SQLite e em PostgreSQL.
+
+### Integrações e rotinas
+
+Cada serviço externo funciona sem credenciais em desenvolvimento:
+- IA responde por regras;
+- pagamento é simulado;
+- e-mail vai para o log;
+- bancos funcionam por importação de extrato;
+- arquivos ficam em disco local.
+
+Para produção, preencha as seções do `.env.example` e confira em Configurações → Conexões de API:
+
+| Serviço | Onde configurar |
+| --- | --- |
+| Asaas | Crie o webhook para `<API>/api/v1/payments/webhook/asaas` com o token de `ASAAS_WEBHOOK_TOKEN` |
+| Pluggy | Webhook para `<API>/api/v1/bank/webhook/pluggy`, com o cabeçalho `X-Webhook-Secret` |
+| Agendador | Uma vez por dia, `POST <API>/api/v1/jobs/daily` com `X-Cron-Secret`: alertas de vencimento e sincronização bancária |
+| Arquivos | `STORAGE_BACKEND=s3` com Supabase Storage, S3 ou R2 |
+
+Para trazer as datas da demonstração para hoje, rode `python -m app.db.demo_dates`.
 
 ---
 
@@ -141,6 +192,8 @@ Comente ou remova toda linha `DATABASE_URL=` do `.env`. Sem essa variável, o ba
 
 ### Permissões por papel
 
+As senhas precisam ter pelo menos 8 caracteres, com letras e números. Depois de 5 senhas (ou códigos de 2FA) errados seguidos, a conta fica bloqueada por 15 minutos. A sessão dura 60 minutos e é renovada automaticamente por até 7 dias; trocar ou redefinir a senha encerra as sessões antigas. A empresa demo tem assinatura ativa; contas novas começam com 7 dias de teste.
+
 O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logins, edita a matriz de permissões e vê o status das integrações. Por padrão, o Gerente acessa Dashboard, Projetos, Equipe, Financeiro, Fornecedores, Exportação e IA Empresarial, mas não Configurações; o Funcionário acessa só Dashboard e Projetos. Esse padrão vale até o Admin salvar uma matriz própria em Configurações → Hierarquia de Cargos. A partir daí, a matriz salva prevalece, mesmo que deixe algum cargo sem nenhum módulo.
 
 ---
@@ -149,14 +202,12 @@ O Admin tem acesso total e fixo a todos os módulos, e é o único que cria logi
 
 Estão registradas aqui de propósito, para que a avaliação parta do estado real do sistema. Os detalhes e a prioridade de cada uma estão em [docs/BACKLOG.md](docs/BACKLOG.md).
 
-- Migrações ainda não são versionadas com Alembic: há uma rotina aditiva e idempotente para compatibilidade com bases anteriores, mas mudanças destrutivas de schema continuam exigindo planejamento manual (DB-3).
-- A IA generativa ainda não está integrada: CFO, conciliação e propostas continuam demonstrativos baseados em regras; a API identifica corretamente o modelo como `rule-based-demo` e não declara consumo fictício de tokens (IA-1).
-- O checkout não processa pagamento real: assinaturas e faturas são persistidas no banco, mas cartão e Pix continuam sendo uma simulação sem gateway externo.
-- MFA ainda não foi implementado, apesar do campo existente no usuário (AUTH-1).
-- Uploads permanecem locais no volume `uploads`; não há storage externo nem antivírus.
-- Sem auditoria de alterações e sem suíte de testes automatizados (o `test_api.py` é um script manual de fumaça).
-- A troca de banco não é automática (DB-5): o `.env.example` ativa o Supabase (PostgreSQL) por padrão; usar o MySQL do Docker Compose ou o fallback SQLite exige editar manualmente a linha `DATABASE_URL` no `.env` antes de subir o sistema.
-- Um commit anterior expôs credenciais reais (senha do banco Supabase, `SUPABASE_ANON_KEY` e um `SECRET_KEY`) em texto puro neste README; os valores foram substituídos por placeholders num commit seguinte, mas ainda não foram rotacionados no Supabase e permanecem visíveis no histórico do Git (SEC-5).
+- **Credenciais expostas (SEC-5).** Um commit anterior colou em texto puro neste README a senha do banco Supabase, a `SUPABASE_ANON_KEY` e um `SECRET_KEY`. Foram trocadas por placeholders, mas continuam válidas no histórico do Git, e a chave do Gemini do projeto foi bloqueada pelo Google como vazada. Trocar essas credenciais é pré-requisito do lançamento.
+- **IA.** Sem uma chave válida do Gemini, a IA responde por regras calculadas com os dados reais (IA-1).
+- **Pagamentos e bancos.** Asaas e Pluggy estão implementados e testados com provedores simulados, mas ainda não foram validados nos sandboxes reais por falta de credenciais (PAY-1, BANK-1).
+- **E-mail.** Sem SMTP configurado, os e-mails (inclusive a recuperação de senha) ficam só no log.
+- **Textos legais.** Termos de uso e política de privacidade são minuta para revisão jurídica (SEC-2).
+- **Operação.** O limite por IP e a cota de IA valem por instância (SEC-9); os uploads não passam por antivírus (SEC-8); a hospedagem de produção ainda não foi definida (DEP-1).
 - Verificação do frontend: use `npm run build` (ou `npx tsc -p tsconfig.app.json --noEmit`); `npx tsc --noEmit` sozinho não checa nada neste projeto.
 
 ---
@@ -166,14 +217,18 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 ```
 .
 ├── app/                        # Backend FastAPI
-│   ├── api/v1/endpoints/       # Rotas (auth, company, permissions, system, financial, kanban, employees, personal...)
-│   ├── core/                   # Segurança (JWT), configuração e permissões por módulo (permissions.py)
-│   └── db/                     # models.py (32 tabelas), migrations.py, session.py, seed.py, utils.py
+│   ├── api/v1/endpoints/       # Rotas por domínio (auth, account, payments, bank, financial, kanban, ai, jobs...)
+│   ├── core/                   # Segurança, cobrança, permissões, auditoria, e-mail, armazenamento, alertas
+│   ├── integrations/           # ai/ (Gemini), bank/ (OFX/CSV, Pluggy), payments/ (Asaas)
+│   └── db/                     # models.py (40 tabelas), alembic/ (migrações), session.py, seed.py, demo_dates.py
+├── tests/                      # pytest: isolamento, autenticação, cobrança, bancos, IA, contrato da API
 ├── frontend/src/               # Frontend React + Vite
-│   ├── components/             # Layout, PermissionMatrix, IntegrationsStatus, SystemAccessSection, modais
+│   ├── components/             # Layout, painéis de Configurações, 2FA, banner de assinatura, modais
 │   ├── context/                # Toasts e confirmação
-│   ├── hooks/                  # usePermissions
-│   └── pages/                  # Hub Empresarial, Hub Pessoal, Configurações, Onboarding, Login/Cadastro
+│   ├── hooks/  utils/          # usePermissions, defer
+│   ├── pages/                  # Hubs, Bancos, Assinatura/Checkout, Minha Conta, recuperação de senha, termos
+│   └── types.ts  api.ts        # Tipos da API e cliente HTTP (renovação de sessão, bloqueio por assinatura)
+├── .github/workflows/ci.yml    # CI: pytest (SQLite e PostgreSQL), lint, testes e build do frontend
 ├── architecture/               # POPs de IA (CFO Virtual, Conciliação, Orçamentos)
 ├── docs/                       # Requisitos, arquitetura, ADRs, BACKLOG, reuniões, planejamento
 ├── sprints/  entregas/         # Sprints e relatórios de entrega

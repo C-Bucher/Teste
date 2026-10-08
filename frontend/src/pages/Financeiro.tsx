@@ -6,6 +6,8 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
+import { defer } from '../utils/defer';
+import { errorMessage } from '../types';
 
 type Tab = 'lancamentos' | 'dre' | 'fluxo-caixa';
 
@@ -20,6 +22,7 @@ interface FinancialEntry {
   category?: string;
   supplier_id?: string;
   cost_center?: string;
+  attachment_name?: string | null;
 }
 
 interface DreCategory {
@@ -111,6 +114,7 @@ function FinanceiroContent() {
   const [entryForm, setEntryForm] = useState(EMPTY_ENTRY_FORM);
   const [saving, setSaving] = useState(false);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
 
   // DRE
   const [dre, setDre] = useState<DreData | null>(null);
@@ -146,10 +150,6 @@ function FinanceiroContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType, filterStatus, search, page]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filterType, filterStatus, search]);
-
   const fetchDre = async () => {
     setDreLoading(true);
     try {
@@ -175,8 +175,7 @@ function FinanceiroContent() {
   };
 
   useEffect(() => {
-    fetchDre();
-    fetchCashflow();
+    defer(() => Promise.all([fetchDre(), fetchCashflow()]));
   }, []);
 
   // Re-fetch DRE / Fluxo de Caixa whenever those tabs become active, so
@@ -184,12 +183,11 @@ function FinanceiroContent() {
   // are reflected without requiring a full page reload.
   useEffect(() => {
     if (activeTab === 'dre') {
-      fetchDre();
+      defer(fetchDre);
     }
     if (activeTab === 'fluxo-caixa') {
-      fetchCashflow();
+      defer(fetchCashflow);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const handleAddNew = () => {
@@ -235,6 +233,41 @@ function FinanceiroContent() {
       toast.error('Erro ao marcar lançamento como pago.');
     } finally {
       setPayingId(null);
+    }
+  };
+
+  const handleUploadAttachment = async (id: string, file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10 MB.');
+      return;
+    }
+    setUploadingId(id);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.post(`/financial/entries/${id}/attachment`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setEntries((prev) => prev.map((en) => (en.id === id ? res.data : en)));
+      toast.success('Comprovante anexado.');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao anexar comprovante.'));
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  const handleDownloadAttachment = async (en: FinancialEntry) => {
+    try {
+      // Authenticated download: the file is never exposed on a public URL.
+      const res = await api.get(`/financial/entries/${en.id}/attachment`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = en.attachment_name || 'comprovante';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Não foi possível baixar o comprovante.');
     }
   };
 
@@ -284,7 +317,7 @@ function FinanceiroContent() {
           <div className="flex flex-wrap items-center gap-md mb-lg">
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
               className="bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface text-label-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="">Todos os Tipos</option>
@@ -293,7 +326,7 @@ function FinanceiroContent() {
             </select>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface text-label-md focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             >
               <option value="">Todos os Status</option>
@@ -304,7 +337,7 @@ function FinanceiroContent() {
               <span className="material-symbols-outlined text-outline text-[18px]">search</span>
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Buscar por descrição, categoria..."
                 className="bg-transparent border-none focus:ring-0 text-body-sm w-full text-on-surface focus:outline-none px-sm"
               />
@@ -372,7 +405,28 @@ function FinanceiroContent() {
                     <td className={`px-lg py-md text-right font-bold ${en.type === 'RECEITA' ? 'text-success' : 'text-error'}`}>
                       {en.type === 'RECEITA' ? '+' : '-'} R$ {formatCurrency(en.amount)}
                     </td>
-                    <td className="px-lg py-md text-right">
+                    <td className="px-lg py-md text-right whitespace-nowrap">
+                      {en.attachment_name ? (
+                        <button
+                          onClick={() => handleDownloadAttachment(en)}
+                          title={`Baixar ${en.attachment_name}`}
+                          className="inline-flex items-center justify-center w-8 h-8 mr-xs rounded-lg text-primary hover:bg-primary/10 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                        </button>
+                      ) : null}
+                      <label
+                        title={en.attachment_name ? 'Substituir comprovante' : 'Anexar comprovante (PDF, imagem ou XML, até 10 MB)'}
+                        className={`inline-flex items-center justify-center w-8 h-8 mr-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all ${uploadingId === en.id ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{uploadingId === en.id ? 'hourglass_top' : 'upload_file'}</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp,.xml"
+                          className="hidden"
+                          onChange={(e) => { handleUploadAttachment(en.id, e.target.files?.[0]); e.target.value = ''; }}
+                        />
+                      </label>
                       {en.status === 'PENDENTE' && (
                         <button
                           onClick={() => handleMarkAsPaid(en.id)}

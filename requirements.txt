@@ -12,3 +12,9 @@ aiosqlite
 aiomysql
 cryptography
 asyncpg
+alembic
+pyotp
+qrcode
+boto3
+openpyxl
+reportlab

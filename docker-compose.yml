@@ -43,7 +43,8 @@ services:
       - .env
     environment:
       - MYSQL_HOST=db
-      - DATABASE_URL=${DATABASE_URL}
+      # MySQL do próprio Compose por padrão; para usar o Supabase no Docker, defina COMPOSE_DATABASE_URL no .env (DB-5)
+      - DATABASE_URL=${COMPOSE_DATABASE_URL:-mysql+aiomysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}}
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=HS256
       - REDIS_URL=redis://redis:6379/0

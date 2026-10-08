@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
 
 interface SystemUser {
   id: string;
@@ -10,6 +12,7 @@ interface SystemUser {
   email: string;
   role: string;
   is_active: boolean;
+  mfa_enabled?: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -20,13 +23,18 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function SystemAccessSection() {
   const toast = useToast();
+  const confirm = useConfirm();
+  let me: { id?: string } = {};
+  try { me = JSON.parse(localStorage.getItem('user') || '{}'); } catch { /* sessão inválida */ }
+  const [resetUser, setResetUser] = useState<SystemUser | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'FUNCIONARIO' });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get('/auth/users');
@@ -37,7 +45,7 @@ export default function SystemAccessSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   const handleToggleActive = async (user: SystemUser) => {
     try {
@@ -49,7 +57,56 @@ export default function SystemAccessSection() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const handleChangeRole = async (user: SystemUser, role: string) => {
+    if (role === user.role) return;
+    if (role === 'ADMIN') {
+      const ok = await confirm({
+        title: 'Promover a administrador',
+        message: `${user.full_name} terá acesso total, inclusive para criar acessos e alterar permissões.`,
+        confirmLabel: 'Promover',
+      });
+      if (!ok) return;
+    }
+    try {
+      await api.put(`/auth/users/${user.id}`, { role });
+      toast.success('Cargo atualizado.');
+      await fetchUsers();
+    } catch (err: unknown) {
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao alterar o cargo.' : 'Erro ao alterar o cargo.');
+    }
+  };
+
+  const handleDisableMfa = async (user: SystemUser) => {
+    const ok = await confirm({
+      title: 'Desativar verificação em duas etapas',
+      message: `Use só se ${user.full_name} perdeu o celular e os códigos de recuperação. A pessoa poderá ativar de novo em Minha Conta.`,
+      confirmLabel: 'Desativar',
+      isDestructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.post(`/auth/users/${user.id}/mfa/disable`);
+      toast.success('Verificação em duas etapas desativada.');
+      await fetchUsers();
+    } catch (err: unknown) {
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao desativar.' : 'Erro ao desativar.');
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetUser) return;
+    try {
+      await api.post(`/auth/users/${resetUser.id}/reset-password`, { new_password: resetPassword });
+      toast.success(`Senha de ${resetUser.full_name} redefinida. Informe a nova senha a essa pessoa.`);
+      setResetUser(null);
+      setResetPassword('');
+    } catch (err: unknown) {
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.detail || 'Erro ao redefinir a senha.' : 'Erro ao redefinir a senha.');
+    }
+  };
+
+  useEffect(() => { defer(fetchUsers); }, [fetchUsers]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,13 +163,35 @@ export default function SystemAccessSection() {
                   <td className="px-lg py-md text-label-md text-on-surface">{u.full_name}</td>
                   <td className="px-lg py-md text-label-md text-on-surface-variant">{u.email}</td>
                   <td className="px-lg py-md">
-                    <span className="px-sm py-0.5 rounded-full text-[11px] font-bold bg-surface-container-highest text-on-surface-variant uppercase tracking-wider">
-                      {ROLE_LABELS[u.role] || u.role}
-                    </span>
+                    {u.id === me.id ? (
+                      <span className="px-sm py-0.5 rounded-full text-[11px] font-bold bg-surface-container-highest text-on-surface-variant uppercase tracking-wider">
+                        {ROLE_LABELS[u.role] || u.role}
+                      </span>
+                    ) : (
+                      <select
+                        value={u.role}
+                        onChange={(e) => handleChangeRole(u, e.target.value)}
+                        className="bg-surface-container border border-border-subtle rounded-lg px-2 py-1 text-label-md text-on-surface outline-none focus:border-primary"
+                      >
+                        {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="px-lg py-md text-label-md text-on-surface-variant">{u.is_active ? 'Ativo' : 'Inativo'}</td>
-                  <td className="px-lg py-md text-right">
-                    {u.role !== 'ADMIN' && (
+                  <td className="px-lg py-md text-right whitespace-nowrap">
+                    {u.id !== me.id && u.mfa_enabled && (
+                      <button onClick={() => handleDisableMfa(u)} className="text-on-surface-variant hover:text-primary hover:underline text-label-md mr-md">
+                        Desativar 2FA
+                      </button>
+                    )}
+                    {u.id !== me.id && (
+                      <button onClick={() => { setResetUser(u); setResetPassword(''); }} className="text-on-surface-variant hover:text-primary hover:underline text-label-md mr-md">
+                        Redefinir senha
+                      </button>
+                    )}
+                    {u.id !== me.id && (
                       <button onClick={() => handleToggleActive(u)} className="text-primary hover:underline text-label-md">
                         {u.is_active ? 'Desativar' : 'Reativar'}
                       </button>
@@ -124,6 +203,31 @@ export default function SystemAccessSection() {
           </table>
         </div>
       )}
+
+      <AnimatePresence>
+        {resetUser && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setResetUser(null)} />
+            <motion.form onSubmit={handleResetPassword}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="relative glass-card rounded-2xl p-lg w-full max-w-md mx-4 space-y-md">
+              <h3 className="font-headline-sm text-headline-sm text-on-surface">Redefinir senha</h3>
+              <p className="text-on-surface-variant text-body-sm">
+                Defina uma senha temporária para {resetUser.full_name}. As sessões abertas dessa pessoa serão encerradas.
+              </p>
+              <input required type="password" autoComplete="new-password" value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)} placeholder="Nova senha"
+                className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+              <p className="text-[12px] text-on-surface-variant">Mínimo de 8 caracteres, com letras e números.</p>
+              <div className="flex justify-end gap-sm">
+                <button type="button" onClick={() => setResetUser(null)} className="px-lg py-2 rounded-xl text-on-surface-variant hover:bg-surface-container-high">Cancelar</button>
+                <button type="submit" className="px-lg py-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-on-primary font-label-md">Redefinir</button>
+              </div>
+            </motion.form>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isModalOpen && (
@@ -158,6 +262,7 @@ export default function SystemAccessSection() {
                   <label className="block text-label-md text-on-surface-variant mb-1">Senha</label>
                   <input required type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
                     className="w-full bg-surface-container border border-border-subtle rounded-lg px-4 py-2 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                  <p className="text-[12px] text-on-surface-variant mt-1">Mínimo de 8 caracteres, com letras e números.</p>
                 </div>
                 <div>
                   <label className="block text-label-md text-on-surface-variant mb-1">Cargo</label>

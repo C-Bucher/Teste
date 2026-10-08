@@ -116,10 +116,10 @@ export default function Onboarding() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <h2 className="font-headline-sm text-headline-sm text-on-surface mb-lg">Hierarquia de Cargos</h2>
               <p className="text-on-surface-variant text-body-sm mb-lg">Defina o que Gerentes e Funcionários vão poder ver quando você adicioná-los depois. Você pode ajustar isso a qualquer momento em Configurações.</p>
-              <PermissionMatrix />
+              <PermissionMatrix saveLabel="Salvar e continuar" onSaved={() => setStep(3)} />
               <div className="flex justify-between pt-lg mt-lg border-t border-border-subtle">
                 <button onClick={() => setStep(1)} className="px-6 py-2 rounded-lg font-label-md text-on-surface hover:bg-surface-container-highest transition-colors">Voltar</button>
-                <button onClick={() => setStep(3)} className="px-6 py-2 rounded-lg font-label-md bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">Próximo</button>
+                <button onClick={() => setStep(3)} className="px-6 py-2 rounded-lg font-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors">Pular (usar padrões)</button>
               </div>
             </motion.div>
           )}

@@ -14,23 +14,30 @@ import HubPessoal from './pages/HubPessoal';
 import Exportacao from './pages/Exportacao';
 import IAEmpresarial from './pages/IAEmpresarial';
 import Onboarding from './pages/Onboarding';
+import MinhaConta from './pages/MinhaConta';
+import Bancos from './pages/Bancos';
+import { EsqueciSenha, RedefinirSenha } from './pages/RecuperarSenha';
+import { AceiteTermos, Privacidade, Termos } from './pages/Legal';
+import { TERMS_VERSION } from './legal';
 import { usePermissions } from './hooks/usePermissions';
+import { clearSession } from './api';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('token');
   const location = useLocation();
   if (!token) return <Navigate to="/" />;
 
-  let user: { role?: string } = {};
-  let company: { onboarding_completed?: boolean } = {};
+  let user: { role?: string; terms_version?: string | null };
+  let company: { onboarding_completed?: boolean };
   try {
     user = JSON.parse(localStorage.getItem('user') || '{}');
     company = JSON.parse(localStorage.getItem('company') || '{}');
   } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('company');
+    clearSession();
     return <Navigate to="/" replace />;
+  }
+  if (user.terms_version !== TERMS_VERSION && location.pathname !== '/aceite-termos') {
+    return <Navigate to="/aceite-termos" replace />;
   }
   if (user.role === 'ADMIN' && company.onboarding_completed === false && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" />;
@@ -58,6 +65,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/cadastro" element={<Register />} />
+        <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+        <Route path="/termos" element={<Termos />} />
+        <Route path="/privacidade" element={<Privacidade />} />
+        <Route path="/aceite-termos" element={<PrivateRoute><AceiteTermos /></PrivateRoute>} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/planos" element={<Plans />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/dashboard" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="dashboard"><Dashboard /></ModuleRoute></ScopeRoute></PrivateRoute>} />
@@ -70,8 +82,11 @@ function App() {
         <Route path="/exportacao" element={<PrivateRoute><Exportacao /></PrivateRoute>} />
         <Route path="/ia" element={<PrivateRoute><IAEmpresarial /></PrivateRoute>} />
         <Route path="/pessoal" element={<Navigate to="/pessoal/visao-geral" />} />
+        <Route path="/bancos" element={<PrivateRoute><ScopeRoute scope="empresarial"><ModuleRoute module="financeiro"><Bancos scope="empresa" /></ModuleRoute></ScopeRoute></PrivateRoute>} />
+        <Route path="/pessoal/bancos" element={<PrivateRoute><ScopeRoute scope="pessoal"><Bancos scope="pessoal" /></ScopeRoute></PrivateRoute>} />
         <Route path="/pessoal/:tab" element={<PrivateRoute><ScopeRoute scope="pessoal"><HubPessoal /></ScopeRoute></PrivateRoute>} />
         <Route path="/assinatura" element={<PrivateRoute><Subscription /></PrivateRoute>} />
+        <Route path="/minha-conta" element={<PrivateRoute><MinhaConta /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Zap, ArrowRight, Building2, HelpCircle } from 'lucide-react';
 import api from '../api';
+import type { Plan } from '../types';
 
 export default function Plans() {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [yearly, setYearly] = useState(true);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -65,7 +66,7 @@ export default function Plans() {
             <div className="flex items-center gap-1.5">
               <span className={`text-sm font-medium ${yearly ? 'text-white' : 'text-slate-400'}`}>Anual</span>
               <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs px-2 py-0.5 rounded-full font-bold">
-                20% de Desconto
+                Economize até 20%
               </span>
             </div>
           </div>
@@ -78,7 +79,7 @@ export default function Plans() {
           </div>
         ) : (
           /* Cards Grid */
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-16">
             {plans.map((plan) => {
               const price = yearly ? plan.price_yearly : plan.price_monthly;
               return (

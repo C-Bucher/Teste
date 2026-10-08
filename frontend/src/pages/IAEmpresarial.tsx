@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import api from '../api';
 import { motion } from 'framer-motion';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import axios from 'axios';
 import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
@@ -9,7 +10,7 @@ import { useToast } from '../context/ToastContext';
 // ---------------------------------------------------------------------------
 // M8-IA — three independent AI-consultant tools sharing one page: CFO Virtual
 // (business-scoped analogue of HubPessoal.tsx's "CFO Pessoal IA" tab),
-// Conciliação Bancária (mocked file-upload → per-line AI categorization) and
+// Conciliação Bancária (AI category suggestions for real bank transactions) and
 // Gerador de Orçamentos (briefing → cost/price/margin estimate).
 // ---------------------------------------------------------------------------
 const TABS = [
@@ -28,11 +29,8 @@ interface CfoInsight {
   urgency: string;
 }
 
-// The mock backend doesn't parse files — selecting any file simulates these
-// three fixed transaction descriptions being read off a statement.
-const SIMULATED_TRANSACTIONS = ['Uber - transporte', 'Amazon AWS', 'Assinatura Spotify'];
-
 interface ConciliationRow {
+  id: string;
   description: string;
   suggested_category: string;
   confidence: number;
@@ -43,7 +41,14 @@ interface ProposalResult {
   estimated_internal_cost: number;
   suggested_price: number;
   margin_percentage: number;
+  estimated_hours: number;
+  hourly_cost: number;
+  breakdown: { nome: string; horas: number }[];
+  assumptions: string[];
 }
+
+const errorDetail = (err: unknown, fallback: string) =>
+  axios.isAxiosError(err) ? err.response?.data?.detail || fallback : fallback;
 
 const formatCurrency = (value: number | undefined | null) =>
   (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -68,11 +73,12 @@ function IAEmpresarialContent() {
   // CFO Virtual
   const [cfoInsights, setCfoInsights] = useState<CfoInsight[] | null>(null);
   const [cfoLoading, setCfoLoading] = useState(false);
+  const [cfoNote, setCfoNote] = useState('');
 
   // Conciliação Bancária
   const [conciliationRows, setConciliationRows] = useState<ConciliationRow[]>([]);
   const [conciliationLoading, setConciliationLoading] = useState(false);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [analyzed, setAnalyzed] = useState(false);
 
   // Gerador de Orçamentos
   const [briefing, setBriefing] = useState('');
@@ -85,6 +91,7 @@ function IAEmpresarialContent() {
     try {
       const res = await api.post('/ai/consultant/cfo', {});
       setCfoInsights(res.data.insights || []);
+      setCfoNote(res.data.note || '');
     } catch (err) {
       console.error('Erro ao gerar análise do CFO Virtual', err);
       toast.error('Erro ao gerar análise.');
@@ -93,38 +100,39 @@ function IAEmpresarialContent() {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
+  const handleAnalyzeTransactions = async () => {
     setConciliationLoading(true);
-    setConciliationRows([]);
     try {
-      const results = await Promise.all(
-        SIMULATED_TRANSACTIONS.map(async (description) => {
-          const res = await api.post('/ai/consultant/conciliation', { description });
-          const result = res.data.results?.[0];
-          return {
-            description: result?.description ?? description,
-            suggested_category: result?.suggested_category ?? '-',
-            confidence: result?.confidence ?? 0,
-            status: result?.status ?? 'PENDENTE',
-          } as ConciliationRow;
-        })
+      const res = await api.post('/ai/consultant/conciliation', {});
+      setConciliationRows(
+        (res.data.results || []).map((r: ConciliationRow & { suggested_category: string | null }) => ({
+          id: r.id,
+          description: r.description,
+          suggested_category: r.suggested_category ?? '-',
+          confidence: r.confidence ?? 0,
+          status: r.suggested_category ? 'PENDENTE' : 'SEM_SUGESTAO',
+        }))
       );
-      setConciliationRows(results);
+      setAnalyzed(true);
     } catch (err) {
-      console.error('Erro ao conciliar transações', err);
-      toast.error('Erro ao processar arquivo de conciliação.');
+      toast.error(errorDetail(err, 'Erro ao analisar as movimentações.'));
     } finally {
       setConciliationLoading(false);
-      // Reset the input value so selecting the same file again re-triggers onChange.
-      e.target.value = '';
     }
   };
 
-  const handleRowDecision = (index: number, decision: 'APROVADO' | 'REJEITADO') => {
-    setConciliationRows((prev) => prev.map((row, i) => (i === index ? { ...row, status: decision } : row)));
+  const handleRowDecision = async (index: number, decision: 'APROVADO' | 'REJEITADO') => {
+    const row = conciliationRows[index];
+    if (decision === 'APROVADO') {
+      try {
+        // Applies the category and remembers it as a rule for the next imports.
+        await api.post(`/bank/transactions/${row.id}/category`, { category: row.suggested_category, create_rule: true });
+      } catch (err) {
+        toast.error(errorDetail(err, 'Erro ao aplicar a categoria.'));
+        return;
+      }
+    }
+    setConciliationRows((prev) => prev.map((r, i) => (i === index ? { ...r, status: decision } : r)));
   };
 
   const handleGenerateProposal = async (e: React.FormEvent) => {
@@ -137,8 +145,7 @@ function IAEmpresarialContent() {
       });
       setProposal(res.data);
     } catch (err) {
-      console.error('Erro ao gerar orçamento', err);
-      toast.error('Erro ao gerar orçamento.');
+      toast.error(errorDetail(err, 'Erro ao gerar orçamento.'));
     } finally {
       setProposalLoading(false);
     }
@@ -235,6 +242,10 @@ function IAEmpresarialContent() {
                   </div>
                 )}
 
+                {!cfoLoading && cfoNote && (
+                  <p className="text-body-sm text-warning">{cfoNote}</p>
+                )}
+
                 {!cfoLoading && cfoInsights && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
                     {cfoInsights.map((insight, i) => {
@@ -305,37 +316,26 @@ function IAEmpresarialContent() {
                         <span className="font-headline-sm text-headline-sm text-primary">Conciliação Bancária</span>
                       </div>
                       <p className="text-body-sm text-on-surface-variant max-w-[36rem]">
-                        Envie um extrato (CSV/OFX) e deixe a IA sugerir a categoria de cada transação com um nível de
-                        confiança — aprove ou rejeite cada sugestão.
+                        A IA sugere a categoria das movimentações bancárias que ainda estão sem categoria. Ao aprovar, a
+                        categoria é aplicada e vira regra para as próximas importações. Importe extratos em{' '}
+                        <Link to="/bancos" className="text-primary hover:underline">Bancos</Link>.
                       </p>
                     </div>
-                    <label
-                      className={`flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10 shrink-0 cursor-pointer ${
-                        conciliationLoading ? 'opacity-50 pointer-events-none' : ''
-                      }`}
+                    <button
+                      onClick={handleAnalyzeTransactions}
+                      disabled={conciliationLoading}
+                      className="flex items-center gap-sm bg-gradient-to-r from-primary to-secondary text-on-primary px-lg py-3 rounded-xl hover:opacity-90 transition-all font-label-md shadow-lg shadow-primary/10 shrink-0 disabled:opacity-50"
                     >
                       {conciliationLoading ? (
                         <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-on-primary"></span>
                       ) : (
                         <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                          upload_file
+                          auto_awesome
                         </span>
                       )}
-                      {conciliationLoading ? 'Processando...' : 'Importar Extrato'}
-                      <input
-                        type="file"
-                        accept=".csv,.ofx"
-                        onChange={handleFileChange}
-                        disabled={conciliationLoading}
-                        className="hidden"
-                      />
-                    </label>
+                      {conciliationLoading ? 'Analisando...' : 'Sugerir categorias'}
+                    </button>
                   </div>
-                  {fileName && (
-                    <p className="relative z-10 text-xs text-on-surface-variant mt-md">
-                      Arquivo selecionado: <span className="text-on-surface font-medium">{fileName}</span>
-                    </p>
-                  )}
                 </div>
 
                 {conciliationLoading && (
@@ -362,13 +362,13 @@ function IAEmpresarialContent() {
                       <tbody className="divide-y divide-border-subtle/50">
                         {conciliationRows.map((row, i) => {
                           const isConfident = row.confidence >= 0.6;
-                          const decided = row.status === 'APROVADO' || row.status === 'REJEITADO';
+                          const decided = row.status !== 'PENDENTE';
                           return (
                             <motion.tr
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: i * 0.05 }}
-                              key={i}
+                              key={row.id}
                               className="group hover:bg-surface-bright/40 transition-colors"
                             >
                               <td className="px-lg py-md text-label-md text-on-surface">{row.description}</td>
@@ -398,7 +398,7 @@ function IAEmpresarialContent() {
                                         : 'bg-error/10 text-error'
                                     }`}
                                   >
-                                    {row.status === 'APROVADO' ? 'Aprovado' : 'Rejeitado'}
+                                    {row.status === 'APROVADO' ? 'Aprovado' : row.status === 'REJEITADO' ? 'Rejeitado' : 'Sem sugestão'}
                                   </span>
                                 ) : (
                                   <div className="flex justify-end gap-sm">
@@ -427,7 +427,9 @@ function IAEmpresarialContent() {
 
                 {!conciliationLoading && conciliationRows.length === 0 && (
                   <div className="glass-card p-xl rounded-xl text-center text-on-surface-variant">
-                    Nenhuma transação conciliada ainda. Importe um extrato para começar.
+                    {analyzed
+                      ? 'Nenhuma movimentação sem categoria. Tudo em ordem.'
+                      : 'Clique em “Sugerir categorias” para analisar as movimentações importadas em Bancos.'}
                   </div>
                 )}
               </motion.div>
@@ -515,6 +517,7 @@ function IAEmpresarialContent() {
                 )}
 
                 {!proposalLoading && proposal && (
+                  <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-lg">
                     <div className="glass-card p-lg rounded-xl">
                       <span className="text-on-surface-variant font-label-md">Custo Interno Estimado</span>
@@ -535,6 +538,23 @@ function IAEmpresarialContent() {
                       </h3>
                     </div>
                   </div>
+                  <div className="glass-card p-lg rounded-xl">
+                    <p className="text-on-surface-variant text-body-sm mb-md">
+                      {proposal.estimated_hours} h estimadas pela IA × custo-hora médio real da equipe de R$ {formatCurrency(proposal.hourly_cost)}
+                    </p>
+                    <ul className="divide-y divide-border-subtle/50 mb-md">
+                      {proposal.breakdown.map((step) => (
+                        <li key={step.nome} className="flex justify-between py-xs text-body-sm">
+                          <span className="text-on-surface">{step.nome}</span>
+                          <span className="text-on-surface-variant">{step.horas} h</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {proposal.assumptions.length > 0 && (
+                      <p className="text-[12px] text-on-surface-variant">Premissas: {proposal.assumptions.join(' · ')}</p>
+                    )}
+                  </div>
+                  </>
                 )}
               </motion.div>
             );

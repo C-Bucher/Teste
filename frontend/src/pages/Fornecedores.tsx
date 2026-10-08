@@ -6,16 +6,18 @@ import Layout from '../components/Layout';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { defer } from '../utils/defer';
+import type { Supplier } from '../types';
 
 function FornecedoresContent() {
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSup, setEditingSup] = useState<any>(null);
+  const [editingSup, setEditingSup] = useState<Supplier | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -37,7 +39,7 @@ function FornecedoresContent() {
   };
 
   useEffect(() => {
-    fetchSuppliers();
+    defer(fetchSuppliers);
   }, []);
 
   const handleDeactivate = async (id: string) => {
@@ -50,7 +52,7 @@ function FornecedoresContent() {
     if (!ok) return;
     try {
       const res = await api.put(`/suppliers/${id}`, { is_active: false });
-      setSuppliers(suppliers.map((s: any) => s.id === id ? res.data : s));
+      setSuppliers(suppliers.map((s) => s.id === id ? res.data : s));
       toast.success('Fornecedor desativado.');
     } catch (err) {
       console.error("Erro ao desativar", err);
@@ -58,13 +60,13 @@ function FornecedoresContent() {
     }
   };
 
-  const handleEdit = (sup: any) => {
+  const handleEdit = (sup: Supplier) => {
     setEditingSup(sup);
     setFormData({
       name: sup.name,
-      cnpj_cpf: sup.cnpj_cpf,
+      cnpj_cpf: sup.cnpj_cpf ?? '',
       category: sup.category || '',
-      email: sup.email
+      email: sup.email ?? ''
     });
     setIsModalOpen(true);
   };
@@ -85,7 +87,7 @@ function FornecedoresContent() {
     try {
       if (editingSup) {
         const res = await api.put(`/suppliers/${editingSup.id}`, { ...formData });
-        setSuppliers(suppliers.map((sup: any) => sup.id === editingSup.id ? res.data : sup));
+        setSuppliers(suppliers.map((sup) => sup.id === editingSup.id ? res.data : sup));
         toast.success('Fornecedor atualizado.');
       } else {
         const res = await api.post('/suppliers/', { ...formData });
@@ -164,7 +166,7 @@ function FornecedoresContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50">
-                {suppliers.map((sup: any, i: number) => (
+                {suppliers.map((sup, i) => (
                   <motion.tr
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -226,7 +228,7 @@ function FornecedoresContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg">
-            {suppliers.map((sup: any, i: number) => (
+            {suppliers.map((sup, i) => (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}

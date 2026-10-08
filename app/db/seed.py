@@ -19,7 +19,9 @@ Intentionally NOT seeded:
 from datetime import datetime, timedelta, date
 
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import event, select
+
+from app.core.legal import TERMS_VERSION
 
 from app.db.session import async_session_maker
 from app.db.models import (
@@ -69,6 +71,8 @@ async def _seed_personal_categories_if_empty(session) -> None:
     result = await session.execute(select(PersonalCategoryModel).limit(1))
     if result.scalar_one_or_none() is not None:
         return  # already seeded, do nothing
+    if await session.get(UserModel, DEMO_USER_ID) is None:
+        return  # not a demo database; real users get their categories lazily (personal.py)
     session.add_all(
         [
             PersonalCategoryModel(id="pc-1", name="Salario", type="RECEITA"),
@@ -79,8 +83,27 @@ async def _seed_personal_categories_if_empty(session) -> None:
     )
 
 
+DEMO_COMPANY_ID = "cmp-001"
+DEMO_USER_ID = "usr-001"
+
+
+def _assign_demo_owner(session, _flush_context=None, _instances=None) -> None:
+    """before_flush hook for the seed session only. Demo rows belong to the demo company/user;
+    models have no default owner on purpose, so anything else that forgets company_id/owner_id
+    fails instead of leaking into the demo account."""
+    for obj in session.new:
+        if hasattr(obj, "company_id") and obj.company_id is None:
+            obj.company_id = DEMO_COMPANY_ID
+        if hasattr(obj, "owner_id") and obj.owner_id is None:
+            obj.owner_id = DEMO_USER_ID
+        if isinstance(obj, UserModel) and obj.terms_version is None:
+            obj.terms_version = TERMS_VERSION  # demo logins skip the acceptance screen
+            obj.terms_accepted_at = datetime.utcnow().isoformat()
+
+
 async def seed_if_empty() -> None:
     async with async_session_maker() as session:
+        event.listen(session.sync_session, "before_flush", _assign_demo_owner)
         result = await session.execute(select(UserModel).limit(1))
         if result.scalar_one_or_none() is not None:
             # Base demo data already seeded. Still backfill any tables that
@@ -400,6 +423,15 @@ async def seed_if_empty() -> None:
                 ),
             ]
         )
+
+        from app.core.billing import ensure_plan_row, plan_by_id
+        from app.db.models import SubscriptionModel
+        await ensure_plan_row(session, plan_by_id("plan-completo"))
+        session.add(SubscriptionModel(
+            id="sub-demo", company_id=DEMO_COMPANY_ID, plan_id="plan-completo", billing_cycle="yearly",
+            amount=plan_by_id("plan-completo")["price_yearly"] * 12, status="ACTIVE", provider="simulado",
+            payment_method=None, auto_renew=False, current_period_end="2099-12-31T00:00:00",
+        ))
 
         # PERSONAL_TIMEBOXES / PERSONAL_OKRS are empty lists in the mock —
         # nothing to seed; tables exist via PersonalTimeboxModel /

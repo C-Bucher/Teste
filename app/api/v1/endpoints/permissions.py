@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.core.security import get_current_user
+from app.core import audit
 from app.core.permissions import MODULES, DEFAULT_PERMISSIONS, get_allowed_modules
 from app.db.session import get_db
 from app.db.models import RolePermissionModel, CompanyModel
@@ -55,6 +56,7 @@ async def put_matrix(d: PermissionMatrixReq, u=Depends(get_current_user), db: As
     company = await db.get(CompanyModel, u["company_id"])
     if company:
         company.permissions_customized = True
+    audit.record_by(db, u, "PERMISSOES_ALTERADAS", entity="role_permissions", details={"GERENTE": d.GERENTE, "FUNCIONARIO": d.FUNCIONARIO})
     await db.commit()
     return await get_matrix(u=u, db=db)
 
