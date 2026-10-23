@@ -1,3 +1,5 @@
+# NOTA: Configuração do Alembic: indica o banco e como aplicar as migrações (pelo app ao iniciar ou pelo comando alembic).
+
 """Alembic environment.
 
 Two entry points:

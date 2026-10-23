@@ -1,3 +1,5 @@
+# NOTA: Cliente do Gemini (REST). Sem GEMINI_API_KEY devolve vazio e o sistema usa as respostas por regras.
+
 """Large language model client (Google Gemini over REST).
 
 `get_llm()` returns None when GEMINI_API_KEY is missing; callers then answer with rules computed

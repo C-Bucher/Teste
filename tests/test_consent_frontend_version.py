@@ -1,3 +1,5 @@
+# NOTA: Testa que a versão dos termos é a mesma no backend (legal.py) e no frontend (legal.ts).
+
 from pathlib import Path
 
 from app.core.legal import TERMS_VERSION

@@ -1,3 +1,5 @@
+# NOTA: Configurações lidas do ambiente: ambiente (dev/produção), SECRET_KEY, validade dos tokens (60 min e 7 dias) e endereços CORS permitidos.
+
 import logging
 import os
 import secrets

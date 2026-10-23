@@ -1,3 +1,5 @@
+# NOTA: Testa que toda chamada de API feita pelo frontend tem rota correspondente no backend (método e caminho).
+
 """Every API call the frontend makes must exist in the backend (method + path)."""
 
 import re

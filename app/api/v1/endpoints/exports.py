@@ -1,3 +1,5 @@
+# NOTA: Rotas /exports: gera relatórios em CSV, JSON, XLSX ou PDF com os dados reais, lista o histórico e baixa o arquivo.
+
 """Reports built from the company's real data, in CSV, JSON, XLSX or PDF (EXP-1).
 Files go to private storage and are downloaded only by the owning company."""
 

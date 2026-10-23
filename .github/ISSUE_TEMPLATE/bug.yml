@@ -1,3 +1,4 @@
+# NOTA: Formulário de issue do GitHub para reportar um bug (o que aconteceu, como reproduzir, o que se esperava).
 name: Bug
 description: Registre um erro, uma falha ou um comportamento inesperado.
 #title: '[bug] ' (desnecessário pois já coloca bug no label)

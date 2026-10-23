@@ -1,3 +1,5 @@
+# NOTA: Rotas /account: o próprio usuário exporta seus dados (direito da LGPD) e exclui a própria conta.
+
 """The signed-in user's own account: LGPD data export and account deletion."""
 
 from fastapi import APIRouter, Depends, HTTPException

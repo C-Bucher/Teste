@@ -1,3 +1,6 @@
+# NOTA: Rotas /company: dados da empresa, conclusão do onboarding, centros de custo, categorias (plano de contas),
+#       calendário de trabalho, parâmetros do CTC e logo.
+
 from fastapi import APIRouter, HTTPException, Depends
 import uuid
 

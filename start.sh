@@ -1,4 +1,6 @@
 #!/bin/sh
+# NOTA: Script de partida do contêiner Docker: instala as dependências Python se ainda não estiverem instaladas
+#       e então liga o servidor.
 # Só instala se os pacotes ainda não existem — startup instantâneo após primeiro boot
 if ! python -c "import fastapi, uvicorn, jwt, bcrypt" 2>/dev/null; then
     echo "[TechConnect] Instalando dependências..."

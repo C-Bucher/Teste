@@ -1,3 +1,5 @@
+# NOTA: Migração 0008: colunas do segredo do 2FA e dos códigos de recuperação.
+
 """two factor secrets
 
 Revision ID: 0008

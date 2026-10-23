@@ -1,3 +1,6 @@
+# NOTA: Dados de demonstração: se a tabela de usuários estiver vazia, cria a empresa, usuários, lançamentos, projetos e demais exemplos.
+#       Se já houver dados, não faz nada.
+
 """Idempotent database seed.
 
 Populates the database with the exact same demo data that

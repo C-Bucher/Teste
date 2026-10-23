@@ -1,3 +1,5 @@
+# NOTA: Porta única para chamar a IA: confere disponibilidade, cota mensal do plano e registra cada uso.
+
 """One gate for model calls: availability, plan quota (LIM-1) and usage counting."""
 
 import uuid

@@ -1,3 +1,5 @@
+# NOTA: Rota /audit: lista a trilha de auditoria (quem fez o quê e quando). Só o administrador acessa.
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException

@@ -1,3 +1,5 @@
+# NOTA: Sobe tudo junto com um comando: db (MySQL), redis, backend (FastAPI) e frontend (tela),
+#       com as variáveis lidas do arquivo .env.
 version: '3.8'
 
 services:

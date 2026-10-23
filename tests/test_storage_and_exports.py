@@ -1,3 +1,5 @@
+# NOTA: Testa o armazenamento (local e S3) e as exportações em XLSX e PDF.
+
 """STO-1 (S3-compatible storage backend) and EXP-1 (XLSX/PDF exports)."""
 
 import io

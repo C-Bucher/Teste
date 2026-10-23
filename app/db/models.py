@@ -1,3 +1,6 @@
+# NOTA: Define todas as tabelas do banco (40 ao todo) como classes SQLAlchemy: empresas, usuários, assinaturas, colaboradores,
+#       lançamentos, Kanban, Hub Pessoal, bancos, IA, auditoria e outras. Mudou uma tabela aqui? Crie também uma migração.
+
 from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime

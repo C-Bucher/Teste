@@ -1,3 +1,6 @@
+# NOTA: Rotas /financial: lançamentos (criar, editar, baixar/pagar), comprovante anexo, DRE, fluxo de caixa e resumo mensal,
+#       incluindo as versões usadas pelo Dashboard.
+
 import os
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import Response

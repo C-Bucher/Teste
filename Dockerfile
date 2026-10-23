@@ -1,3 +1,4 @@
+# NOTA: Receita da imagem Docker do backend: parte do Python 3.11, instala o requirements.txt e copia o código.
 FROM python:3.11-slim
 
 WORKDIR /app

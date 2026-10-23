@@ -1,3 +1,6 @@
+# NOTA: Armazenamento privado de comprovantes e relatórios: em disco local ou em serviço compatível com S3.
+#       Os arquivos nunca são públicos; só saem por rotas que conferem o dono.
+
 """Private file storage for attachments and exports (STO-1).
 
 Two backends behind the same functions:

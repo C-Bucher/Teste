@@ -1,3 +1,5 @@
+# NOTA: Cria a notificação dentro do sistema e envia e-mail aos administradores que mantêm o aviso por e-mail ligado.
+
 """In-app notification for the company, plus an e-mail to each person who keeps e-mail alerts on (NOT-1)."""
 
 import uuid

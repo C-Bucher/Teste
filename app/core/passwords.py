@@ -1,3 +1,5 @@
+# NOTA: Regras e criptografia de senha: mínimo de 8 caracteres com letras e números, hash bcrypt e verificação.
+
 import os
 import re
 

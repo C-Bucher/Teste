@@ -1,3 +1,5 @@
+# NOTA: Testa regra de senha, troca de senha, bloqueio por tentativas e separação entre token de acesso e de renovação.
+
 """SEC-4: password policy, password change, login lockout and access/refresh token separation."""
 
 import uuid

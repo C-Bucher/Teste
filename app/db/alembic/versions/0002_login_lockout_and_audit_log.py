@@ -1,3 +1,5 @@
+# NOTA: Migração 0002: colunas de bloqueio por tentativas de login e a tabela de auditoria.
+
 """login lockout and audit log
 
 Revision ID: 0002

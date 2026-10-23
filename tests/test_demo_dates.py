@@ -1,3 +1,5 @@
+# NOTA: Testa que as datas da demonstração avançam até hoje sem perder a distância entre elas.
+
 """SEED-1: the demo company's dates move forward to today, keeping the gaps between them."""
 
 import os

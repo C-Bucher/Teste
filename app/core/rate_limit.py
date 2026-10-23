@@ -1,3 +1,5 @@
+# NOTA: Limite de tentativas por IP (20 por minuto) nas rotas de login, cadastro, recuperação de senha e renovação.
+
 """Per-IP sliding-window limit on the authentication routes (SEC-7).
 
 In memory, so it holds per instance; with several instances behind a load balancer each one

@@ -1,3 +1,5 @@
+# NOTA: Testa o login com 2FA (código e códigos de recuperação) e o limite de tentativas por IP.
+
 """AUTH-1 (TOTP two-factor login with recovery codes) and SEC-7 (per-IP rate limit on auth routes)."""
 
 import pyotp

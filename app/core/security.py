@@ -1,3 +1,6 @@
+# NOTA: Tokens de login (JWT): cria e valida os tokens de acesso, renovação e do passo do 2FA. Descobre o usuário logado em cada requisição.
+#       Trocar a senha invalida os tokens antigos.
+
 import hashlib
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Depends

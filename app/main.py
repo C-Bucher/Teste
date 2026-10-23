@@ -1,3 +1,8 @@
+# NOTA: Cria o servidor FastAPI. Ao iniciar: cria/atualiza o banco, insere os dados de demonstração se o banco estiver vazio
+#       e mostra avisos de configuração em produção. Também: define quais endereços do front podem chamar a API (CORS),
+#       limita tentativas por IP nas rotas de login, trata erros de banco, responde /health, serve a pasta uploads
+#       e entrega o site já compilado (frontend/dist) quando ele existe.
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

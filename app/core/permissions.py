@@ -1,3 +1,5 @@
+# NOTA: Controle de acesso por cargo e plano: define os módulos padrão de Gerente e Funcionário e bloqueia a rota quando o usuário não tem o módulo.
+
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

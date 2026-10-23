@@ -1,3 +1,6 @@
+# NOTA: Lista de rotas da API v1: junta todos os módulos de app/api/v1/endpoints sob o prefixo /api/v1
+#       e define quais exigem permissão de módulo (ex.: equipe, financeiro) e assinatura ativa.
+
 from fastapi import APIRouter, Depends
 from app.api.v1.endpoints import auth, company, employees, suppliers, financial, kanban, notifications, personal, search, exports, ai, clients, plans, payments, permissions, system, audit, account, bank, bank_hooks, jobs
 from app.core.permissions import require_module, require_plan_scope

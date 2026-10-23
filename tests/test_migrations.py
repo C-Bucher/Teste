@@ -1,3 +1,5 @@
+# NOTA: Testa que as migrações do Alembic geram o mesmo esquema dos modelos.
+
 """DB-3: schema is versioned by Alembic and stays in sync with the ORM models."""
 
 import os

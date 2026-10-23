@@ -1,3 +1,6 @@
+# NOTA: Script manual (não faz parte do pytest): faz login com o usuário de demonstração em localhost:8000
+#       e imprime o resultado, para checar rapidamente se a API responde.
+
 import urllib.request, json
 
 # Login

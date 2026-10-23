@@ -1,3 +1,5 @@
+# NOTA: Criptografia de segredos guardados no banco (ex.: o código do 2FA), com a chave ENCRYPTION_KEY.
+
 """Symmetric encryption for secrets stored in the database (e.g. the TOTP seed).
 
 Keyed by ENCRYPTION_KEY, falling back to SECRET_KEY. Keep ENCRYPTION_KEY stable: rotating the JWT

@@ -1,3 +1,6 @@
+# NOTA: Rotas /bank: contas bancárias, importação de extrato (OFX/CSV), lista de transações,
+#       conciliação com lançamentos, regras de categoria, conexão com o agregador (Pluggy) e uso do plano.
+
 """Bank accounts, statement import, aggregator connections and reconciliation (BANK-1).
 
 `scope=empresa` works on the company's books (plan Empresarial/Completo + module financeiro);

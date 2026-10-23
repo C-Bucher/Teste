@@ -1,3 +1,5 @@
+# NOTA: Testa o aceite dos termos: o cadastro exige aceitar, e a versão e a data ficam registradas.
+
 """SEC-2: acceptance of the terms of use and privacy policy, recorded with version and date."""
 
 import uuid

@@ -1,3 +1,6 @@
+# NOTA: Script manual: insere lançamentos financeiros dos últimos 5 meses no banco existente,
+#       para os gráficos e o DRE terem histórico. Uso: python seed_financial_history.py
+
 """
 Script de migração: insere lançamentos financeiros históricos
 dos últimos 5 meses no banco de dados existente.

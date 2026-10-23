@@ -1,3 +1,5 @@
+# NOTA: Testa o quadro Kanban: cartões, comentários e exclusão de cartão.
+
 """Kanban board contents and card deletion (KAN-1, DB-4)."""
 
 

@@ -1,3 +1,5 @@
+# NOTA: Descobre o plano atual da empresa e calcula o quanto dos limites já foi usado (ex.: conexões bancárias).
+
 """The plan a company is on, and how much of its limits it uses (LIM-1)."""
 
 from sqlalchemy import func, or_, select

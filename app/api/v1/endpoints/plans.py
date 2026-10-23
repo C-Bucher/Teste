@@ -1,3 +1,5 @@
+# NOTA: Rotas /plans: lista os planos e preços (somente leitura).
+
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()

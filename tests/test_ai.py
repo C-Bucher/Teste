@@ -1,3 +1,5 @@
+# NOTA: Testa a IA: respostas com dados reais, respostas por regras quando a IA falha, histórico e cota mensal.
+
 """IA-1 / LIM-1: model answers grounded on real data, honest rule-based fallback, history and quota."""
 
 import json

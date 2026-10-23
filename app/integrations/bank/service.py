@@ -1,3 +1,5 @@
+# NOTA: Grava as transações do extrato sem duplicar e concilia cada uma com contas a pagar/receber (mesmo valor, até 5 dias de diferença).
+
 """Storing bank transactions and reconciling them with the company's payables/receivables."""
 
 import uuid

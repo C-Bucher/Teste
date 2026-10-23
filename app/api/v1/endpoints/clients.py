@@ -1,3 +1,5 @@
+# NOTA: Rotas /clients: cadastro de clientes da empresa (listar, criar, editar, excluir).
+
 from fastapi import APIRouter, HTTPException, Depends
 import uuid
 

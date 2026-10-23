@@ -1,3 +1,5 @@
+# NOTA: Rotas /system: status das integrações (usado em Configurações) e a versão vigente dos termos de uso.
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

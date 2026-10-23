@@ -1,3 +1,5 @@
+# NOTA: Migração 0001: cria o esquema inicial com todas as tabelas.
+
 """baseline schema
 
 Revision ID: 0001

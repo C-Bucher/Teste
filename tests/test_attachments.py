@@ -1,3 +1,5 @@
+# NOTA: Testa o comprovante anexado ao lançamento: upload, download e acesso só pela empresa dona.
+
 """FIN-2: receipts attached to financial entries, stored privately and served only to the owning company."""
 
 

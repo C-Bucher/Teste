@@ -1,3 +1,5 @@
+# NOTA: Registra a trilha de auditoria (quem fez qual ação, em qual dado e de qual IP). O registro é salvo junto com a própria mudança.
+
 """Audit trail (SEC-2). `record` only adds the row to the session: it is committed together with the change it describes."""
 
 import json

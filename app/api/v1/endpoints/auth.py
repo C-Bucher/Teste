@@ -1,3 +1,6 @@
+# NOTA: Rotas /auth: cadastro, login (com 2FA), renovação e logout, dados do usuário logado, troca e recuperação de senha,
+#       gestão de usuários da empresa, ativar/desativar 2FA e aceite dos termos.
+
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Depends

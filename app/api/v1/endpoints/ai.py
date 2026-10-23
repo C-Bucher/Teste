@@ -1,3 +1,6 @@
+# NOTA: Rotas /ai: CFO Virtual (chat e histórico), conciliação por IA e gerador de orçamento.
+#       Usa o Gemini sobre os dados reais da empresa; sem Gemini, responde por regras (app/integrations/ai).
+
 """CFO Virtual (business AI). Answers come from Gemini over the company's real snapshot, or from
 rules over the same snapshot when the model is unavailable or the plan's quota is spent (IA-1)."""
 

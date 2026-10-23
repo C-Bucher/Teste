@@ -1,3 +1,4 @@
+# NOTA: Bibliotecas para desenvolvimento: tudo do requirements.txt mais pytest e pytest-asyncio para os testes.
 -r requirements.txt
 pytest
 pytest-asyncio

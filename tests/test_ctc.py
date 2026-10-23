@@ -1,3 +1,5 @@
+# NOTA: Testa que os parâmetros de CTC da empresa mudam o custo calculado do colaborador.
+
 """CFG-1: per-company CTC (custo total do colaborador) parameters drive the real calculation."""
 
 from tests.conftest import create_member
