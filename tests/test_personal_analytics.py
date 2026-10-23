@@ -1,3 +1,5 @@
+# NOTA: Testa que o patrimônio do Hub Pessoal é calculado com contas, dívidas e lançamentos reais.
+
 """Personal net-worth series comes from the person's real accounts, debts and entries."""
 
 from datetime import date

@@ -1,3 +1,5 @@
+# NOTA: Migração 0004: tabela de parâmetros do CTC (multiplicadores por empresa).
+
 """ctc params
 
 Revision ID: 0004

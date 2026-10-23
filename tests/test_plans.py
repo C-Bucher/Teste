@@ -1,3 +1,5 @@
+# NOTA: Testa os quatro planos e seus preços aprovados.
+
 """PLAN-1: the four commercial plans approved on 2026-09-30."""
 
 from tests.conftest import register_admin

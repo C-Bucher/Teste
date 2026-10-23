@@ -1,3 +1,5 @@
+# NOTA: Testa a recuperação de senha por e-mail e os e-mails de notificação.
+
 """AUTH-3 (password recovery by e-mail) and NOT-1 (notification e-mails)."""
 
 import re

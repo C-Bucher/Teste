@@ -1,3 +1,6 @@
+# NOTA: Conexão com o banco (SQLite, MySQL ou PostgreSQL, conforme DATABASE_URL), fábrica de sessões por requisição
+#       e inicialização (cria tabelas e aplica as migrações ao iniciar).
+
 import os
 from pathlib import Path
 

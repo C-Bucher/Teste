@@ -1,3 +1,5 @@
+# NOTA: Rotas /notifications: lista, marca como lida, arquiva, contador de não lidas e preferências de e-mail.
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

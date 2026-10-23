@@ -1,3 +1,6 @@
+# NOTA: Atualiza as datas dos dados de demonstração para perto de hoje, mantendo a distância entre elas.
+#       Manual: python -m app.db.demo_dates, ou automático com DEMO_REFRESH_DATES=1.
+
 """Keeps the demo data current (SEED-1).
 
 The seed writes dates relative to the day it ran; months later "due in 15 days" is long past.

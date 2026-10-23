@@ -1,3 +1,5 @@
+# NOTA: Respostas por regras, usadas quando a IA está indisponível ou a cota do plano acabou. Todo número vem dos dados reais.
+
 """Rule-based answers used when the model is unavailable or the plan's quota is spent.
 Every number comes from the real snapshot; nothing here is invented."""
 

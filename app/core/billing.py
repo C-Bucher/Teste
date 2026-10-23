@@ -1,3 +1,6 @@
+# NOTA: Regras de acesso por assinatura: define quem pode usar o produto (teste de 7 dias, ativo, em atraso com 5 dias de tolerância, cancelado).
+#       Bloqueia com erro 402 quando não há acesso.
+
 """Who may use the product: trial, paid period, grace after an overdue charge, cancellation (PAY-1).
 
 A company is allowed in when ANY of its live subscriptions grants access:

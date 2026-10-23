@@ -1,3 +1,6 @@
+# NOTA: Rotas /payments: abre o checkout no Asaas, recebe o webhook de confirmação, consulta assinatura, acesso,
+#       faturas e uso, e cancela a assinatura.
+
 """Subscription billing (PAY-1): checkout through the payment provider, the provider's webhook,
 the company's subscription/invoices and cancellation. Access rules live in app/core/billing.py."""
 

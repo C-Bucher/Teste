@@ -1,3 +1,5 @@
+# NOTA: Migração 0005: tabelas de contas bancárias, transações do extrato e regras de categorização.
+
 """bank accounts transactions rules
 
 Revision ID: 0005

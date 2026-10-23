@@ -1,3 +1,6 @@
+# NOTA: Rotas /employees: colaboradores (listar, criar, editar, excluir, desligar) e histórico de salário.
+#       Calcula o CTC e o custo por hora de cada um.
+
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 from datetime import date

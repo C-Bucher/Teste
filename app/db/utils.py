@@ -1,3 +1,5 @@
+# NOTA: Converte um registro do banco em dicionário, no formato que o front espera.
+
 def model_to_dict(obj) -> dict:
     """Converts a SQLAlchemy ORM instance to a plain dict matching the
     same field names/shape the old in-memory mock dicts used, so every

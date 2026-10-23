@@ -1,3 +1,5 @@
+# NOTA: Testa exportar os próprios dados, excluir a conta (LGPD) e a gestão de acessos feita pelo administrador.
+
 """LGPD data-subject rights (export/delete own data) and admin access management (AUTH-2)."""
 
 from tests.conftest import PASSWORD, create_member, register_admin

@@ -1,3 +1,6 @@
+# NOTA: Rotas /personal (Hub Pessoal): lançamentos, contas, orçamentos, metas, dívidas, assinaturas, divisão de despesas,
+#       timeboxes, OKRs, análise e insights de IA. Tudo pertence só ao usuário dono.
+
 import json
 from fastapi import APIRouter, HTTPException, Depends
 import uuid

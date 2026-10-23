@@ -1,3 +1,5 @@
+# NOTA: Teste rápido: cadastro, login e /me funcionam, e sem token a API recusa.
+
 async def test_register_login_and_me(client, company_a):
     r = await client.get("/auth/me", headers=company_a["headers"])
     assert r.status_code == 200

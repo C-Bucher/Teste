@@ -1,3 +1,4 @@
+# NOTA: Configuração dos formulários de issue do GitHub (por exemplo, se aceita issue em branco).
 blank_issues_enabled: false
 contact_links:
   - name: Guia dos alunos

@@ -1,3 +1,5 @@
+# NOTA: Testa teste grátis, checkout, webhook (ativação, renovação, atraso) e o bloqueio de acesso.
+
 """PAY-1: trial, real checkout through a payment provider, webhook-driven activation/renewal/overdue, access gate."""
 
 from datetime import date, datetime, timedelta

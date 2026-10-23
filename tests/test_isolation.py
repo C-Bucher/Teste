@@ -1,3 +1,5 @@
+# NOTA: Testa o isolamento: uma empresa não vê nem altera dados de outra, e o Hub Pessoal é por usuário.
+
 """Company A's data must be invisible and untouchable for company B (MT-1), and personal data per user (MT-2)."""
 
 from tests.conftest import register_admin

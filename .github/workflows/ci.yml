@@ -1,3 +1,5 @@
+# NOTA: Integração contínua do GitHub: a cada pull request e push na main, roda os testes do backend
+#       (SQLite e Postgres), e no frontend o lint, os testes e o build.
 name: CI
 
 on:

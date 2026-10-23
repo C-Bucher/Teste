@@ -1,3 +1,6 @@
+# NOTA: Rota /jobs/daily: tarefa diária chamada por um agendador externo (exige o cabeçalho X-Cron-Secret).
+#       Gera os alertas e sincroniza os bancos.
+
 """Scheduled work, called once a day by an external scheduler with X-Cron-Secret = CRON_SECRET."""
 
 from fastapi import APIRouter, Depends, Request

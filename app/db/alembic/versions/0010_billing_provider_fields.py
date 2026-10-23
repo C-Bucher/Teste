@@ -1,3 +1,5 @@
+# NOTA: Migração 0010: campos que ligam assinaturas e faturas ao provedor de pagamento (Asaas).
+
 """billing provider fields
 
 Revision ID: 0010

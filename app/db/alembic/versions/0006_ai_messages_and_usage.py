@@ -1,3 +1,5 @@
+# NOTA: Migração 0006: tabelas do histórico de conversas com a IA e do consumo mensal.
+
 """ai messages and usage
 
 Revision ID: 0006

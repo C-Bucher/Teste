@@ -1,3 +1,6 @@
+# NOTA: Rotas /kanban: projetos, colunas, cartões (criar, mover, editar, excluir), cronômetro de tempo por cartão,
+#       comentários, modelos de projeto e clientes.
+
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 import uuid

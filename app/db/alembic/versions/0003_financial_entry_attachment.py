@@ -1,3 +1,5 @@
+# NOTA: Migração 0003: colunas para anexar comprovante ao lançamento financeiro.
+
 """financial entry attachment
 
 Revision ID: 0003

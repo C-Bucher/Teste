@@ -1,3 +1,5 @@
+# NOTA: Testa importação de extrato, conciliação, regras, isolamento entre empresas, limites do plano e o agregador.
+
 """Bank import, reconciliation, rules, isolation, plan limits and the aggregator provider (BANK-1, LIM-1)."""
 
 from datetime import date, timedelta

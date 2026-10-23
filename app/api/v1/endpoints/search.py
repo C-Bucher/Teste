@@ -1,3 +1,5 @@
+# NOTA: Rota /search: busca global (campo de busca do topo) em colaboradores, clientes, projetos, lançamentos e fornecedores da empresa.
+
 from fastapi import APIRouter, Depends
 
 from sqlalchemy.ext.asyncio import AsyncSession

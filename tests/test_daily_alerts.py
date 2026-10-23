@@ -1,3 +1,5 @@
+# NOTA: Testa o job diário: avisa contas a vencer, recebíveis atrasados e prazos do Kanban, uma vez por dia.
+
 """NOT-2: the daily job warns about bills due soon, late receivables and Kanban deadlines, once a day."""
 
 from datetime import date, datetime, timedelta

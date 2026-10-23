@@ -1,3 +1,5 @@
+# NOTA: Migração 0007: tabela dos pedidos de redefinição de senha (uso único e com validade).
+
 """password resets
 
 Revision ID: 0007

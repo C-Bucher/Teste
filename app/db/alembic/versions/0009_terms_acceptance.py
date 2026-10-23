@@ -1,3 +1,5 @@
+# NOTA: Migração 0009: colunas do aceite dos termos (versão e data).
+
 """terms acceptance
 
 Revision ID: 0009

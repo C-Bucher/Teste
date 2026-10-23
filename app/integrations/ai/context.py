@@ -1,3 +1,5 @@
+# NOTA: Monta o resumo dos dados reais enviado à IA (empresa ou pessoa): só totais e descrições curtas, sem CPF, e-mail ou dados de outras empresas.
+
 """Compact, real-data snapshots sent to the model (and used by the rule-based fallback).
 
 Only aggregates and short descriptions of the caller's own company or person: no CPF,

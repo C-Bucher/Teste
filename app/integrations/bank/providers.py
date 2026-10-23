@@ -1,3 +1,5 @@
+# NOTA: Interface para agregadores bancários (Open Finance). Só o Pluggy está implementado; sem credenciais, as rotas respondem 503.
+
 """Open Finance aggregators behind one interface, so the vendor can change without touching the rest.
 
 Only Pluggy is implemented. It is enabled when PLUGGY_CLIENT_ID and PLUGGY_CLIENT_SECRET are set;

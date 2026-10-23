@@ -1,3 +1,6 @@
+# NOTA: Provedores de pagamento da assinatura: Asaas (real; o cartão é digitado na página do Asaas)
+#       e um provedor simulado, que só existe fora de produção.
+
 """Payment providers for the subscription billing (PAY-1).
 
 Asaas is the real one: it hosts the payment page (Pix, boleto, card), so card data never reaches

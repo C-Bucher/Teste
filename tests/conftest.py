@@ -1,3 +1,5 @@
+# NOTA: Preparação comum dos testes: banco SQLite temporário, clientes HTTP de duas empresas independentes e funções auxiliares (register_admin, create_member).
+
 """Shared fixtures: a throwaway SQLite database and HTTP clients for two unrelated companies."""
 
 import os

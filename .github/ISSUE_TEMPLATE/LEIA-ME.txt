@@ -1,0 +1,10 @@
+NOTA DA PASTA .GITHUB/ISSUE_TEMPLATE
+
+FUNÇÃO: Formulários que o GitHub oferece ao abrir uma issue (bug, documentação, pesquisa, requisito).
+
+O QUE TEM AQUI:
+  - bug.yml: Formulário de issue do GitHub para reportar um bug (o que aconteceu, como reproduzir, o que se esperava).
+  - config.yml: Configuração dos formulários de issue do GitHub (por exemplo, se aceita issue em branco).
+  - documentacao.yml: Formulário de issue do GitHub para pedir criação ou correção de documentação.
+  - pesquisa.yml: Formulário de issue do GitHub para registrar uma pesquisa ou investigação.
+  - requisito.yml: Formulário de issue do GitHub para propor um novo requisito do sistema.

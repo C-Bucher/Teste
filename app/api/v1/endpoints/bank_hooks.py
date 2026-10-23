@@ -1,3 +1,5 @@
+# NOTA: Rotas de máquina para máquina: webhook do Pluggy e /sync-all (sincroniza todas as contas, chamado pelo agendador).
+
 """Machine-to-machine bank routes: the aggregator's webhook and the scheduler's daily sync.
 Not behind a user session nor the subscription gate; each is authenticated by its own secret."""
 

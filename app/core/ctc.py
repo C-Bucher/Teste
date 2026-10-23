@@ -1,3 +1,5 @@
+# NOTA: Calcula o CTC (custo total do colaborador) e o custo por hora a partir do salário, do tipo de contrato e dos multiplicadores da empresa.
+
 """Employee total cost (CTC) from the company's own parameters (CFG-1)."""
 
 from typing import Optional

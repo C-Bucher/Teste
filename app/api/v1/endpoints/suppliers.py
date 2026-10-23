@@ -1,3 +1,5 @@
+# NOTA: Rotas /suppliers: cadastro de fornecedores (listar, criar, ver, editar, excluir).
+
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 import uuid

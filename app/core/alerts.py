@@ -1,3 +1,6 @@
+# NOTA: Alertas diários: contas a pagar que vencem em breve, recebíveis atrasados e prazos do Kanban.
+#       Cada alerta é criado no máximo uma vez por empresa por dia.
+
 """Daily alerts (NOT-2): bills due soon, late receivables and Kanban deadlines. Each alert is created
 at most once per company per day (the date is part of its title)."""
 

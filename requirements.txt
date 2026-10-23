@@ -1,3 +1,4 @@
+# NOTA: Bibliotecas Python que o servidor precisa para rodar (pip install -r requirements.txt).
 fastapi
 uvicorn[standard]
 PyJWT

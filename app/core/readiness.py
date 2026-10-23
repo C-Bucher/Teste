@@ -1,3 +1,6 @@
+# NOTA: Relatório do que está configurado e do que falta para produção (IA, pagamentos, e-mail, bancos, armazenamento etc.).
+#       Alimenta a aba Conexões em Configurações e o aviso de inicialização.
+
 """What is configured and what is missing for production (Configurações → Conexões de API and the startup log)."""
 
 import os

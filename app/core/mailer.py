@@ -1,3 +1,5 @@
+# NOTA: Envia e-mails por SMTP. Sem SMTP configurado, só registra no log e na lista OUTBOX (usada em desenvolvimento e testes).
+
 """Transactional e-mail over plain SMTP (works with Resend, SendGrid, Amazon SES, Gmail...).
 
 Without SMTP_HOST the message is only logged and kept in OUTBOX, so development and tests

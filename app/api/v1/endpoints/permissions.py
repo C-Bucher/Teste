@@ -1,3 +1,5 @@
+# NOTA: Rotas /permissions: matriz de permissões por cargo (ler e salvar) e os módulos liberados para o usuário atual.
+
 import uuid
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException

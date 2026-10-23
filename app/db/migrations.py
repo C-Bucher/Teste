@@ -1,3 +1,5 @@
+# NOTA: Migrações simples e repetíveis para bancos criados antes do Alembic: acrescenta colunas que faltam sem apagar dados.
+
 """Small, idempotent compatibility migrations for pre-Alembic databases.
 
 New installations are created from SQLAlchemy metadata. Existing installations

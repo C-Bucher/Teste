@@ -1,3 +1,5 @@
+# NOTA: Testa a leitura de extratos OFX (SGML e XML) e CSV.
+
 """Bank statement parsing: OFX 1.x (SGML, as most Brazilian banks export), OFX 2.x (XML) and CSV."""
 
 import pytest

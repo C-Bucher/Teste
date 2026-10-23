@@ -1,3 +1,5 @@
+# NOTA: Testa o bloqueio de módulos por cargo e as regras de gestão de acessos.
+
 """Module gates (SEC-1/SEC-3) and access-management rules (AUTH-2)."""
 
 from tests.conftest import create_member, register_admin

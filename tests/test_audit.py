@@ -1,3 +1,5 @@
+# NOTA: Testa a trilha de auditoria: ações sensíveis são registradas e só o administrador as vê.
+
 """SEC-2 (part 1): audit trail of sensitive actions, visible only to the company's admin."""
 
 from tests.conftest import PASSWORD, create_member

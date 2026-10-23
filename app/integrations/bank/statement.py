@@ -1,3 +1,5 @@
+# NOTA: Lê arquivos de extrato (OFX 1.x, OFX 2.x e CSV) dos bancos brasileiros e converte para um formato único.
+
 """Bank statement files (OFX 1.x SGML, OFX 2.x XML, CSV) -> normalized transactions.
 
 Brazilian banks differ in the details (decimal comma in TRNAMT, positive debits, CP1252 text,
