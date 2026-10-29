@@ -3,6 +3,7 @@
 """Bank statement parsing: OFX 1.x (SGML, as most Brazilian banks export), OFX 2.x (XML) and CSV."""
 
 import pytest
+from decimal import Decimal
 
 from app.integrations.bank.statement import StatementError, parse_statement
 
@@ -43,7 +44,7 @@ def test_parses_sgml_ofx_from_brazilian_bank():
     assert st.account_id == "12345-6"
     assert [(t.external_id, t.date, t.amount) for t in st.transactions] == [
         ("abc-001", "2026-09-05", 1500.00),
-        ("abc-002", "2026-09-10", -89.90),
+        ("abc-002", "2026-09-10", Decimal("-89.90")),
     ]
     assert st.transactions[0].description == "Transferência recebida - Cliente Ação"
     assert st.transactions[1].description == "PAG*INTERNET FIBRA"
@@ -60,7 +61,7 @@ def test_parses_brazilian_csv_with_semicolon_and_decimal_comma():
     st = parse_statement(csv, "extrato.csv")
     assert [(t.date, t.amount, t.description) for t in st.transactions] == [
         ("2026-09-05", 1500.0, "Pix recebido"),
-        ("2026-09-10", -120.35, "Conta de luz"),
+        ("2026-09-10", Decimal("-120.35"), "Conta de luz"),
     ]
     # CSV has no FITID: the id is a stable hash, so re-importing produces the same ids
     again = parse_statement(csv, "extrato.csv")

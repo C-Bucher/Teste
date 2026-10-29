@@ -1,7 +1,7 @@
-# NOTA: Define todas as tabelas do banco (40 ao todo) como classes SQLAlchemy: empresas, usuários, assinaturas, colaboradores,
+# NOTA: Define todas as tabelas do banco (41 ao todo) como classes SQLAlchemy: empresas, usuários, assinaturas, colaboradores,
 #       lançamentos, Kanban, Hub Pessoal, bancos, IA, auditoria e outras. Mudou uma tabela aqui? Crie também uma migração.
 
-from sqlalchemy import Column, String, Float, Boolean, Integer, ForeignKey, Text, JSON, UniqueConstraint
+from sqlalchemy import Column, String, Float, Numeric, Boolean, Integer, ForeignKey, ForeignKeyConstraint, CheckConstraint, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -54,8 +54,8 @@ class PlanModel(Base):
     id = Column(String(50), primary_key=True)
     name = Column(String(100), nullable=False)
     tagline = Column(String(255), nullable=True)
-    price_monthly = Column(Float, nullable=False)
-    price_yearly = Column(Float, nullable=False)
+    price_monthly = Column(Numeric(14, 2), nullable=False)
+    price_yearly = Column(Numeric(14, 2), nullable=False)
     max_employees = Column(Integer, default=5)
     max_projects = Column(Integer, default=3)
     ai_cfo_unlimited = Column(Boolean, default=False)
@@ -69,7 +69,7 @@ class SubscriptionModel(Base):
     company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     plan_id = Column(String(50), ForeignKey("plans.id"), nullable=False)
     billing_cycle = Column(String(20), default="monthly")
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)
     status = Column(String(50), default="ACTIVE")
     payment_method = Column(String(50), default="credit_card")
     card_last4 = Column(String(4), nullable=True)
@@ -91,7 +91,7 @@ class InvoiceModel(Base):
 
     id = Column(String(50), primary_key=True)
     subscription_id = Column(String(50), ForeignKey("subscriptions.id"), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)
     status = Column(String(50), default="PAID")
     description = Column(String(255), nullable=True)
     pdf_url = Column(String(255), nullable=True)
@@ -113,15 +113,15 @@ class EmployeeModel(Base):
     email = Column(String(255), nullable=False)
     role = Column(String(100), nullable=False)
     contract_type = Column(String(50), default="CLT")
-    base_salary = Column(Float, default=0.0)
+    base_salary = Column(Numeric(14, 2), default=0.0)
     is_active = Column(Boolean, default=True)
     hire_date = Column(String(50), default=lambda: datetime.utcnow().isoformat())
     cpf = Column(String(20), nullable=True)
     position = Column(String(100), nullable=True)
-    ctc_snapshot = Column(Float, nullable=True)
-    ctc_monthly = Column(Float, nullable=True)
-    hourly_rate = Column(Float, nullable=True)
-    hourly_cost = Column(Float, nullable=True)
+    ctc_snapshot = Column(Numeric(14, 2), nullable=True)
+    ctc_monthly = Column(Numeric(14, 2), nullable=True)
+    hourly_rate = Column(Numeric(14, 4), nullable=True)
+    hourly_cost = Column(Numeric(14, 4), nullable=True)
     start_date = Column(String(20), nullable=True)
     end_date = Column(String(20), nullable=True)
 
@@ -133,15 +133,16 @@ class SalaryHistoryModel(Base):
 
     id = Column(String(50), primary_key=True)
     employee_id = Column(String(50), ForeignKey("employees.id"), nullable=False)
-    base_salary = Column(Float, nullable=True)
-    ctc_monthly = Column(Float, nullable=True)
-    ctc_snapshot = Column(Float, nullable=True)
+    base_salary = Column(Numeric(14, 2), nullable=True)
+    ctc_monthly = Column(Numeric(14, 2), nullable=True)
+    ctc_snapshot = Column(Numeric(14, 2), nullable=True)
     changed_at = Column(String(20), nullable=True)
     reason = Column(String(255), nullable=True)
 
 
 class SupplierModel(Base):
     __tablename__ = "suppliers"
+    __table_args__ = (UniqueConstraint("company_id", "id", name="uq_supplier_company_id"),)
 
     id = Column(String(50), primary_key=True)
     company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
@@ -154,17 +155,23 @@ class SupplierModel(Base):
 
 class FinancialEntryModel(Base):
     __tablename__ = "financial_entries"
+    __table_args__ = (
+        CheckConstraint("amount > 0 AND amount < 1000000000000", name="ck_financial_amount"),
+        CheckConstraint("type IN ('RECEITA', 'DESPESA')", name="ck_financial_type"),
+        CheckConstraint("status IN ('PENDENTE', 'PAGO')", name="ck_financial_status"),
+        ForeignKeyConstraint(["company_id", "supplier_id"], ["suppliers.company_id", "suppliers.id"], name="fk_financial_supplier_company"),
+    )
 
     id = Column(String(50), primary_key=True)
     company_id = Column(String(50), ForeignKey("companies.id"), nullable=False)
     type = Column(String(20), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)
     description = Column(String(255), nullable=True)
     due_date = Column(String(20), nullable=True)
     payment_date = Column(String(20), nullable=True)
-    status = Column(String(20), default="PENDENTE")
+    status = Column(String(20), nullable=False, default="PENDENTE")
     category = Column(String(100), nullable=True)
-    supplier_id = Column(String(50), ForeignKey("suppliers.id", ondelete="SET NULL"), nullable=True)
+    supplier_id = Column(String(50), nullable=True)
     cost_center = Column(String(100), nullable=True)
     attachment_name = Column(String(255), nullable=True)   # original file name shown to the user
     attachment_key = Column(String(255), nullable=True)    # private storage key, never returned by the API
@@ -216,7 +223,7 @@ class KanbanCardModel(Base):
     description = Column(String(255), nullable=True)
     assignee = Column(String(255), nullable=True)
     assignee_id = Column(String(50), nullable=True)
-    cost_per_task = Column(Float, default=0.0)
+    cost_per_task = Column(Numeric(14, 2), default=0.0)
     total_time_seconds = Column(Integer, default=0)
     status = Column(String(50), default="ABERTO")
     priority = Column(String(20), default="MEDIA")
@@ -266,11 +273,15 @@ class CategoryModel(Base):
 
 class PersonalEntryModel(Base):
     __tablename__ = "personal_entries"
+    __table_args__ = (
+        CheckConstraint("amount > 0 AND amount < 1000000000000", name="ck_personal_amount"),
+        CheckConstraint("type IN ('RECEITA', 'DESPESA')", name="ck_personal_type"),
+    )
 
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     type = Column(String(20), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)
     description = Column(String(255), nullable=True)
     date = Column(String(20), nullable=True)
     category = Column(String(100), nullable=True)
@@ -304,8 +315,8 @@ class PersonalAccountModel(Base):
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     type = Column(String(20), nullable=True)
-    balance = Column(Float, default=0.0)
-    limit = Column(Float, nullable=True)
+    balance = Column(Numeric(14, 2), default=0.0)
+    limit = Column(Numeric(14, 2), nullable=True)
     closing_day = Column(Integer, nullable=True)
     due_day = Column(Integer, nullable=True)
 
@@ -316,8 +327,8 @@ class PersonalBudgetModel(Base):
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     category = Column(String(100), nullable=True)
-    limit_amount = Column(Float, nullable=True)
-    spent_amount = Column(Float, default=0.0)
+    limit_amount = Column(Numeric(14, 2), nullable=True)
+    spent_amount = Column(Numeric(14, 2), default=0.0)
 
 
 class PersonalGoalModel(Base):
@@ -326,8 +337,8 @@ class PersonalGoalModel(Base):
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
-    target_amount = Column(Float, nullable=True)
-    current_amount = Column(Float, default=0.0)
+    target_amount = Column(Numeric(14, 2), nullable=True)
+    current_amount = Column(Numeric(14, 2), default=0.0)
     target_date = Column(String(20), nullable=True)
 
 
@@ -337,8 +348,8 @@ class PersonalDebtModel(Base):
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
-    total_amount = Column(Float, nullable=True)
-    remaining_amount = Column(Float, nullable=True)
+    total_amount = Column(Numeric(14, 2), nullable=True)
+    remaining_amount = Column(Numeric(14, 2), nullable=True)
     installments_total = Column(Integer, nullable=True)
     installments_paid = Column(Integer, default=0)
     interest_rate = Column(Float, nullable=True)
@@ -350,7 +361,7 @@ class PersonalSubscriptionModel(Base):
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
-    amount = Column(Float, nullable=True)
+    amount = Column(Numeric(14, 2), nullable=True)
     billing_day = Column(Integer, nullable=True)
     category = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
@@ -362,7 +373,7 @@ class PersonalSplitModel(Base):
     id = Column(String(50), primary_key=True)
     owner_id = Column(String(50), ForeignKey("users.id"), nullable=False)
     description = Column(String(255), nullable=True)
-    total_amount = Column(Float, nullable=False)
+    total_amount = Column(Numeric(14, 2), nullable=False)
     participants = Column(JSON, nullable=False, default=list)
 
 
@@ -418,6 +429,29 @@ class ActiveTimerModel(Base):
     employee_id = Column(String(50), nullable=True)
     timer_id = Column(String(50), nullable=False)
     started_at = Column(String(50), nullable=False)
+    hourly_rate = Column(Numeric(14, 4), nullable=False, default=85)
+    actor_id = Column(String(50), nullable=True)
+
+
+class TimeEntryModel(Base):
+    """Immutable rate/cost snapshot for one completed timer (or legacy total)."""
+    __tablename__ = "time_entries"
+    __table_args__ = (
+        CheckConstraint("duration_seconds >= 0", name="ck_time_entry_duration"),
+        CheckConstraint("hourly_rate >= 0", name="ck_time_entry_rate"),
+        CheckConstraint("cost >= 0", name="ck_time_entry_cost"),
+        CheckConstraint("source IN ('timer', 'legacy')", name="ck_time_entry_source"),
+    )
+    id = Column(String(50), primary_key=True)
+    card_id = Column(String(50), ForeignKey("kanban_cards.id", ondelete="CASCADE"), nullable=False, index=True)
+    employee_id = Column(String(50), nullable=True)  # historical identity, retained after staff deletion
+    actor_id = Column(String(50), nullable=True)
+    started_at = Column(String(50), nullable=True)
+    ended_at = Column(String(50), nullable=True)
+    duration_seconds = Column(Integer, nullable=False)
+    hourly_rate = Column(Numeric(14, 4), nullable=False)
+    cost = Column(Numeric(14, 2), nullable=False)
+    source = Column(String(20), nullable=False, default="timer")
 
 
 class AuditLogModel(Base):
@@ -449,6 +483,9 @@ class BankAccountModel(Base):
     """A bank account fed by file import or by an Open Finance aggregator.
     Business accounts carry company_id; Hub Pessoal accounts carry owner_id (never both)."""
     __tablename__ = "bank_accounts"
+    __table_args__ = (
+        CheckConstraint("(scope = 'empresa' AND company_id IS NOT NULL AND owner_id IS NULL) OR (scope = 'pessoal' AND owner_id IS NOT NULL AND company_id IS NULL)", name="ck_bank_account_owner"),
+    )
 
     id = Column(String(50), primary_key=True)
     company_id = Column(String(50), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True, index=True)
@@ -475,7 +512,7 @@ class BankTransactionModel(Base):
     owner_id = Column(String(50), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     external_id = Column(String(100), nullable=False)
     date = Column(String(20), nullable=False)
-    amount = Column(Float, nullable=False)                 # + money in, - money out
+    amount = Column(Numeric(14, 2), nullable=False)                 # + money in, - money out
     description = Column(String(255), nullable=True)
     category = Column(String(100), nullable=True)
     status = Column(String(20), nullable=False, default="NOVA")   # NOVA | CONCILIADA | LANCADA | IGNORADA

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.security import get_current_user
+from app.core.money import money_input, money
 from app.integrations.ai import rules
 from app.integrations.ai import service as ai_service
 from app.integrations.ai.context import personal_snapshot
@@ -28,7 +29,7 @@ from app.db.models import (
     PersonalTimeboxModel,
     PersonalOkrModel,
 )
-from app.db.utils import model_to_dict, models_to_dicts
+from app.db.utils import model_to_dict, models_to_dicts, normalize_money_fields
 
 router = APIRouter()
 
@@ -38,6 +39,9 @@ async def _create_entry(d: dict, owner_id: str, db: AsyncSession):
     kwargs["id"] = f"pes-{uuid.uuid4().hex[:6]}"
     kwargs.setdefault("date", date.today().isoformat())
     kwargs["owner_id"] = owner_id
+    kwargs["amount"] = money_input(kwargs.get("amount", 0))
+    if kwargs["amount"] <= 0 or kwargs.get("type") not in {"RECEITA", "DESPESA"}:
+        raise HTTPException(400, "Tipo ou valor do lançamento inválido")
     entry = PersonalEntryModel(**kwargs)
     db.add(entry)
     await db.commit()
@@ -80,7 +84,7 @@ async def _create_owned(model, columns: set, prefix: str, d: dict, owner_id: str
             kwargs.setdefault(k, v)
     kwargs["id"] = f"{prefix}-{uuid.uuid4().hex[:6]}"
     kwargs["owner_id"] = owner_id
-    obj = model(**kwargs)
+    obj = model(**normalize_money_fields(model, kwargs))
     db.add(obj)
     await db.commit()
     await db.refresh(obj)
@@ -187,7 +191,7 @@ async def create_goal(d:dict,u=Depends(get_current_user), db: AsyncSession = Dep
 async def contribute_goal(gid:str,d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     g = await db.get(PersonalGoalModel, gid)
     if not g or g.owner_id != u["id"]: raise HTTPException(404)
-    g.current_amount = round((g.current_amount or 0) + d.get("amount", 0), 2)
+    g.current_amount = money(money(g.current_amount or 0) + money_input(d.get("amount", 0)))
     await db.commit()
     await db.refresh(g)
     return model_to_dict(g)

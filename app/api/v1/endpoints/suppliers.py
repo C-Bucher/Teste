@@ -5,11 +5,11 @@ from typing import Optional
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.security import get_current_user
 from app.db.session import get_db
-from app.db.models import SupplierModel
+from app.db.models import SupplierModel, FinancialEntryModel
 from app.db.utils import model_to_dict, models_to_dicts
 
 router = APIRouter()
@@ -42,6 +42,9 @@ async def del_sup(sid: str, u=Depends(get_current_user), db: AsyncSession = Depe
     s = await db.get(SupplierModel, sid)
     if not s or s.company_id != u["company_id"]:
         raise HTTPException(404)
+    # Preserve entries while the composite FK prevents cross-company links.
+    await db.execute(update(FinancialEntryModel).where(FinancialEntryModel.company_id == u["company_id"],
+                                                     FinancialEntryModel.supplier_id == sid).values(supplier_id=None))
     await db.delete(s)
     await db.commit()
     return {"success": True}

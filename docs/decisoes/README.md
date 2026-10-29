@@ -19,6 +19,7 @@ Esta pasta reúne as decisões técnicas, de arquitetura e de design tomadas ao 
 | [ADR 009](adr-009-ia-generativa-com-dados-reais.md) | IA Generativa sobre Dados Reais, com Fallback por Regras e Cota | Aceito | 2026-09-30 |
 | [ADR 010](adr-010-cobranca-recorrente-e-acesso-por-assinatura.md) | Cobrança Recorrente e Acesso por Assinatura | Aceito | 2026-10-07 |
 | [ADR 011](adr-011-conta-2fa-consentimento-armazenamento.md) | Recuperação de Conta, 2FA, Consentimento e Armazenamento Privado | Aceito | 2026-10-07 |
+| [ADR 012](adr-012-precisao-integridade-apontamentos.md) | Precisão monetária, integridade e histórico de custos | Implementado, em revisão | 2026-10-28 |
 
 ---
 

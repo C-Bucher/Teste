@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import CtcParamsModel
+from app.core.money import decimal_value, money
 
 DEFAULTS = {"clt_multiplier": 1.75, "pj_multiplier": 1.10, "estagio_multiplier": 1.10, "monthly_hours": 176.0}
 
@@ -25,5 +26,5 @@ def compute(base_salary: float, contract_type: Optional[str], params: CtcParamsM
         "CLT": params.clt_multiplier,
         "ESTAGIO": params.estagio_multiplier,
     }.get(contract_type or "", params.pj_multiplier)
-    ctc = round((base_salary or 0) * multiplier, 2)
-    return ctc, round(ctc / params.monthly_hours, 2)
+    ctc = money(decimal_value(base_salary or 0) * decimal_value(multiplier))
+    return ctc, money(ctc / decimal_value(params.monthly_hours))

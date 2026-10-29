@@ -75,7 +75,8 @@ class PluggyProvider:
             })
             total_pages = data.get("totalPages", 1)
             for t in data.get("results", []):
-                amount = abs(float(t["amount"]))
+                from app.core.money import money
+                amount = abs(money(t["amount"]))
                 amount = -amount if t.get("type") == "DEBIT" else amount
                 out.append(ParsedTransaction(t["id"], str(t["date"])[:10], round(amount, 2), t.get("description") or "(sem descrição)"))
             page += 1

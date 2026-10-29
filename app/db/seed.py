@@ -440,4 +440,18 @@ async def seed_if_empty() -> None:
         # nothing to seed; tables exist via PersonalTimeboxModel /
         # PersonalOkrModel for later routers to write into.
 
+        # Demo cards already have accumulated work. Preserve those totals as
+        # explicitly labelled legacy snapshots, just like revision 0011 does.
+        from app.db.models import TimeEntryModel
+        from app.core.money import money, decimal_value
+        demo_cards = (await session.execute(select(KanbanCardModel))).scalars().all()
+        for card in demo_cards:
+            if (card.total_time_seconds or 0) > 0 or (card.cost_per_task or 0) > 0:
+                seconds = card.total_time_seconds or 0
+                cost = money(card.cost_per_task or 0)
+                rate = money(cost * 3600 / decimal_value(seconds), 4) if seconds else money(0, 4)
+                session.add(TimeEntryModel(id=f"legacy-{card.id}", card_id=card.id,
+                                          employee_id=card.assignee_id, duration_seconds=seconds,
+                                          hourly_rate=rate, cost=cost, source="legacy"))
+
         await session.commit()
