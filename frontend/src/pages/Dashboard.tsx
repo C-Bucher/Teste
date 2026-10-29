@@ -59,14 +59,6 @@ export default function Dashboard() {
         if (cashflowRes.status === 'fulfilled') {
           setCashflow(cashflowRes.value.data);
         }
-
-        // Log de diagnóstico em desenvolvimento
-        const failed = [monthlyRes, dreRes, entriesRes, cashflowRes]
-          .filter(r => r.status === 'rejected')
-          .map((r) => (r as PromiseRejectedResult).reason?.message || (r as PromiseRejectedResult).reason);
-        if (failed.length > 0) {
-          console.warn('[Dashboard] Endpoints com falha:', failed);
-        }
       } catch (err) {
         console.error('Erro inesperado ao carregar dashboard', err);
       } finally {

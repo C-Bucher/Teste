@@ -1,7 +1,5 @@
 # NOTA: Sobe tudo junto com um comando: db (MySQL), redis, backend (FastAPI) e frontend (tela),
 #       com as variáveis lidas do arquivo .env.
-version: '3.8'
-
 services:
   db:
     image: mysql:8.0
@@ -48,12 +46,10 @@ services:
       # MySQL do próprio Compose por padrão; para usar o Supabase no Docker, defina COMPOSE_DATABASE_URL no .env (DB-5)
       - DATABASE_URL=${COMPOSE_DATABASE_URL:-mysql+aiomysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}}
       - SECRET_KEY=${SECRET_KEY}
-      - ALGORITHM=HS256
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
       - ./:/app
-      - uploads_data:/app/uploads
     ports:
       - "8000:8000"
     depends_on:
@@ -78,4 +74,3 @@ services:
 
 volumes:
   mysql_data:
-  uploads_data:

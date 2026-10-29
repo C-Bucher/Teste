@@ -9,6 +9,17 @@
 - Evidências da aplicação no Supabase, roteiro simples e [ADR 012](docs/decisoes/adr-012-precisao-integridade-apontamentos.md).
 - Validação local: 158 testes de backend; lint, 14 testes e build do frontend aprovados. Verificação de tipos, restrições e totais no Supabase concluída.
 
+## 2026-10-28 - Limpeza do código
+
+Faxina geral, sem mudar o que o sistema faz para o usuário. Tudo o que saiu estava duplicado, sem uso ou já não funcionava.
+
+- Backend: saíram caminhos da API que repetiam outros ou que nenhuma tela chamava (`/ai-consultant/*`, que repetia `/ai`; `GET /company/work-calendar`; `GET /exports/`; `/personal/transactions`; `/kanban/cards/{id}/time/*`). Também saíram dois caminhos de mentira: `POST /auth/logout`, que não fazia nada, e `POST /company/logo`, que só respondia "não implementado".
+- Backend: a pasta pública `/uploads` deixou de ser servida. Anexos e exportações já ficam em armazenamento privado, então nada de arquivo passa por ali.
+- Raiz do projeto: removidos `main.py`, `start.sh` (instalava só parte das dependências), `test_api.py` (script manual com senha fixa) e `seed_financial_history.py` (já não rodava, porque não informava a empresa). Também saíram `passlib` e `aiofiles`, que nenhum código usava.
+- Frontend: removidos os arquivos de exemplo do Vite (`App.css`, imagens, `icons.svg`, README), o `tailwind.config.js` e o `autoprefixer` (o Tailwind 4 não os usa; o CSS gerado ficou idêntico), as bibliotecas `clsx` e `tailwind-merge`, uma mensagem de diagnóstico no console e comentários de tarefas que já estavam prontas.
+- Infra: o `docker-compose.yml` perdeu o `version` obsoleto, a variável `ALGORITHM` e o volume `uploads`; `SUPABASE_URL` e `SUPABASE_ANON_KEY` saíram do `.env.example` e do README, pois nenhum código os lê.
+- Mantido de propósito: o Redis do Compose, porque a documentação o prevê como reserva (RNF05, SEC-9).
+
 ## 2026-10-07 - Preparação para o lançamento
 
 - Cobrança recorrente pelo Asaas, com o cartão digitado na página do Asaas (o checkout deixou de enviar número e CVV ao servidor), 7 dias de teste, webhook autenticado que ativa, renova e marca atraso, bloqueio com tolerância de 5 dias, cancelamento e página de assinatura com dados reais ([ADR 010](docs/decisoes/adr-010-cobranca-recorrente-e-acesso-por-assinatura.md)).

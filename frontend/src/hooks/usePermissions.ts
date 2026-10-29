@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
 
-export const ALL_MODULES = ['dashboard', 'kanban', 'equipe', 'financeiro', 'fornecedores', 'configuracoes', 'exportacao', 'ia'];
+const ALL_MODULES = ['dashboard', 'kanban', 'equipe', 'financeiro', 'fornecedores', 'configuracoes', 'exportacao', 'ia'];
 const FALLBACK_MODULES = ['dashboard', 'kanban'];
 
 // Cache compartilhado (chave = token atual) para que Layout + guard da página façam UMA requisição.

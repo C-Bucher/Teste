@@ -255,7 +255,7 @@ async def del_card(cid: str, u=Depends(get_current_user), db: AsyncSession = Dep
     return {"success": True}
 
 
-@router.post("/cards/{cid}/time/start")
+@router.post("/cards/{cid}/timer/start")
 async def start_timer(cid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     card = await _card_for_company(db, cid, u["company_id"])
     if not card:
@@ -276,7 +276,7 @@ async def start_timer(cid: str, u=Depends(get_current_user), db: AsyncSession = 
     return {"card_id": cid, "started_at": started_at, "timerId": timer.timer_id}
 
 
-@router.post("/cards/{cid}/time/stop")
+@router.post("/cards/{cid}/timer/stop")
 async def stop_timer(cid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     card = await _card_for_company(db, cid, u["company_id"])
     if not card:
@@ -310,16 +310,6 @@ async def time_entries(cid: str, u=Depends(get_current_user), db: AsyncSession =
     rows = (await db.execute(select(TimeEntryModel).where(TimeEntryModel.card_id == cid)
                             .order_by(TimeEntryModel.started_at, TimeEntryModel.id))).scalars().all()
     return {"items": models_to_dicts(rows)}
-
-
-@router.post("/cards/{cid}/timer/start")
-async def start_timer2(cid: str, employee_id: Optional[str] = None, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await start_timer(cid, u, db)
-
-
-@router.post("/cards/{cid}/timer/stop")
-async def stop_timer2(cid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await stop_timer(cid, u, db)
 
 
 @router.post("/cards/{cid}/comments")

@@ -82,8 +82,6 @@ Edite o `.env` com suas próprias credenciais. Nunca use valores reais neste REA
 
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres.<PROJECT_REF>:<SENHA_URL_ENCODED>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
-SUPABASE_URL=https://<PROJECT_REF>.supabase.co
-SUPABASE_ANON_KEY=<sua-anon-key>
 SECRET_KEY=<gere-com-o-comando-abaixo>
 ```
 
@@ -232,10 +230,7 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 ├── architecture/               # POPs de IA (CFO Virtual, Conciliação, Orçamentos)
 ├── docs/                       # Requisitos, arquitetura, ADRs, BACKLOG, reuniões, planejamento
 ├── sprints/  entregas/         # Sprints e relatórios de entrega
-├── docker-compose.yml  Dockerfile  .env.example  requirements.txt
-├── main.py                     # Atalho para subir o backend
-├── seed_financial_history.py   # Script avulso: 5 meses de lançamentos históricos (demo)
-└── test_api.py                 # Script manual de fumaça da API
+└── docker-compose.yml  Dockerfile  .env.example  requirements.txt
 ```
 
 ## Documentação

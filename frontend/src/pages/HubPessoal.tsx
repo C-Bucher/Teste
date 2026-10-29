@@ -8,11 +8,6 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { defer } from '../utils/defer';
 
-// ---------------------------------------------------------------------------
-// Tab definitions. This exact list is shared with Tasks 13-17, which each
-// replace exactly one placeholder `case` below with real content. Do not
-// rename ids — future tasks match on these strings.
-// ---------------------------------------------------------------------------
 const TABS = [
   { id: 'visao-geral', label: 'Visão Geral', icon: 'dashboard' },
   { id: 'extrato', label: 'Extrato', icon: 'receipt_long' },
@@ -978,12 +973,6 @@ export default function HubPessoal() {
         </p>
       </div>
 
-      {/* -----------------------------------------------------------------
-          Tab content. One case per tab id — this switch is the structure
-          Tasks 13-17 will extend. Each future task should replace exactly
-          one `case` below (see the TODO comment above each placeholder)
-          with real content, leaving the others untouched.
-      ----------------------------------------------------------------- */}
       {(() => {
         switch (activeTab) {
           // ---------------------------------------------------------------

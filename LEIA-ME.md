@@ -1,6 +1,6 @@
 # Nota da pasta raiz
 
-**Função:** Raiz do projeto TechConnect 2.0: sistema de gestão financeira e operacional para empresas e para pessoas. O servidor é em Python (FastAPI) e a tela é em React. Esta pasta reúne a partida do servidor, Docker, integração contínua, dependências e a documentação geral. Pastas que não têm nota por serem geradas ou internas do Git: .git (banco interno do Git com todo o histórico do código; não se mexe à mão), frontend/dist (site compilado; é apagado e refeito a cada build) e .pytest_cache (cache dos testes).
+**Função:** Raiz do projeto TechConnect 2.0: sistema de gestão financeira e operacional para empresas e para pessoas. O servidor é em Python (FastAPI) e a tela é em React. Esta pasta reúne Docker, integração contínua, dependências e a documentação geral. Pastas que não têm nota por serem geradas ou internas do Git: .git (banco interno do Git com todo o histórico do código; não se mexe à mão), frontend/dist (site compilado; é apagado e refeito a cada build) e .pytest_cache (cache dos testes).
 
 ## O que tem aqui
 
@@ -15,7 +15,6 @@
 - `alembic.ini`: Configuração do Alembic (ferramenta de migrações do banco): aponta para app/db/alembic e define o formato dos logs.
 - `app/`: Código do servidor (backend). Divide-se em api (as rotas), core (regras gerais), db (banco de dados) e integrations (serviços de fora: IA, bancos, pagamentos).
 - `architecture/`: Procedimentos operacionais padrão (POP) das três funções de IA: CFO Virtual, conciliação bancária e gerador de orçamento. Descrevem o passo a passo de cada uma.
-- `backend.log`: Log do servidor em execução local (gerado automaticamente; ignorável).
 - `CHANGELOG.md`: Histórico de mudanças por versão.
 - `CODE_OF_CONDUCT.md`: Código de conduta de quem contribui.
 - `CONTRIBUTING.md`: Como contribuir: branches, commits e pull requests.
@@ -25,17 +24,11 @@
 - `entregas/`: Registros das entregas feitas à faculdade e o modelo para novas entregas.
 - `frontend/`: Frontend: as telas do sistema em React + TypeScript, com Vite (compila e serve), Tailwind (estilo) e Vitest (testes). O código está em src; as bibliotecas instaladas estão em node_modules.
 - `LICENSE`: Licença de uso do projeto.
-- `main.py`: Ponto de partida do servidor. Importa o app de app/main.py e, se for executado direto (python main.py), liga o servidor na porta 8000 com recarga automática ao salvar.
 - `pytest.ini`: Configuração do pytest: as provas ficam na pasta tests e as funções async rodam automaticamente.
 - `README.md`: Apresentação do projeto: o que é, como rodar, variáveis de ambiente, usuários de demonstração e estrutura.
 - `requirements-dev.txt`: Bibliotecas para desenvolvimento: tudo do requirements.txt mais pytest e pytest-asyncio para os testes.
 - `requirements.txt`: Bibliotecas Python que o servidor precisa para rodar (pip install -r requirements.txt).
 - `SECURITY.md`: Política de segurança: como reportar vulnerabilidades.
-- `seed_financial_history.py`: Script manual: insere lançamentos financeiros dos últimos 5 meses no banco existente, para os gráficos e o DRE terem histórico. Uso: python seed_financial_history.py
 - `sprints/`: Registro de cada sprint (rodada de trabalho): objetivo, entregas, limitações e evidências.
-- `start.sh`: Script de partida do contêiner Docker: instala as dependências Python se ainda não estiverem instaladas e então liga o servidor.
 - `techconnect.db`: Banco SQLite local de desenvolvimento, criado pelo servidor. Fica fora do Git.
-- `test_api.py`: Script manual (não faz parte do pytest): faz login com o usuário de demonstração em localhost:8000 e imprime o resultado, para checar rapidamente se a API responde.
 - `tests/`: Testes automatizados do backend (pytest): segurança, isolamento entre empresas, cobrança, bancos, IA, migrações e exportações. Rodam também no GitHub a cada mudança.
-- `uploads/`: Arquivos enviados ou gerados em uso (logos e exportações). São dados de uso, ficam fora do Git e podem ser apagados sem quebrar o sistema.
-- `uvicorn.log`: Log do servidor Uvicorn em execução local (gerado automaticamente; ignorável).

@@ -27,7 +27,7 @@ async def test_attachment_is_private_to_the_company(client, company_a, company_b
     assert (await client.get(f"/financial/entries/{eid}/attachment", headers=company_b["headers"])).status_code == 404
     assert (await client.post(f"/financial/entries/{eid}/attachment", headers=company_b["headers"],
                               files={"file": ("x.pdf", b"%PDF", "application/pdf")})).status_code == 404
-    # never exposed through the public /uploads mount
+    # the stored file path never reaches the API response
     entry = (await client.get(f"/financial/entries/{eid}", headers=company_a["headers"])).json()
     assert "attachment_path" not in entry
 

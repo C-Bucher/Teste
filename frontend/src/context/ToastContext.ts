@@ -11,7 +11,7 @@ export interface Toast {
 }
 
 /** Stable set of actions: safe to list as an effect/callback dependency. */
-export interface ToastActions {
+interface ToastActions {
   showToast: (toast: Omit<Toast, 'id'>) => void;
   removeToast: (id: string) => void;
   success: (message: string, title?: string) => void;

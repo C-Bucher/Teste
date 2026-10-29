@@ -18,8 +18,6 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR") or PROJECT_ROOT / "storage")
-ATTACHMENTS_DIR = STORAGE_DIR / "attachments"
-EXPORTS_DIR = STORAGE_DIR / "exports"
 
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".xml"}
