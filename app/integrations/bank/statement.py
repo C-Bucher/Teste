@@ -13,6 +13,8 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
+from app.core.money import money
 
 
 class StatementError(ValueError):
@@ -23,7 +25,7 @@ class StatementError(ValueError):
 class ParsedTransaction:
     external_id: str
     date: str          # ISO yyyy-mm-dd
-    amount: float      # positive = money in, negative = money out
+    amount: Decimal    # positive = money in, negative = money out
     description: str
 
 
@@ -44,7 +46,7 @@ def _decode(content: bytes) -> str:
         return content.decode("cp1252", errors="replace")
 
 
-def _parse_amount(raw: str) -> float:
+def _parse_amount(raw: str) -> Decimal:
     s = raw.strip().replace("R$", "").replace(" ", "").replace(" ", "")
     if not s:
         raise ValueError("vazio")
@@ -52,7 +54,7 @@ def _parse_amount(raw: str) -> float:
     s = s.strip("()")
     if "," in s:  # Brazilian notation: 1.500,00
         s = s.replace(".", "").replace(",", ".")
-    value = float(s)
+    value = money(s)
     return -abs(value) if negative else value
 
 

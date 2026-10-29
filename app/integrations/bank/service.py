@@ -9,12 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import audit
+from app.core.money import money, decimal_value
 from app.db.models import (BankAccountModel, BankTransactionModel, CategorizationRuleModel,
                            FinancialEntryModel, PersonalEntryModel)
 from app.integrations.bank.statement import ParsedTransaction
 
 MATCH_WINDOW_DAYS = 5
-AMOUNT_TOLERANCE = 0.01
+AMOUNT_TOLERANCE = decimal_value("0.01")
 
 
 def _days_between(a: str, b: str) -> int:
@@ -23,7 +24,7 @@ def _days_between(a: str, b: str) -> int:
 
 def amounts_match(tx_amount: float, entry: FinancialEntryModel) -> bool:
     expected_type = "RECEITA" if tx_amount > 0 else "DESPESA"
-    return entry.type == expected_type and abs(abs(tx_amount) - (entry.amount or 0)) <= AMOUNT_TOLERANCE
+    return entry.type == expected_type and abs(abs(money(tx_amount)) - money(entry.amount or 0)) <= AMOUNT_TOLERANCE
 
 
 async def _rules(db: AsyncSession, account: BankAccountModel) -> list[CategorizationRuleModel]:
@@ -53,7 +54,7 @@ async def ingest(db: AsyncSession, account: BankAccountModel, parsed: list[Parse
         tx = BankTransactionModel(
             id=f"btx-{uuid.uuid4().hex}", bank_account_id=account.id,
             company_id=account.company_id, owner_id=account.owner_id,
-            external_id=p.external_id, date=p.date, amount=p.amount,
+            external_id=p.external_id, date=p.date, amount=money(p.amount),
             description=(p.description or "")[:255], category=category, status="NOVA",
         )
         db.add(tx)

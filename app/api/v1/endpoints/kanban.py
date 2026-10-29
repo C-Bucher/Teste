@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from app.core.security import get_current_user
+from app.core.money import money, decimal_value
 from app.db.session import get_db
 from app.db.models import (
     ClientModel,
@@ -19,6 +20,7 @@ from app.db.models import (
     CardCommentModel,
     EmployeeModel,
     ActiveTimerModel,
+    TimeEntryModel,
 )
 from app.db.utils import model_to_dict, models_to_dicts
 
@@ -224,8 +226,12 @@ async def upd_card(cid: str, d: dict, u=Depends(get_current_user), db: AsyncSess
     card = await _card_for_company(db, cid, u["company_id"])
     if not card:
         raise HTTPException(404)
+    if d.get("assignee_id"):
+        employee = await db.get(EmployeeModel, d["assignee_id"])
+        if not employee or employee.company_id != u["company_id"]:
+            raise HTTPException(404, "Colaborador não encontrado")
     for k, v in d.items():
-        if k in _CARD_COLUMNS and k not in {"id", "column_id"}:
+        if k in _CARD_COLUMNS and k not in {"id", "column_id", "cost_per_task", "total_time_seconds"}:
             setattr(card, k, v)
     await db.commit()
     await db.refresh(card)
@@ -243,6 +249,7 @@ async def del_card(cid: str, u=Depends(get_current_user), db: AsyncSession = Dep
     timer = await db.get(ActiveTimerModel, cid)
     if timer:
         await db.delete(timer)
+    await db.execute(delete(TimeEntryModel).where(TimeEntryModel.card_id == cid))
     await db.delete(card)
     await db.commit()
     return {"success": True}
@@ -256,7 +263,14 @@ async def start_timer(cid: str, u=Depends(get_current_user), db: AsyncSession = 
     if await db.get(ActiveTimerModel, cid):
         raise HTTPException(409, "Já existe um timer ativo para este cartão")
     started_at = datetime.now(timezone.utc).isoformat()
-    timer = ActiveTimerModel(card_id=cid, started_at=started_at, employee_id=card.assignee_id or u["id"], timer_id=f"tmr-{uuid.uuid4().hex[:8]}")
+    employee = await db.get(EmployeeModel, card.assignee_id) if card.assignee_id else None
+    if card.assignee_id and (not employee or employee.company_id != u["company_id"]):
+        raise HTTPException(400, "Responsável do cartão inválido")
+    rate = money(employee.hourly_rate if employee and employee.hourly_rate is not None else 85, 4)
+    if rate < 0:
+        raise HTTPException(400, "Custo-hora do colaborador deve ser não negativo")
+    timer = ActiveTimerModel(card_id=cid, started_at=started_at, employee_id=card.assignee_id,
+                             actor_id=u["id"], hourly_rate=rate, timer_id=f"tmr-{uuid.uuid4().hex}")
     db.add(timer)
     await db.commit()
     return {"card_id": cid, "started_at": started_at, "timerId": timer.timer_id}
@@ -267,19 +281,35 @@ async def stop_timer(cid: str, u=Depends(get_current_user), db: AsyncSession = D
     card = await _card_for_company(db, cid, u["company_id"])
     if not card:
         raise HTTPException(404)
-    timer = await db.get(ActiveTimerModel, cid)
+    # Serialize stop requests on PostgreSQL. The conditional delete below also
+    # claims the timer once on dialects without SELECT FOR UPDATE (SQLite).
+    await db.execute(select(KanbanCardModel).where(KanbanCardModel.id == cid).with_for_update().execution_options(populate_existing=True))
+    timer = (await db.execute(select(ActiveTimerModel).where(ActiveTimerModel.card_id == cid).with_for_update())).scalar_one_or_none()
     if not timer:
         raise HTTPException(409, "Nenhum timer ativo para este cartão")
-    elapsed = max(0, int((datetime.now(timezone.utc) - datetime.fromisoformat(timer.started_at)).total_seconds()))
+    ended_at = datetime.now(timezone.utc)
+    elapsed = max(0, int((ended_at - datetime.fromisoformat(timer.started_at)).total_seconds()))
+    rate = money(timer.hourly_rate, 4)
+    cost = money(decimal_value(elapsed) / decimal_value(3600) * rate)
+    claimed = await db.execute(delete(ActiveTimerModel).where(ActiveTimerModel.card_id == cid, ActiveTimerModel.timer_id == timer.timer_id).execution_options(synchronize_session=False))
+    if claimed.rowcount != 1:
+        raise HTTPException(409, "Cronômetro já finalizado")
+    db.add(TimeEntryModel(id=timer.timer_id, card_id=cid, employee_id=timer.employee_id,
+                         actor_id=timer.actor_id, started_at=timer.started_at, ended_at=ended_at.isoformat(),
+                         duration_seconds=elapsed, hourly_rate=rate, cost=cost, source="timer"))
     card.total_time_seconds = (card.total_time_seconds or 0) + elapsed
-    emp = await db.get(EmployeeModel, card.assignee_id) if card.assignee_id else None
-    if emp and emp.company_id != u["company_id"]:
-        emp = None
-    rate = emp.hourly_rate if emp and emp.hourly_rate else 85
-    card.cost_per_task = round(card.total_time_seconds / 3600 * rate, 2)
-    await db.delete(timer)
+    card.cost_per_task = money(money(card.cost_per_task or 0) + cost)
     await db.commit()
     return {"card_id": cid, "elapsed_seconds": elapsed, "total_time_seconds": card.total_time_seconds, "cost_per_task": card.cost_per_task}
+
+
+@router.get("/cards/{cid}/time-entries")
+async def time_entries(cid: str, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not await _card_for_company(db, cid, u["company_id"]):
+        raise HTTPException(404)
+    rows = (await db.execute(select(TimeEntryModel).where(TimeEntryModel.card_id == cid)
+                            .order_by(TimeEntryModel.started_at, TimeEntryModel.id))).scalars().all()
+    return {"items": models_to_dicts(rows)}
 
 
 @router.post("/cards/{cid}/timer/start")

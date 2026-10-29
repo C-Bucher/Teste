@@ -15,7 +15,7 @@ from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db.models import Base
-from app.db.session import DATABASE_URL
+from app.db.session import DATABASE_URL, engine_kwargs
 
 config = context.config
 target_metadata = Base.metadata
@@ -39,9 +39,20 @@ def run_migrations_offline() -> None:
 
 
 async def _run_async() -> None:
-    engine = create_async_engine(DATABASE_URL)
-    async with engine.begin() as conn:
-        await conn.run_sync(_configure)
+    engine = create_async_engine(DATABASE_URL, **engine_kwargs)
+    async with engine.connect() as conn:
+        sqlite = conn.dialect.name == "sqlite"
+        if sqlite:
+            await conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            await conn.commit()
+        try:
+            await conn.run_sync(_configure)
+            await conn.commit()
+        finally:
+            await conn.rollback()
+            if sqlite:
+                await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                await conn.commit()
     await engine.dispose()
 
 

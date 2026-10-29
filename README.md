@@ -61,7 +61,7 @@ No backend, o mesmo código aceita três bancos relacionais diferentes por trás
 | Camada | Tecnologias |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS v4, React Router v7, Framer Motion, Axios, Recharts |
-| Backend | FastAPI (Python 3.11+), Pydantic, SQLAlchemy 2.0 assíncrono, Alembic, Uvicorn — 40 tabelas, seed idempotente |
+| Backend | FastAPI (Python 3.11+), Pydantic, SQLAlchemy 2.0 assíncrono, Alembic, Uvicorn — 41 tabelas, seed idempotente |
 | Integrações | Google Gemini (IA), Asaas (cobrança), Pluggy (Open Finance), SMTP (e-mail), S3 compatível (arquivos) |
 | Qualidade | pytest, Vitest + Testing Library, ESLint, GitHub Actions |
 | Banco de dados | PostgreSQL gerenciado (Supabase, via Connection Pooler), MySQL 8.0 (Docker) ou SQLite (fallback local) |
@@ -220,7 +220,7 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 │   ├── api/v1/endpoints/       # Rotas por domínio (auth, account, payments, bank, financial, kanban, ai, jobs...)
 │   ├── core/                   # Segurança, cobrança, permissões, auditoria, e-mail, armazenamento, alertas
 │   ├── integrations/           # ai/ (Gemini), bank/ (OFX/CSV, Pluggy), payments/ (Asaas)
-│   └── db/                     # models.py (40 tabelas), alembic/ (migrações), session.py, seed.py, demo_dates.py
+│   └── db/                     # models.py (41 tabelas), alembic/ (migrações), session.py, seed.py, demo_dates.py
 ├── tests/                      # pytest: isolamento, autenticação, cobrança, bancos, IA, contrato da API
 ├── frontend/src/               # Frontend React + Vite
 │   ├── components/             # Layout, painéis de Configurações, 2FA, banner de assinatura, modais
@@ -239,6 +239,8 @@ Estão registradas aqui de propósito, para que a avaliação parta do estado re
 ```
 
 ## Documentação
+
+As melhorias de precisão monetária, integridade e histórico de custos estão documentadas no [ADR 012](docs/decisoes/adr-012-precisao-integridade-apontamentos.md). A [entrega de banco](docs/analise-banco/README.md) inclui evidências da migração 0011 e roteiro de apresentação. Para usar os novos apontamentos, execute o backend atualizado junto do esquema 0011.
 
 | Item | Descrição | Link |
 |---|---|---|

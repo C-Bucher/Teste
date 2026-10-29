@@ -1,0 +1,47 @@
+{
+  "before": {
+    "revision": "unversioned",
+    "legacy_owner": "cmp-001",
+    "counts": {
+      "card_comments": 0,
+      "categories": 9,
+      "clients": 3,
+      "companies": 2,
+      "cost_centers": 3,
+      "employees": 5,
+      "export_logs": 2,
+      "financial_entries": 12,
+      "invoices": 0,
+      "kanban_cards": 13,
+      "kanban_columns": 12,
+      "notifications": 4,
+      "personal_accounts": 2,
+      "personal_budgets": 3,
+      "personal_categories": 4,
+      "personal_debts": 1,
+      "personal_entries": 4,
+      "personal_goals": 2,
+      "personal_okrs": 0,
+      "personal_splits": 1,
+      "personal_subscriptions": 2,
+      "personal_timeboxes": 0,
+      "plans": 0,
+      "projects": 3,
+      "role_permissions": 16,
+      "salary_history": 10,
+      "subscriptions": 0,
+      "suppliers": 5,
+      "users": 8
+    }
+  },
+  "after": {
+    "revision": "0011",
+    "preflight": "ok",
+    "counts": {
+      "financial_entries": 12,
+      "personal_entries": 4,
+      "kanban_cards": 13,
+      "active_timers": 0
+    }
+  }
+}

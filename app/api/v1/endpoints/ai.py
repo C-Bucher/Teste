@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.core.money import decimal_value, money
 from app.db.models import AiMessageModel, BankTransactionModel, CategoryModel, FinancialEntryModel
 from app.db.session import get_db
 from app.db.utils import models_to_dicts
@@ -205,8 +206,8 @@ async def ai_prop(b: ProposalReq, u=Depends(get_current_user), db: AsyncSession 
     if not steps:
         raise HTTPException(503, "A IA não devolveu uma estimativa utilizável; tente detalhar o briefing")
     hours = round(sum(s["horas"] for s in steps), 1)
-    cost = round(hours * hourly, 2)
-    price = round(cost * (1 + b.markup / 100), 2)
+    cost = money(decimal_value(hours) * decimal_value(hourly))
+    price = money(cost * (1 + decimal_value(b.markup) / 100))
     return {
         "estimated_hours": hours, "hourly_cost": hourly, "estimated_internal_cost": cost, "suggested_price": price,
         "margin_percentage": round((price - cost) / price * 100, 1) if price else 0.0,

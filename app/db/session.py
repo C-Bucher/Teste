@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import inspect
+from sqlalchemy import inspect, event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.db.models import Base
 from app.db.migrations import run_compatibility_migrations
@@ -20,7 +20,7 @@ BASELINE_REVISION = "0001"
 # Tables introduced after the baseline; a pre-Alembic database must not get them from create_all.
 # Pre-Alembic databases always have `users`, so post-baseline columns on it are added by their revision.
 POST_BASELINE_TABLES = {"audit_logs", "ctc_params", "bank_accounts", "bank_transactions", "categorization_rules",
-                        "ai_messages", "ai_usage", "password_resets"}
+                        "ai_messages", "ai_usage", "password_resets", "time_entries"}
 # users.mfa_secret / mfa_recovery_codes (0008) and terms_version / terms_accepted_at (0009) are added by their revisions.
 
 engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
@@ -32,6 +32,12 @@ else:
     engine_kwargs["pool_recycle"] = 280
 
 engine = create_async_engine(DATABASE_URL, **engine_kwargs)
+if engine.dialect.name == "sqlite":
+    @event.listens_for(engine.sync_engine, "connect")
+    def _sqlite_foreign_keys(connection, _record):
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 
@@ -63,5 +69,16 @@ def _migrate(connection) -> None:
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(_migrate)
+    async with engine.connect() as conn:
+        sqlite = conn.dialect.name == "sqlite"
+        if sqlite:
+            await conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            await conn.commit()
+        try:
+            await conn.run_sync(_migrate)
+            await conn.commit()
+        finally:
+            await conn.rollback()
+            if sqlite:
+                await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+                await conn.commit()

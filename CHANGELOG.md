@@ -1,5 +1,14 @@
 # Histórico de mudanças
 
+## 2026-10-28 - Precisão, integridade e histórico de custos
+
+- Migração 0011: 26 colunas monetárias em Numeric, com Decimal nos cálculos centrais e na importação de extratos.
+- Restrições para valores, tipos e status financeiros, propriedade das contas bancárias e fornecedor da mesma empresa do lançamento.
+- Histórico de apontamentos com custo-hora capturado no início do cronômetro e preservação dos acumulados antigos como legado.
+- Adoção controlada do esquema pré-Alembic, com empresa explicitamente informada, scripts de diagnóstico e verificação sem seed remoto.
+- Evidências da aplicação no Supabase, roteiro simples e [ADR 012](docs/decisoes/adr-012-precisao-integridade-apontamentos.md).
+- Validação local: 158 testes de backend; lint, 14 testes e build do frontend aprovados. Verificação de tipos, restrições e totais no Supabase concluída.
+
 ## 2026-10-07 - Preparação para o lançamento
 
 - Cobrança recorrente pelo Asaas, com o cartão digitado na página do Asaas (o checkout deixou de enviar número e CVV ao servidor), 7 dias de teste, webhook autenticado que ativa, renova e marca atraso, bloqueio com tolerância de 5 dias, cancelamento e página de assinatura com dados reais ([ADR 010](docs/decisoes/adr-010-cobranca-recorrente-e-acesso-por-assinatura.md)).

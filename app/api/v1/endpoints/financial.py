@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from app.core.security import get_current_user
 from app.core import audit, storage
+from app.core.money import money_input, decimal_value
 from app.core.permissions import require_module
 from app.db.session import get_db
 from app.db.models import FinancialEntryModel
@@ -79,10 +80,7 @@ async def get_entries(
 
 @router.post("/entries")
 async def create_entry(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("financeiro"))):
-    try:
-        amount = float(d.get("amount", 0))
-    except (TypeError, ValueError):
-        raise HTTPException(400, "Valor do lançamento inválido")
+    amount = money_input(d.get("amount", 0))
     if d.get("type") not in {"RECEITA", "DESPESA"} or amount <= 0:
         raise HTTPException(400, "Tipo ou valor do lançamento inválido")
     d = {k: v for k, v in d.items() if k not in _FIN_PROTECTED}
@@ -112,6 +110,14 @@ async def upd_entry(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSes
     if not e or e.company_id != u["company_id"]:
         raise HTTPException(404)
     changes = {k: v for k, v in d.items() if k in _FIN_COLUMNS and k not in _FIN_PROTECTED}
+    if "amount" in changes:
+        changes["amount"] = money_input(changes["amount"])
+        if changes["amount"] <= 0:
+            raise HTTPException(400, "Valor do lançamento deve ser positivo")
+    if "type" in changes and changes["type"] not in {"RECEITA", "DESPESA"}:
+        raise HTTPException(400, "Tipo do lançamento inválido")
+    if "status" in changes and changes["status"] not in {"PENDENTE", "PAGO"}:
+        raise HTTPException(400, "Status do lançamento inválido")
     if "supplier_id" in changes:
         await _check_supplier(db, changes["supplier_id"], u["company_id"])
     for k, v in changes.items():
@@ -201,14 +207,14 @@ async def get_dre(
     for e in entries:
         if e.type == "RECEITA":
             cat = e.category or "Sem categoria"
-            receitas_map[cat] = receitas_map.get(cat, 0.0) + e.amount
+            receitas_map[cat] = receitas_map.get(cat, 0) + e.amount
 
     # Agrega despesas por categoria real do banco
     despesas_map: dict = {}
     for e in entries:
         if e.type == "DESPESA":
             cat = e.category or "Sem categoria"
-            despesas_map[cat] = despesas_map.get(cat, 0.0) + e.amount
+            despesas_map[cat] = despesas_map.get(cat, 0) + e.amount
 
     receitas_list = [{"categoria": k, "total": round(v, 2)} for k, v in sorted(receitas_map.items(), key=lambda x: -x[1])]
     despesas_list = [{"categoria": k, "total": round(v, 2)} for k, v in sorted(despesas_map.items(), key=lambda x: -x[1])]
@@ -265,7 +271,7 @@ async def get_cashflow(u=Depends(get_current_user), db: AsyncSession = Depends(g
     # Nível de alerta
     if saldo_atual == 0:
         alert_level = "VERDE" if projected_balance >= 0 else "VERMELHO"
-    elif projected_balance >= saldo_atual * 0.8:
+    elif projected_balance >= saldo_atual * decimal_value("0.8"):
         alert_level = "VERDE"
     elif projected_balance >= 0:
         alert_level = "AMARELO"

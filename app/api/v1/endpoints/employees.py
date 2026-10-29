@@ -11,9 +11,10 @@ from sqlalchemy import select
 
 from app.core.security import get_current_user
 from app.core import ctc as ctc_rules
+from app.core.money import money_input
 from app.db.session import get_db
 from app.db.models import EmployeeModel, SalaryHistoryModel
-from app.db.utils import model_to_dict, models_to_dicts
+from app.db.utils import model_to_dict, models_to_dicts, normalize_money_fields
 
 router = APIRouter()
 
@@ -55,7 +56,8 @@ async def get_emps(skip: int = 0, limit: int = 100, active: Optional[bool] = Non
 async def create_emp(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if not str(d.get("full_name") or "").strip() or not str(d.get("email") or "").strip():
         raise HTTPException(400, "Nome e e-mail do colaborador são obrigatórios")
-    ctc, hr = await _compute_ctc(db, u["company_id"], float(d.get("base_salary") or 0), d.get("contract_type"))
+    d = normalize_money_fields(EmployeeModel, d)
+    ctc, hr = await _compute_ctc(db, u["company_id"], money_input(d.get("base_salary") or 0), d.get("contract_type"))
     emp_dict = {**d, "id": f"emp-{uuid.uuid4().hex[:6]}", "company_id": u["company_id"], "ctc_snapshot": round(ctc, 2), "ctc_monthly": round(ctc, 2), "hourly_rate": hr, "hourly_cost": hr, "is_active": True, "position": d.get("role", ""), "hire_date": d.get("start_date", date.today().isoformat())}
     model_kwargs = {k: v for k, v in emp_dict.items() if k in _EMP_COLUMNS}
     emp = EmployeeModel(**model_kwargs)
@@ -83,6 +85,8 @@ async def upd_emp(eid: str, d: dict, u=Depends(get_current_user), db: AsyncSessi
 
     old_base = e.base_salary
     old_contract = e.contract_type
+
+    d = normalize_money_fields(EmployeeModel, d)
 
     for k, v in d.items():
         if k in _EMP_COLUMNS and k not in {"id", "company_id"}:

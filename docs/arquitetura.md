@@ -1,6 +1,6 @@
 # Documento de Arquitetura de Software (DAS) — TechConnect 2.0
 
-Este documento descreve a arquitetura do TechConnect 2.0: as decisões de design, os modelos de integração, o fluxo de dados, a segurança e os componentes de software do sistema. Estado de 07/10/2026.
+Este documento descreve a arquitetura do TechConnect 2.0: as decisões de design, os modelos de integração, o fluxo de dados, a segurança e os componentes de software do sistema. Atualizado em 28/10/2026 para a revisão 0011.
 
 ---
 
@@ -15,7 +15,7 @@ graph TD
     User([Usuário: gestor de PME ou pessoa física]) -->|HTTPS| Frontend[Frontend SPA\nReact 19 + Vite + Tailwind v4]
     Frontend -->|JSON / Bearer JWT| Backend[Backend API\nFastAPI assíncrono]
 
-    Backend -->|SQLAlchemy async + Alembic| DB[(Banco relacional — 40 tabelas\nPostgreSQL/Supabase, MySQL 8 ou SQLite)]
+    Backend -->|SQLAlchemy async + Alembic| DB[(Banco relacional — 41 tabelas\nPostgreSQL/Supabase, MySQL 8 ou SQLite)]
     Backend -->|REST generateContent| Gemini[Google Gemini\nCFO Virtual e CFO Pessoal]
     Backend -->|REST + webhook| Asaas[Asaas\nassinatura recorrente: Pix, boleto, cartão]
     Backend -->|REST + webhook| Pluggy[Pluggy\nagregador de Open Finance]
@@ -66,7 +66,9 @@ As integrações externas ficam em `app/integrations/` (`ai/`, `bank/`, `payment
 
 ### 2.3 Banco de dados e persistência
 
-A estrutura relacional tem 40 tabelas. Recursos empresariais têm `company_id`; recursos do Hub Pessoal (inclusive contas e movimentações bancárias pessoais) têm `owner_id`. Nenhuma coluna de dono tem valor padrão: um código que esqueça de preenchê-la falha, em vez de gravar dados na conta demo.
+A estrutura relacional tem 41 tabelas. Recursos empresariais têm `company_id`; recursos do Hub Pessoal (inclusive contas e movimentações bancárias pessoais) têm `owner_id`. Nenhuma coluna de dono tem valor padrão: um código que esqueça de preenchê-la falha, em vez de gravar dados na conta demo.
+
+A revisão 0011 converte valores monetários para Numeric, reforça restrições financeiras/de propriedade e acrescenta `time_entries`. Cada sessão registra duração, custo-hora e custo; o cronômetro captura a taxa no início e soma somente o custo da nova sessão. Acumulados anteriores são preservados com origem `legacy`. A relação empresa/fornecedor no lançamento usa FK composta. Detalhes e limites estão no [ADR 012](decisoes/adr-012-precisao-integridade-apontamentos.md).
 
 O schema é versionado com Alembic (`app/db/alembic/`, 10 revisões). Na inicialização:
 - um banco vazio é criado pelas migrações;

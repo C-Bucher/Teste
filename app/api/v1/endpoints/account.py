@@ -63,6 +63,7 @@ async def _purge_company(db: AsyncSession, company_id: str) -> None:
 
     await db.execute(delete(m.CardCommentModel).where(m.CardCommentModel.card_id.in_(card_ids)))
     await db.execute(delete(m.ActiveTimerModel).where(m.ActiveTimerModel.card_id.in_(card_ids)))
+    await db.execute(delete(m.TimeEntryModel).where(m.TimeEntryModel.card_id.in_(card_ids)))
     await db.execute(delete(m.KanbanCardModel).where(m.KanbanCardModel.id.in_(card_ids)))
     await db.execute(delete(m.KanbanColumnModel).where(m.KanbanColumnModel.id.in_(column_ids)))
     await db.execute(delete(m.SalaryHistoryModel).where(m.SalaryHistoryModel.employee_id.in_(employee_ids)))

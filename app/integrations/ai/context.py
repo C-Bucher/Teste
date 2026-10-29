@@ -7,6 +7,7 @@ e-mails or anything from other tenants.
 """
 
 from collections import defaultdict
+from decimal import Decimal
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
@@ -16,7 +17,7 @@ from app.db import models as m
 
 
 def _r(v: float) -> float:
-    return round(v or 0, 2)
+    return float(round(v or 0, 2))  # JSON/presentation boundary
 
 
 async def business_snapshot(db: AsyncSession, company_id: str) -> dict:
@@ -35,7 +36,7 @@ async def business_snapshot(db: AsyncSession, company_id: str) -> dict:
     receivable = [e for e in pending if e.type == "RECEITA" and t <= e.due_date <= f30]
     overdue = [e for e in pending if e.due_date < t]
 
-    by_category: dict[str, float] = defaultdict(float)
+    by_category = defaultdict(Decimal)
     for e in entries:
         if e.type == "DESPESA" and e.status == "PAGO" and (e.payment_date or "") >= d90:
             by_category[e.category or "Sem categoria"] += e.amount
@@ -78,8 +79,8 @@ async def personal_snapshot(db: AsyncSession, owner_id: str) -> dict:
     accounts, debts, entries = await owned(m.PersonalAccountModel), await owned(m.PersonalDebtModel), await owned(m.PersonalEntryModel)
     budgets, subs, goals = await owned(m.PersonalBudgetModel), await owned(m.PersonalSubscriptionModel), await owned(m.PersonalGoalModel)
 
-    spent_month: dict[str, float] = defaultdict(float)
-    income_month = 0.0
+    spent_month = defaultdict(Decimal)
+    income_month = Decimal(0)
     for e in entries:
         if (e.date or "") >= month_start:
             if e.type == "DESPESA":
