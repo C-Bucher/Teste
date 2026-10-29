@@ -73,7 +73,7 @@ async def test_clients_projects_and_cards_are_isolated(client, company_a, compan
         ("put", f"/kanban/cards/{card['id']}", {"title": "x"}),
         ("post", f"/kanban/cards/{card['id']}/move", {"column_id": col_id}),
         ("post", f"/kanban/cards/{card['id']}/comments", {"text": "x"}),
-        ("post", f"/kanban/cards/{card['id']}/time/start", {}),
+        ("post", f"/kanban/cards/{card['id']}/timer/start", {}),
         ("delete", f"/kanban/cards/{card['id']}", None),
     ]:
         kwargs = {"headers": company_b["headers"]}
@@ -162,5 +162,5 @@ async def test_export_file_is_downloaded_with_auth_and_not_public(client, compan
     assert d.status_code == 200
     assert "'=HYPERLINK" in d.text, "formula cells must be neutralised"
     public = await client.get(f"http://test/uploads/export_{eid}.csv")
-    # may be 404 or the SPA's index.html fallback, but never the report itself
+    # there is no public file path: 404, or the SPA's index.html fallback, but never the report itself
     assert "HYPERLINK" not in public.text

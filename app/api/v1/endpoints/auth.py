@@ -1,4 +1,4 @@
-# NOTA: Rotas /auth: cadastro, login (com 2FA), renovação e logout, dados do usuário logado, troca e recuperação de senha,
+# NOTA: Rotas /auth: cadastro, login (com 2FA), renovação da sessão, dados do usuário logado, troca e recuperação de senha,
 #       gestão de usuários da empresa, ativar/desativar 2FA e aceite dos termos.
 
 from datetime import datetime, timedelta
@@ -202,9 +202,6 @@ async def login_mfa(b: MfaLoginReq, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def me(u=Depends(get_current_user)):
     return _public(u)
-
-@router.post("/logout")
-async def logout(u=Depends(get_current_user)): return {"message":"Logout realizado"}
 
 class RefreshReq(BaseModel):
     refresh_token:Optional[str]=None

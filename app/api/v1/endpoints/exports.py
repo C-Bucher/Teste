@@ -115,12 +115,6 @@ def _pdf(rows: list[dict], title: str, company: str) -> bytes:
     return buf.getvalue()
 
 
-@router.get("/")
-async def get_exports_main(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ExportLogModel).where(ExportLogModel.company_id == u["company_id"]).order_by(ExportLogModel.created_at.desc()))
-    return models_to_dicts(result.scalars().all())
-
-
 @router.post("/request")
 async def req_export(d: dict, u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     exp_type = str(d.get("type", "")).upper()

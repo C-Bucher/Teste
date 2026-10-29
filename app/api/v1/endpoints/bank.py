@@ -32,7 +32,6 @@ from app.integrations.bank.statement import StatementError, parse_statement
 router = APIRouter()
 
 MAX_STATEMENT_BYTES = 5 * 1024 * 1024
-SCOPES = ("empresa", "pessoal")
 
 
 async def _owner_for(scope: str, u: dict, db: AsyncSession) -> dict:

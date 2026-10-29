@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.money import money
 from app.db import session as db_session
-from app.db.models import ActiveTimerModel, EmployeeModel, FinancialEntryModel, TimeEntryModel
+from app.db.models import EmployeeModel, FinancialEntryModel, TimeEntryModel
 from app.db.session import async_session_maker
 
 

@@ -110,17 +110,6 @@ async def _ensure_personal_categories(owner_id: str, db: AsyncSession) -> None:
     await db.commit()
 
 
-@router.get("/transactions")
-async def get_pers_tx(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalEntryModel).where(PersonalEntryModel.owner_id == u["id"]))
-    return models_to_dicts(result.scalars().all())
-@router.post("/transactions")
-async def create_pers_tx(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _create_entry(d, u["id"], db)
-@router.delete("/transactions/{eid}")
-async def del_pers_tx(eid:str,u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return await _delete_entry(eid, u["id"], db)
-
 @router.get("/categories")
 async def get_pers_cats(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     await _ensure_personal_categories(u["id"], db)

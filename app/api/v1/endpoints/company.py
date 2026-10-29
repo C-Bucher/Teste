@@ -1,5 +1,5 @@
 # NOTA: Rotas /company: dados da empresa, conclusão do onboarding, centros de custo, categorias (plano de contas),
-#       calendário de trabalho, parâmetros do CTC e logo.
+#       calendário de trabalho e parâmetros do CTC.
 
 from fastapi import APIRouter, HTTPException, Depends
 import uuid
@@ -113,11 +113,8 @@ async def _calendar(db: AsyncSession, company_id: str) -> WorkCalendarModel:
         await db.refresh(calendar)
     return calendar
 
-@router.get("/work-calendar")
-async def get_cal(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return model_to_dict(await _calendar(db, u["company_id"]))
 @router.get("/calendar")
-async def get_cal2(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_calendar(u=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return model_to_dict(await _calendar(db, u["company_id"]))
 @router.put("/calendar")
 async def upd_calendar(d:dict,u=Depends(get_current_user), db: AsyncSession = Depends(get_db), _p=Depends(require_module("configuracoes"))):
@@ -168,6 +165,3 @@ async def put_ctc_p(d: dict, u=Depends(get_current_user), db: AsyncSession = Dep
     audit.record_by(db, u, "CTC_ALTERADO", entity="ctc_params", details={k: getattr(params, k) for k in _CTC_FIELDS})
     await db.commit()
     return {**{k: getattr(params, k) for k in _CTC_FIELDS}, "recalculated_employees": len(employees)}
-@router.post("/logo")
-async def logo(u=Depends(get_current_user)):
-    raise HTTPException(501, "Upload de logotipo ainda não implementado")
